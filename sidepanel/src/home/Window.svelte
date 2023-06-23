@@ -19,20 +19,14 @@
     onMount(() => {
         resetActiveTab();
         getTabPreview();
-        getGroups();
         loaded = true;
     });
 
-    const getGroups = () => {
-        groups = {};
-        for (const group of windowData.groups) {
-            groups[group.id] = group;
-        }
-    };
-
+    let showFavIcon;
     const resetActiveTab = () => {
         activeTab = windowData.tabs.find((t) => t.active);
-        activeGroup = windowData.groups.find((g) => g?.id == activeTab.groupId);
+        activeGroup = windowData.groups[activeTab.groupId];
+        showFavIcon = activeTab.favIconUrl && activeTab.favIconUrl != "";
     };
     const getTabPreview = () => {
         tabSubset = windowData.tabs
@@ -74,17 +68,26 @@
 
     const onShowTabDetails = ({ detail }) => {
         activeTab = detail;
-        activeGroup = windowData.groups.find((g) => g?.id == activeTab.groupId);
+        activeGroup = windowData.groups[activeTab.groupId];
     };
 
     const closeWindow = () => {
-        chrome.windows.remove(windowData.id);
+        if (windowData.tabs.length == 1) {
+            chrome.tabs.remove(windowData.tabs[0].id);
+        } else {
+            chrome.windows.remove(windowData.id);
+        }
+    };
+
+    const openActiveTab = () => {
+        chrome.tabs.update(activeTab.id, { active: true });
+        chrome.windows.update(activeTab.windowId, { focused: true });
     };
 </script>
 
 {#if loaded}
     <div
-        class="window"
+        class="window{window.incognito ? ' incognito' : ''}"
         on:mouseenter={onMouseEnter}
         on:mouseleave={onMouseLeave}
     >
@@ -97,13 +100,13 @@
                         </div>
                     {:else}
                         <img
-                            src={activeTab.favIconUrl &&
-                            activeTab.favIconUrl != ""
-                                ? activeTab.favIconUrl
-                                : webIcon}
+                            src={showFavIcon ? activeTab.favIconUrl : webIcon}
                             alt={activeTab.url}
+                            style={showFavIcon ? "" : "filter: invert(1);"}
                         />
-                        <span>{activeTab.title}</span>
+                        <span on:mousedown={openActiveTab}
+                            >{activeTab.title}</span
+                        >
                     {/if}
                     {#if activeTabInFocus}
                         <div class="actions">
@@ -111,6 +114,7 @@
                             <img
                                 class="action"
                                 src={closeIcon}
+                                on:mousedown={closeWindow}
                                 alt="close"
                                 on:mouseenter={() =>
                                     (closeWindowInFocus = true)}
@@ -122,51 +126,53 @@
                 </div>
             </div>
         </div>
-        {#if activeGroup && !closeWindowInFocus}
-            <div class="active-group-container">
-                <div
-                    in:fade
-                    class="active-group"
-                    style="background-color: {activeGroup.color}"
-                >
-                    <div class="title">
-                        {activeGroup.title}
-                    </div>
-                </div>
-                <div class="spacer" />
-            </div>
-        {:else}
-            <div class="divider" />
-        {/if}
-
-        <div class="details">
-            <div class="other-tabs" on:mousedown={onOtherTabsClicked}>
-                {#if windowData.tabs.length > 1}
-                    <div class="tab-icons">
-                        {#each showAllTabs ? windowData.tabs : tabSubset as tab}
-                            <TabIcon
-                                {tab}
-                                group={groups[tab.groupId]}
-                                isClickable={showAllTabs}
-                                on:showTabDetails={onShowTabDetails}
-                            />
-                        {/each}
-                    </div>
-                    {#if !showAllTabs}
-                        <div class="count">
-                            +{windowData.tabs.length - 1} Tab{#if windowData.tabs.length - 1 > 1}s{/if}
+        {#if windowData.tabs.length > 1}
+            {#if activeGroup && !closeWindowInFocus}
+                <div class="active-group-container">
+                    <div
+                        in:fade
+                        class="active-group"
+                        style="background-color: {activeGroup.color}"
+                    >
+                        <div class="title">
+                            {activeGroup.title}
                         </div>
-                    {/if}
-                {/if}
-            </div>
-        </div>
+                    </div>
+                    <div class="spacer" />
+                </div>
+            {:else}
+                <div class="divider" />
+            {/if}
 
-        {#if showMore}
-            <div class="menu">
-                <div class="action">Open New Tab</div>
-                <div class="action">Close Window</div>
-                <div class="action">Save Window?</div>
+            <div class="details">
+                <div class="other-tabs" on:mousedown={onOtherTabsClicked}>
+                    {#if windowData.tabs.length > 1}
+                        <div class="tab-icons">
+                            {#each showAllTabs ? windowData.tabs : tabSubset as tab}
+                                <TabIcon
+                                    {tab}
+                                    group={windowData.groups[tab.groupId]}
+                                    isClickable={showAllTabs}
+                                    on:showTabDetails={onShowTabDetails}
+                                />
+                            {/each}
+                        </div>
+                        {#if !showAllTabs}
+                            <div class="count">
+                                +{windowData.tabs.length - 1} Tab{#if windowData.tabs.length - 1 > 1}s{/if}
+                            </div>
+                        {/if}
+                    {/if}
+                </div>
             </div>
+
+            {#if showMore}
+                <div class="menu">
+                    <div class="action">Open New Tab</div>
+                    <div class="action">Close Window</div>
+                    <div class="action">Save Window?</div>
+                </div>
+            {/if}
         {/if}
     </div>
 {/if}
@@ -184,6 +190,10 @@
         padding: 5px;
         user-select: none;
         margin: 10px 5px;
+    }
+
+    .window.incognito {
+        opacity: 0.5;
     }
 
     .window.focused {
@@ -311,6 +321,9 @@
 
     .actions {
         margin-left: 3px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
     }
 
     img.action {

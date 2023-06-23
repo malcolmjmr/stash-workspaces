@@ -9,7 +9,8 @@
 
     export let tabs;
     export let activeTab;
-    //export let windows;
+    export let currentWindowId;
+    export let windows;
     export let groups;
     export let lastTabUpdate;
     export let lastSelectionUpdate;
@@ -22,40 +23,20 @@
     let scrollingUp;
     let lastScrollPosition = 0;
 
+    let loaded;
     onMount(() => {
         loadWindows();
         loadWorkspaces();
+        loaded = true;
     });
 
-    let windows = [];
     const loadWindows = () => {
         // current window first
-        let tempWindows = {};
-
-        for (const tab of tabs) {
-            let window = tempWindows[tab.windowId] ?? {
-                tabs: [],
-                groups: {},
-            };
-            if (tab.groupId > -1 && !window.groups[tab.groupId]) {
-                window.groups[tab.groupId] = groups[tab.groupId];
-            }
-            window.tabs.push(tab);
-            tempWindows[tab.windowId] = window;
-        }
-
-        windows = Object.entries(tempWindows).map(([id, data]) => {
-            return {
-                id,
-                tabs: data.tabs,
-                groups: Object.values(data.groups),
-            };
-        });
 
         windows.sort((a, b) => {
             return (
-                (b.id == activeTab.windowId ? 1 : 0) -
-                (a.id == activeTab.windowId ? 1 : 0)
+                (b.id == currentWindowId ? 1 : 0) -
+                (a.id == currentWindowId ? 1 : 0)
             );
         });
     };
@@ -83,7 +64,8 @@
         bind:selectedTabs
         {lastSelectionUpdate}
     />
-    <div class="body" slot="body">
+
+    <div class="container" slot="body">
         {#if searchText.length > 0}
             <SearchResults
                 {searchText}
@@ -92,19 +74,21 @@
                 {lastSelectionUpdate}
                 {selectedTabs}
             />
-        {:else}
-            <div class="windows">
-                {#each windows as windowData}
-                    <Window {windowData} />
-                {/each}
-            </div>
+        {:else if loaded}
+            {#key lastTabUpdate}
+                <div class="windows">
+                    {#each windows as windowData (windowData.tabs)}
+                        <Window {windowData} />
+                    {/each}
+                </div>
+            {/key}
         {/if}
 
         {#if workspaces.length > 0}
             <div class="workspaces" />
         {/if}
     </div>
-    {#if !searchText || searchText == ""}
+    {#if loaded}
         <Footer {windows} slot="footer" {lastSelectionUpdate} {selectedTabs} />
     {/if}
 </AppContainer>
@@ -114,11 +98,11 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
-        padding: 40px 0px;
     }
 
-    .body {
-        height: 100%;
+    .container {
+        height: calc(100% - 40px);
+        padding-top: 40px;
         overflow-y: scroll;
     }
 </style>

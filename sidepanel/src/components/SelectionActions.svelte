@@ -24,18 +24,45 @@
         }
         groupCount = groupIds.length;
     };
+
+    const groupTabs = async () => {
+        const groupId = await chrome.tabs.group({
+            tabIds: selectedTabs.map((t) => t.id),
+        });
+        await chrome.tabGroups.update(groupId, {
+            title: selectedTabs[0].title,
+        });
+        selectedTabs = [];
+    };
+
+    const moveTabsToNewWindow = async () => {
+        const firstTab = selectedTabs.shift();
+        const window = await chrome.windows.create({
+            tabId: firstTab.id,
+            focused: true,
+        });
+        await chrome.tabs.move(
+            selectedTabs.map((t) => t.id),
+            { windowId: window.id, index: 0 }
+        );
+        selectedTabs = [];
+    };
+
+    const closeTabs = async () => {
+        chrome.tabs.remove(selectedTabs.map((t) => t.id));
+    };
 </script>
 
 <div class="actions">
     {#if groupCount != 1}
-        <div class="action" on:mouseup={() => dispatch("groupTabs")}>Group</div>
+        <div class="action" on:mouseup={groupTabs}>Group</div>
     {/if}
 
-    <div class="action" on:mouseup={() => dispatch("moveTabs")}>
+    <div class="action" on:mouseup={moveTabsToNewWindow}>
         Move to New Window
     </div>
 
-    <div class="action" on:mouseup={() => dispatch("closeTabs")}>Close</div>
+    <div class="action" on:mouseup={closeTabs}>Close</div>
 </div>
 
 <style>

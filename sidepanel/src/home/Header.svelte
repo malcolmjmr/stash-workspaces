@@ -8,6 +8,10 @@
     export let searchText;
     export let selectedTabs;
     export let lastSelectionUpdate;
+
+    const createNewWindow = () => {
+        chrome.windows.create({ focused: true });
+    };
 </script>
 
 <HeaderContainer>
@@ -20,6 +24,7 @@
                 class="icon-button"
                 src={newWindowIcon}
                 alt="Create New Window"
+                on:mousedown={createNewWindow}
             />
         {/if}
     {/key}

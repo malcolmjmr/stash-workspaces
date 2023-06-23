@@ -3,6 +3,7 @@
 
     import webIcon from "../icons/web.png";
     import { createEventDispatcher } from "svelte";
+    import { colorMap } from "../utilities/colors";
 
     export let tab;
     export let group;
@@ -47,7 +48,7 @@
     {#if group}
         <div
             class="group-indicator"
-            style="background-color: {group.color ?? 'grey'}"
+            style="background-color: {colorMap[group.color]}"
         />
     {/if}
 </div>

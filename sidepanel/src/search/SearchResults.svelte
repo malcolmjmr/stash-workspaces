@@ -26,8 +26,8 @@
 <style>
     .search-results {
         display: flex;
-        flex-grow: 1;
         flex-direction: column;
+        height: 100%;
     }
 
     .no-results-container {

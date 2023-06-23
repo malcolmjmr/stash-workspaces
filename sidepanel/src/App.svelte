@@ -11,8 +11,12 @@
     let workspaces = [];
     let activeTab;
     let folder;
-    let lastTabUpdate;
 
+    let lastUpdatedTab;
+    let lastUpdatedWindow;
+    let lastUpdatedGroup;
+
+    let currentWindowId;
     let view = Views.window;
 
     onMount(() => {
@@ -23,7 +27,7 @@
     const init = async () => {
         settings = (await get("settings")) ?? {};
         await loadTabsGroupsAndWindows();
-        activeTab = await getActiveTab();
+        await getActiveTab();
         addListeners();
         loaded = true;
     };
@@ -39,15 +43,37 @@
             }
         }
         groups = tempGroups;
+        let tempWindows = [];
+        for (let window of windows) {
+            window = updateWindowData(window);
+            tempWindows.push(window);
+        }
+    };
+
+    const updateWindowData = (window) => {
+        window.groups = {};
+        window.tabs = [];
+
+        for (const tab of tabs) {
+            if (tab.windowId != window.id) continue;
+            window.tabs.push(tab);
+            if (tab.groupId > -1 && !window.groups[tab.groupId]) {
+                window.groups[tab.groupId] = groups[tab.groupId];
+            }
+        }
+
+        return window;
     };
 
     const getActiveTab = async () => {
-        return (
+        activeTab = (
             await chrome.tabs.query({
                 active: true,
                 windowId: await chrome.windows.WINDOW_ID_CURRENT,
             })
         )[0];
+
+        if (!currentWindowId) currentWindowId = activeTab.windowId;
     };
 
     const addListeners = () => {
@@ -57,6 +83,7 @@
         chrome.tabs.onMoved.addListener(onTabMoved);
         chrome.tabs.onRemoved.addListener(onTabRemoved);
         chrome.tabGroups.onCreated.addListener(onTabGroupCreated);
+        chrome.tabGroups.onUpdated.addListener(onTabGroupUpdated);
         chrome.tabGroups.onRemoved.addListener(onTabGroupRemoved);
         chrome.windows.onCreated.addListener(onWindowCreated);
         chrome.windows.onRemoved.addListener(onWindowRemoved);
@@ -68,12 +95,17 @@
         );
         const newActiveTabIndex = tabs.findIndex((t) => t.id == tabId);
         if (newActiveTabIndex > -1) {
-            tabs[newActiveTabIndex].active = true;
             if (oldActiveTabIndex > -1) {
                 tabs[oldActiveTabIndex].active = false;
+                lastUpdatedTab = tabs[oldActiveTabIndex];
             }
+            tabs[newActiveTabIndex].active = true;
+            lastUpdatedTab = tabs[newActiveTabIndex];
         }
-        lastTabUpdate = true;
+        if (view == Views.home && windowId == currentWindowId) {
+            console.log("updating view");
+            view = Views.window;
+        }
     };
 
     const onTabCreated = (tab) => {
@@ -84,8 +116,8 @@
         const index = tabs.findIndex((t) => t.id == tabId);
         if (index > -1) {
             tabs[index] = { ...tabs[index], ...updated };
+            lastUpdatedTab = tabs[index];
         }
-        lastTabUpdate = Date.now();
     };
 
     const onTabMoved = (tabId) => {
@@ -110,24 +142,36 @@
             else tabs.push(tab);
         }
         tabs.sort((a, b) => a.index - b.index);
-        lastTabUpdate = Date.now();
+        lastUpdatedWindow = windowId;
     };
 
     const onWindowCreated = (window) => {
-        windows.push(window);
+        setTimeout(() => {
+            const updatedWindow = updateWindowData(window);
+            windows.push(updatedWindow);
+            lastUpdatedWindow = updatedWindow.id;
+        }, 500);
     };
 
     const onWindowRemoved = (windowId) => {
         const index = windows.findIndex((w) => w.id == windowId);
         if (index > -1) windows.splice(index, 1);
+        console.log(windows);
     };
 
     const onTabGroupCreated = (group) => {
         groups[group.id] = group;
+        lastUpdatedGroup = group;
+    };
+
+    const onTabGroupUpdated = (group) => {
+        groups[group.id] = group;
+        lastUpdatedGroup = group;
     };
 
     const onTabGroupRemoved = (groupId) => {
         delete groups[groupId];
+        // need to update entire window?
     };
 </script>
 
@@ -138,7 +182,10 @@
         {groups}
         {windows}
         {tabs}
-        {lastTabUpdate}
+        {lastUpdatedTab}
+        {lastUpdatedGroup}
+        {lastUpdatedWindow}
+        {currentWindowId}
     />
 {/if}
 

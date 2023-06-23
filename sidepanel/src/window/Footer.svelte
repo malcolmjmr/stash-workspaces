@@ -30,7 +30,7 @@
     <FooterContainer>
         <div class="main-container">
             {#if selectedTabs.length > 0}
-                <SelectionFooter {selectedTabs} {lastSelectionUpdate} />
+                <SelectionFooter bind:selectedTabs {lastSelectionUpdate} />
             {:else}
                 <div class="counts">
                     <div class="container">

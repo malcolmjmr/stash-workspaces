@@ -6,6 +6,8 @@
     import moreIcon from "../icons/more-vert.png";
     import closeIcon from "../icons/close.png";
     import { slide } from "svelte/transition";
+    import { colorMap } from "../utilities/colors";
+    import GroupColors from "./GroupColors.svelte";
 
     export let group = { title: "Untitle Group" };
     export let isCollapsed = null;
@@ -34,6 +36,50 @@
     const toggleCollapse = () => {
         dispatch("toggleCollapse", group);
     };
+
+    const saveGroup = () => {};
+
+    const moveGroup = async () => {
+        const window = await chrome.windows.create({});
+        await chrome.tabGroups.move(group.id, {
+            windowId: window.id,
+            index: 0,
+        });
+
+        showMore = false;
+    };
+
+    const closeGroup = () => {
+        chrome.tabGroups.remove(group.id);
+    };
+
+    let isEditingTitle;
+
+    const onEditTitleClicked = () => {
+        isEditingTitle = true;
+
+        //showMore = false;
+    };
+
+    let newTitle = "";
+    const onTitleInputBlur = (e) => {
+        console.log(e);
+        if (newTitle != "") {
+            setTitle();
+        }
+        newTitle = "";
+    };
+
+    const setTitle = () => {
+        chrome.tabGroups.update(group.id, { title: newTitle });
+        //isEditingTitle = false;
+    };
+
+    const onInput = (e) => {
+        if (e.key == "Enter") {
+            setTitle();
+        }
+    };
 </script>
 
 <div
@@ -43,15 +89,26 @@
 >
     <div
         class="container"
-        style="background-color: {group.color ?? 'lightgrey'};{showMore
+        style="background-color: {colorMap[group.color]};{showMore
             ? 'border-radius: 5px 5px 0px 0px;'
             : ''}"
     >
-        <div class="title">
-            {group.title}
-            {#if isCollapsed} ({tabs.length}) {/if}
-        </div>
-        <div class="spacer" />
+        {#if isEditingTitle}
+            <input
+                type="text"
+                class="title-input"
+                bind:value={newTitle}
+                on:blur={onTitleInputBlur}
+                on:keydown={onInput}
+                autofocus="true"
+            />
+        {:else}
+            <div class="title">
+                {group.title}
+                {#if isCollapsed} ({tabs.length}) {/if}
+            </div>
+            <div class="spacer" />
+        {/if}
 
         {#if isInfocus}
             <div class="actions">
@@ -77,9 +134,15 @@
             in:slide
             out:slide
         >
-            <div class="action">Save Group</div>
-            <div class="action">Close Group</div>
-            <div class="action">Move Group to New Window</div>
+            <GroupColors {group} />
+            <div class="action" on:mousedown={onEditTitleClicked}>
+                Edit title
+            </div>
+            <!--<div class="action" on:mousedown={saveGroup}>Save Group</div>-->
+            <div class="action" on:mousedown={closeGroup}>Close Group</div>
+            <div class="action" on:mousedown={moveGroup}>
+                Move Group to New Window
+            </div>
         </div>
     {/if}
 </div>
@@ -109,6 +172,20 @@
     .title {
         color: black;
         font-weight: 400;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .title-input {
+        text-decoration: none;
+        box-shadow: none;
+        border: black;
+        border-radius: 5px;
+        outline: none;
+        background-color: #999999;
+        color: black;
+        flex-grow: 1;
+        padding: 5px;
     }
 
     .title:hover {

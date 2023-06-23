@@ -1,4 +1,9 @@
-<div class="header">
+<script>
+    export let backgroundColor = null;
+    
+</script>
+
+<div class="header" style={backgroundColor ? 'background-color: ' + backgroundColor : ''}>
     <slot />
 </div>
 

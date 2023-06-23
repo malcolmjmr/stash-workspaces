@@ -1,7 +1,7 @@
 {
-    "name": "Stash Workspaces",
+    "name": "Side Panel Organizer",
     "version": "0.0.0.1",
-    "description": "Transform your windows and tab groups into dedicated workspaces with vertical tabs and bookmarks.",
+    "description": "Organize your windows, tabs and bookmarks from the sidepanl.",
     "background": {
         "service_worker": "service-worker.js",
         "type": "module"

@@ -3,13 +3,17 @@
     import clearIcon from "../icons/close.png";
 
     export let searchText;
+    export let backgroundColor = null;
 
     const onClearTextClicked = () => {
         searchText = "";
     };
 </script>
 
-<div class="search-box">
+<div
+    class="search-box"
+    style={backgroundColor ? "background-color: " + backgroundColor : ""}
+>
     <img src={searchIcon} alt="Search" />
     <input type="text" bind:value={searchText} placeholder="Search Tabs" />
     {#if searchText.length > 0}

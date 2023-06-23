@@ -18,6 +18,7 @@
     import webIcon from "../icons/web.png";
     import { createEventDispatcher } from "svelte";
     import Menu from "./Menu.svelte";
+    import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
 
     let dispatch = createEventDispatcher();
@@ -95,6 +96,10 @@
         chrome.tabs.update(tab.id, { active: true });
         chrome.windows.update(tab.windowId, { focused: true });
     };
+
+    const reload = () => {
+        chrome.tabs.reload(tab.id);
+    };
 </script>
 
 <div
@@ -104,7 +109,7 @@
         ? ' active'
         : ''}{group ? ' grouped' : ''} "
     style={isDraggedOver
-        ? "border-bottom: 2px solid; border-top: 2px solid;"
+        ? "border-bottom: 2px solid; padding-bottom: 3px;"
         : ""}
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
@@ -141,18 +146,18 @@
                     class="favicon"
                     src={webIcon}
                     alt={tab.title}
-                    style="filter:invert(1)"
+                    style="filter: invert(1);"
                 />
             {/if}
             {#if group}
                 <div
                     class="group-indicator"
-                    style="background-color: {group.color ?? 'lightgrey'}"
+                    style="background-color: {colorMap[group.color]}"
                 />
             {/if}
         </div>
         <div class="title" on:mousedown={onTitleClicked}>{tab.title}</div>
-        <div class="spacer" />
+        <div class="spacer" on:mousedown={onTitleClicked} />
 
         {#if !isSelected && !isDragged}
             <div class="actions">
@@ -258,6 +263,7 @@
     }
 
     .spacer {
+        height: 100%;
         flex-grow: 1;
     }
 

@@ -18,16 +18,11 @@
 
     let selectedTabs = [];
     let showSearchResults = false;
-    let searchResults = [];
+    export let searchResults = [];
     let folder;
-    let searchText = "";
+    export let searchText;
     let showSearch;
     let showHeader = true;
-
-    $: {
-        searchText;
-        updateResults();
-    }
 
     /*
 
@@ -59,9 +54,15 @@
         getTabGroupStarts();
         loaded = true;
     });
+
     onDestroy(() => {
         removeListeners();
     });
+
+    $: {
+        lastTabUpdate;
+        getTabGroupStarts();
+    }
 
     let lastScrollPosition = 0;
     let lastScrollTime = Date.now();
@@ -92,13 +93,6 @@
         scrollElement.removeEventListener("scroll", scrollListener);
     };
 
-    const updateResults = () => {
-        const text = searchText.toLowerCase();
-        searchResults = tabs.filter((t) =>
-            (t.title + t.url).toLowerCase().includes(text)
-        );
-    };
-
     let lastSelectionUpdate = Date.now();
     const onUpdateSelection = ({ detail }) => {
         const tab = detail;
@@ -127,14 +121,11 @@
                 groupStarts[tab.groupId] = tab.index;
             }
         }
-
-        console.log(groupStarts);
     };
 
     let lastGroupUpdate = Date.now();
     let collapsedGroups = [];
     const onCollapsedToggle = ({ detail }) => {
-        console.log(detail);
         const group = detail;
         const index = collapsedGroups.findIndex((id) => group.id == id);
         if (index > -1) {
@@ -165,43 +156,49 @@
             />
         </div>
     {/if}
-    <div class="tabs-container" bind:this={scrollElement}>
-        {#if searchText.length > 0}
-            <SearchResults
-                {searchText}
-                {searchResults}
-                {selectedTabs}
-                {lastSelectionUpdate}
-                on:updateSelection
-            />
-        {:else if loaded}
-            {#key lastTabUpdate}
-                {#each tabs as tab (tab)}
-                    {#if lastSelectionUpdate && tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
-                        <GroupLabel
-                            group={groups[tab.groupId]}
-                            {lastGroupUpdate}
-                            isCollapsed={collapsedGroups.includes(tab.groupId)}
-                            tabs={tabs.filter((t) => t.groupId == tab.groupId)}
-                            on:toggleCollapse={onCollapsedToggle}
-                        />
-                    {/if}
-                    {#if lastSelectionUpdate && !collapsedGroups.includes(tab.groupId)}
-                        <Tab
-                            {tab}
-                            group={groups[tab.groupId]}
-                            {selectedTabs}
-                            {lastSelectionUpdate}
-                            on:updateSelection={onUpdateSelection}
-                        />
-                    {/if}
-                {/each}
-            {/key}
-        {/if}
+    <div class="body" bind:this={scrollElement}>
+        <div class="container">
+            {#if searchText.length > 0}
+                <SearchResults
+                    {searchText}
+                    {searchResults}
+                    {selectedTabs}
+                    {lastSelectionUpdate}
+                    on:updateSelection
+                />
+            {:else if loaded}
+                {#key lastTabUpdate}
+                    {#each tabs as tab (tab)}
+                        {#if lastSelectionUpdate && tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
+                            <GroupLabel
+                                group={groups[tab.groupId]}
+                                {lastGroupUpdate}
+                                isCollapsed={collapsedGroups.includes(
+                                    tab.groupId
+                                )}
+                                tabs={tabs.filter(
+                                    (t) => t.groupId == tab.groupId
+                                )}
+                                on:toggleCollapse={onCollapsedToggle}
+                            />
+                        {/if}
+                        {#if lastSelectionUpdate && !collapsedGroups.includes(tab.groupId)}
+                            <Tab
+                                {tab}
+                                group={groups[tab.groupId]}
+                                {selectedTabs}
+                                {lastSelectionUpdate}
+                                on:updateSelection={onUpdateSelection}
+                            />
+                        {/if}
+                    {/each}
+                {/key}
+            {/if}
+        </div>
     </div>
-    {#if scrollingUp || lastScrollPosition < 20}
+    {#if !showSearch && (scrollingUp || lastScrollPosition < 20)}
         <div class="footer-container" in:slide out:slide>
-            <Footer {tabs} {selectedTabs} {lastSelectionUpdate} />
+            <Footer {tabs} bind:selectedTabs {lastSelectionUpdate} />
         </div>
     {/if}
 </main>
@@ -224,7 +221,7 @@
         z-index: 999;
     }
 
-    .tabs-container {
+    .body {
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -235,6 +232,7 @@
         position: absolute;
         bottom: 0px;
         width: 100%;
+        height: 40px;
     }
 
     .no-results-container {
@@ -244,5 +242,13 @@
         flex-direction: row;
         align-items: center;
         justify-content: center;
+    }
+
+    .body .container {
+        padding: 40px 0px;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
 </style>

@@ -7,6 +7,7 @@
     .footer {
         position: absolute;
         bottom: 0px;
+        height: 30px;
         min-height: 30px;
         width: 100%;
         display: flex;

@@ -11,8 +11,17 @@
     export let groups;
     export let windows;
     export let activeTab;
+    export let currentWindowId;
+    export let lastUpdatedTab;
+    export let lastUpdatedGroup;
+    export let lastUpdatedWindow;
 
-    export let lastTabUpdate = null;
+    $: {
+        lastUpdatedTab;
+        lastUpdatedGroup;
+        lastUpdatedWindow;
+        lastTabUpdate = Date.now();
+    }
 
     let group;
     let window;
@@ -43,6 +52,23 @@
         selectedTabs = [];
         lastSelectionUpdate = Date.now();
     };
+
+    let searchText = "";
+    let searchResults = [];
+
+    $: {
+        lastTabUpdate;
+        if (searchText != "") updateResults();
+    }
+
+    const updateResults = () => {
+        const text = searchText.toLowerCase();
+        searchResults = tabs.filter((t) =>
+            (t.title + " " + t.url).toLowerCase().includes(text)
+        );
+    };
+
+    
 </script>
 
 <div class="container">
@@ -53,6 +79,8 @@
             {activeTab}
             {lastTabUpdate}
             {lastSelectionUpdate}
+            {windows}
+            {currentWindowId}
             bind:selectedTabs
             on:updateSelection={onUpdateSelection}
         />
@@ -65,6 +93,8 @@
             {lastSelectionUpdate}
             {selectedTabs}
             {windows}
+            bind:searchText
+            {searchResults}
             on:goHome={goToHomeView}
             on:updateSelection={onUpdateSelection}
         />
