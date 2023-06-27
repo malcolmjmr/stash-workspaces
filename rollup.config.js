@@ -9,6 +9,7 @@ export default {
     output: {
         file: 'sidepanel/bundle.js',
         format: 'iife',
+        //format: 'cjs',
         name: 'App',
     },
     plugins: [

@@ -18,8 +18,10 @@
         // chrome.tabs.remove(tab.id);
     };
 
-    const closeTabGroup = () => {
-        chrome.tabGroups.remove(tab.groupId);
+    const closeTabGroup = async () => {
+        chrome.tabs.remove(
+            (await chrome.tabs.query({ groupId: tab.groupId })).map((t) => t.id)
+        );
     };
 
     const closeTab = () => {
@@ -42,7 +44,7 @@
     };
 
     const pinTab = () => {
-        chrome.tabs.pin(tab.id);
+        chrome.tabs.update(tab.id, { pinned: true });
     };
 </script>
 

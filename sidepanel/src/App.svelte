@@ -12,6 +12,7 @@
     let activeTab;
     let folder;
 
+    let lastUpdate;
     let lastUpdatedTab;
     let lastUpdatedWindow;
     let lastUpdatedGroup;
@@ -53,7 +54,6 @@
     const updateWindowData = (window) => {
         window.groups = {};
         window.tabs = [];
-
         for (const tab of tabs) {
             if (tab.windowId != window.id) continue;
             window.tabs.push(tab);
@@ -109,20 +109,37 @@
     };
 
     const onTabCreated = (tab) => {
+        tabs = [...tabs, tab];
         updateTabsWithinWindow(tab.windowId);
     };
 
     const onTabUpdated = (tabId, updated) => {
-        const index = tabs.findIndex((t) => t.id == tabId);
-        if (index > -1) {
-            tabs[index] = { ...tabs[index], ...updated };
-            lastUpdatedTab = tabs[index];
+        let tabIndex = tabs.findIndex((t) => t.id == tabId);
+        if (tabIndex > -1) {
+            let tab = { ...tabs[tabIndex], ...updated };
+            tabs[tabIndex] = tab;
+            tabs = tabs;
+            lastUpdatedTab = tab;
+            lastUpdatedWindow = tab.windowId;
         }
     };
 
-    const onTabMoved = (tabId) => {
-        const tab = tabs.find((t) => t.id == tabId);
-        if (tab) updateTabsWithinWindow(tab.windowId);
+    const onTabMoved = async (tabId, { windowId, toIndex, fromIndex }) => {
+        const tabIndex = tabs.findIndex((t) => t.id == tabId);
+        if (tabIndex == -1) {
+            console.log("could not find tab");
+            return;
+        }
+        let delay = 0;
+        if (tabs[tabIndex].windowId != windowId) {
+            tabs[tabIndex].windowId = windowId;
+        }
+
+        const window = windows.find((w) => w.id == windowId);
+        if (!window) {
+            windows = [...windows, await chrome.windows.get(windowId)];
+        }
+        updateTabsWithinWindow(windowId);
     };
 
     const onTabRemoved = (tabId) => {
@@ -135,43 +152,64 @@
     };
 
     const updateTabsWithinWindow = async (windowId) => {
-        const updatedTabs = await chrome.tabs.query({ windowId });
+        console.log("updating tabs within window");
+        let updatedTabs = await chrome.tabs.query({ windowId });
+        console.log(updatedTabs);
         for (const tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) tabs[index] = tab;
             else tabs.push(tab);
         }
         tabs.sort((a, b) => a.index - b.index);
+        tabs = tabs;
+        lastUpdate = Date.now();
         lastUpdatedWindow = windowId;
     };
 
+    const updateTabsWithinGroup = async (groupId) => {
+        console.log("updating group");
+        let updatedTabs = await chrome.tabs.query({ groupId });
+        console.log("tabs to update");
+        console.log(updatedTabs);
+        for (const tab of updatedTabs) {
+            const index = tabs.findIndex((t) => t.id == tab.id);
+            if (index > -1) tabs[index] = tab;
+            else tabs.push(tab);
+        }
+        tabs.sort((a, b) => a.index - b.index);
+        tabs = tabs;
+        lastUpdatedGroup = groupId;
+        lastUpdatedWindow = updatedTabs[0].windowId;
+    };
+
     const onWindowCreated = (window) => {
+        windows = [...windows, window];
         setTimeout(() => {
-            const updatedWindow = updateWindowData(window);
-            windows.push(updatedWindow);
-            lastUpdatedWindow = updatedWindow.id;
+            updateTabsWithinWindow(window.id);
         }, 500);
     };
 
     const onWindowRemoved = (windowId) => {
         const index = windows.findIndex((w) => w.id == windowId);
         if (index > -1) windows.splice(index, 1);
-        console.log(windows);
+        windows = windows;
     };
 
     const onTabGroupCreated = (group) => {
+        console.log("group created");
         groups[group.id] = group;
-        lastUpdatedGroup = group;
+        updateTabsWithinGroup(group.windowId);
+        lastUpdatedGroup = group.id;
     };
 
     const onTabGroupUpdated = (group) => {
         groups[group.id] = group;
-        lastUpdatedGroup = group;
+        lastUpdatedGroup = group.id;
     };
 
     const onTabGroupRemoved = (groupId) => {
+        console.log("group removed");
         delete groups[groupId];
-        // need to update entire window?
     };
 </script>
 
@@ -182,6 +220,7 @@
         {groups}
         {windows}
         {tabs}
+        {lastUpdate}
         {lastUpdatedTab}
         {lastUpdatedGroup}
         {lastUpdatedWindow}

@@ -12,16 +12,10 @@
     export let windows;
     export let activeTab;
     export let currentWindowId;
+    export let lastUpdate;
     export let lastUpdatedTab;
     export let lastUpdatedGroup;
     export let lastUpdatedWindow;
-
-    $: {
-        lastUpdatedTab;
-        lastUpdatedGroup;
-        lastUpdatedWindow;
-        lastTabUpdate = Date.now();
-    }
 
     let group;
     let window;
@@ -57,7 +51,7 @@
     let searchResults = [];
 
     $: {
-        lastTabUpdate;
+        lastUpdate;
         if (searchText != "") updateResults();
     }
 
@@ -67,8 +61,6 @@
             (t.title + " " + t.url).toLowerCase().includes(text)
         );
     };
-
-    
 </script>
 
 <div class="container">
@@ -77,8 +69,11 @@
             {tabs}
             {groups}
             {activeTab}
-            {lastTabUpdate}
+            {lastUpdate}
             {lastSelectionUpdate}
+            {lastUpdatedTab}
+            {lastUpdatedGroup}
+            {lastUpdatedWindow}
             {windows}
             {currentWindowId}
             bind:selectedTabs
@@ -89,9 +84,12 @@
             tabs={tabs.filter((t) => t.windowId == activeTab.windowId)}
             {activeTab}
             {groups}
-            {lastTabUpdate}
+            {lastUpdate}
             {lastSelectionUpdate}
             {selectedTabs}
+            {lastUpdatedTab}
+            {lastUpdatedGroup}
+            {lastUpdatedWindow}
             {windows}
             bind:searchText
             {searchResults}

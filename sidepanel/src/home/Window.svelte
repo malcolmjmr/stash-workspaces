@@ -1,6 +1,7 @@
 <script>
     import GroupLabel from "../tab/GroupLabel.svelte";
 
+    import { colorMap } from "../utilities/colors";
     import closeIcon from "../icons/close.png";
     import webIcon from "../icons/web.png";
 
@@ -9,7 +10,11 @@
     import { fade } from "svelte/transition";
 
     export let windowData;
-    let groups;
+    export let tabs;
+    export let groups;
+    export let lastUpdatedWindow;
+    export let lastUpdatedTab;
+
     let activeTab;
     let activeGroup;
 
@@ -24,12 +29,13 @@
 
     let showFavIcon;
     const resetActiveTab = () => {
-        activeTab = windowData.tabs.find((t) => t.active);
-        activeGroup = windowData.groups[activeTab.groupId];
+        activeTab = tabs.find((t) => t.active);
+        if (!activeTab) return;
+        activeGroup = groups[activeTab.groupId];
         showFavIcon = activeTab.favIconUrl && activeTab.favIconUrl != "";
     };
     const getTabPreview = () => {
-        tabSubset = windowData.tabs
+        tabSubset = tabs
             .filter(
                 (t) =>
                     t.index != activeTab.index &&
@@ -45,7 +51,7 @@
     */
 
     let showMore;
-    let showAllTabs;
+    let showAllTabs = true;
 
     let activeTabInFocus;
     let closeWindowInFocus;
@@ -68,12 +74,12 @@
 
     const onShowTabDetails = ({ detail }) => {
         activeTab = detail;
-        activeGroup = windowData.groups[activeTab.groupId];
+        activeGroup = groups[activeTab.groupId];
     };
 
     const closeWindow = () => {
-        if (windowData.tabs.length == 1) {
-            chrome.tabs.remove(windowData.tabs[0].id);
+        if (tabs.length == 1) {
+            chrome.tabs.remove(tabs[0].id);
         } else {
             chrome.windows.remove(windowData.id);
         }
@@ -83,11 +89,27 @@
         chrome.tabs.update(activeTab.id, { active: true });
         chrome.windows.update(activeTab.windowId, { focused: true });
     };
+
+    let lastUpdate;
+    $: {
+        if (lastUpdatedWindow != null && lastUpdatedWindow == windowData.id) {
+            resetActiveTab();
+            lastUpdate = Date.now();
+        }
+
+        if (
+            lastUpdatedTab != null &&
+            lastUpdatedTab.windowId == windowData.id
+        ) {
+            resetActiveTab();
+            lastUpdate = Date.now();
+        }
+    }
 </script>
 
-{#if loaded}
+{#if loaded && activeTab}
     <div
-        class="window{window.incognito ? ' incognito' : ''}"
+        class="window{windowData.incognito ? ' incognito' : ''}"
         on:mouseenter={onMouseEnter}
         on:mouseleave={onMouseLeave}
     >
@@ -126,13 +148,14 @@
                 </div>
             </div>
         </div>
-        {#if windowData.tabs.length > 1}
+
+        {#if tabs.length > 1}
             {#if activeGroup && !closeWindowInFocus}
                 <div class="active-group-container">
                     <div
                         in:fade
                         class="active-group"
-                        style="background-color: {activeGroup.color}"
+                        style="background-color: {colorMap[activeGroup.color]}"
                     >
                         <div class="title">
                             {activeGroup.title}
@@ -145,13 +168,13 @@
             {/if}
 
             <div class="details">
-                <div class="other-tabs" on:mousedown={onOtherTabsClicked}>
-                    {#if windowData.tabs.length > 1}
+                <div class="other-tabs">
+                    {#if tabs.length > 1}
                         <div class="tab-icons">
-                            {#each showAllTabs ? windowData.tabs : tabSubset as tab}
+                            {#each showAllTabs ? tabs : tabSubset as tab}
                                 <TabIcon
                                     {tab}
-                                    group={windowData.groups[tab.groupId]}
+                                    group={groups[tab.groupId]}
                                     isClickable={showAllTabs}
                                     on:showTabDetails={onShowTabDetails}
                                 />
@@ -159,7 +182,7 @@
                         </div>
                         {#if !showAllTabs}
                             <div class="count">
-                                +{windowData.tabs.length - 1} Tab{#if windowData.tabs.length - 1 > 1}s{/if}
+                                +{tabs.length - 1} Tab{#if tabs.length - 1 > 1}s{/if}
                             </div>
                         {/if}
                     {/if}
@@ -260,6 +283,10 @@
         opacity: 0.8;
         margin: 2px 5px;
         font-size: 12px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        flex-grow: 1;
+        overflow: hidden;
     }
 
     .divider {

@@ -31,10 +31,15 @@
         dispatch("toggleCollapse", group);
     };
 
-    const onCloseClicked = () => {};
+    const onCloseClicked = () => {
+        chrome.tabs.remove(tabs.map((t) => t.id));
+    };
 
     const toggleCollapse = () => {
         dispatch("toggleCollapse", group);
+        if (!group.collapsed) {
+            chrome.tabGroups.update(group.id, { collapsed: true });
+        }
     };
 
     const saveGroup = () => {};
@@ -63,7 +68,6 @@
 
     let newTitle = "";
     const onTitleInputBlur = (e) => {
-        console.log(e);
         if (newTitle != "") {
             setTitle();
         }
@@ -72,13 +76,19 @@
 
     const setTitle = () => {
         chrome.tabGroups.update(group.id, { title: newTitle });
-        //isEditingTitle = false;
+        isEditingTitle = false;
     };
 
     const onInput = (e) => {
         if (e.key == "Enter") {
             setTitle();
         }
+    };
+
+    const ungroupTabs = async () => {
+        chrome.tabs.ungroup(
+            (await chrome.tabs.query({ groupId: group.id })).map((t) => t.id)
+        );
     };
 </script>
 
@@ -103,11 +113,10 @@
                 autofocus="true"
             />
         {:else}
-            <div class="title">
-                {group.title}
+            <div class="title" on:mousedown={onTitleClicked}>
+                {group.title ?? "Untitled Group"}
                 {#if isCollapsed} ({tabs.length}) {/if}
             </div>
-            <div class="spacer" />
         {/if}
 
         {#if isInfocus}
@@ -139,6 +148,7 @@
                 Edit title
             </div>
             <!--<div class="action" on:mousedown={saveGroup}>Save Group</div>-->
+            <div class="action" on:mousedown={ungroupTabs}>Ungroup Tabs</div>
             <div class="action" on:mousedown={closeGroup}>Close Group</div>
             <div class="action" on:mousedown={moveGroup}>
                 Move Group to New Window
@@ -167,6 +177,7 @@
         display: flex;
         flex-direction: row;
         align-items: center;
+        width: calc(100% - 20px);
     }
 
     .title {
@@ -174,6 +185,8 @@
         font-weight: 400;
         white-space: nowrap;
         text-overflow: ellipsis;
+        flex-grow: 1;
+        overflow: hidden;
     }
 
     .title-input {

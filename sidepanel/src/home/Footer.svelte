@@ -8,6 +8,7 @@
     let dispatch = createEventDispatcher();
 
     export let windows;
+    export let tabs;
     export let lastSelectionUpdate;
     export let selectedTabs;
 
@@ -22,7 +23,7 @@
 
     const getCounts = () => {
         windowCount = windows.length;
-        tabCount = windows.reduce((a, w) => a + w.tabs.length, 0);
+        tabCount = tabs.length;
     };
 
     $: {

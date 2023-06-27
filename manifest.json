@@ -47,6 +47,12 @@
         "unlimitedStorage"
     ],
     "incognito": "spanning",
-    "commands": {},
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Alt+S"
+            }
+        }
+    },
     "manifest_version": 3
 }

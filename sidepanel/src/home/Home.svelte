@@ -12,8 +12,11 @@
     export let currentWindowId;
     export let windows;
     export let groups;
-    export let lastTabUpdate;
+    export let lastUpdate;
     export let lastSelectionUpdate;
+    export let lastUpdatedTab;
+    export let lastUpdatedGroup;
+    export let lastUpdatedWindow;
 
     export let selectedTabs;
 
@@ -32,7 +35,6 @@
 
     const loadWindows = () => {
         // current window first
-
         windows.sort((a, b) => {
             return (
                 (b.id == currentWindowId ? 1 : 0) -
@@ -44,6 +46,11 @@
     $: {
         searchText;
         updateResults();
+    }
+
+    $: {
+        lastUpdatedWindow;
+        windows = windows;
     }
 
     const updateResults = () => {
@@ -74,23 +81,32 @@
                 {lastSelectionUpdate}
                 {selectedTabs}
             />
-        {:else if loaded}
-            {#key lastTabUpdate}
-                <div class="windows">
-                    {#each windows as windowData (windowData.tabs)}
-                        <Window {windowData} />
-                    {/each}
-                </div>
-            {/key}
+        {:else}
+            <div class="windows">
+                {#each windows as windowData (windowData)}
+                    <Window
+                        {windowData}
+                        {groups}
+                        tabs={tabs.filter((t) => t.windowId == windowData.id)}
+                        {lastUpdatedWindow}
+                        {lastUpdatedTab}
+                    />
+                {/each}
+            </div>
         {/if}
 
         {#if workspaces.length > 0}
             <div class="workspaces" />
         {/if}
     </div>
-    {#if loaded}
-        <Footer {windows} slot="footer" {lastSelectionUpdate} {selectedTabs} />
-    {/if}
+
+    <Footer
+        {windows}
+        {tabs}
+        slot="footer"
+        {lastSelectionUpdate}
+        {selectedTabs}
+    />
 </AppContainer>
 
 <style>
@@ -98,6 +114,7 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
+        padding-bottom: 40px;
     }
 
     .container {

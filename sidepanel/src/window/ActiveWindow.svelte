@@ -10,10 +10,12 @@
 
     export let tabs;
     export let groups;
-    export let lastTabUpdate;
     export let activeTab;
     export let windows;
-
+    export let lastUpdatedTab;
+    export let lastUpdatedGroup;
+    export let lastUpdatedWindow;
+    export let lastUpdate;
     let scrollElement;
 
     let selectedTabs = [];
@@ -60,7 +62,8 @@
     });
 
     $: {
-        lastTabUpdate;
+        lastUpdatedTab;
+        lastUpdate = Date.now();
         getTabGroupStarts();
     }
 
@@ -135,7 +138,7 @@
         }
 
         lastSelectionUpdate = Date.now();
-        lastTabUpdate = Date.now();
+        lastUpdate = Date.now();
         lastGroupUpdate = Date.now();
     };
 </script>
@@ -167,7 +170,7 @@
                     on:updateSelection
                 />
             {:else if loaded}
-                {#key lastTabUpdate}
+                {#key lastUpdate}
                     {#each tabs as tab (tab)}
                         {#if lastSelectionUpdate && tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
                             <GroupLabel
@@ -196,7 +199,7 @@
             {/if}
         </div>
     </div>
-    {#if !showSearch && (scrollingUp || lastScrollPosition < 20)}
+    {#if selectedTabs.length || (!showSearch && (scrollingUp || lastScrollPosition < 20))}
         <div class="footer-container" in:slide out:slide>
             <Footer {tabs} bind:selectedTabs {lastSelectionUpdate} />
         </div>

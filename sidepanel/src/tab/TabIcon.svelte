@@ -8,6 +8,7 @@
     export let tab;
     export let group;
     export let isClickable = true;
+    export let isActive;
 
     let dispatch = createEventDispatcher();
 
@@ -26,6 +27,9 @@
 
     let validIcon = tab.favIconUrl && tab.favIconUrl != "";
 
+    $: {
+        validIcon = tab.favIconUrl && tab.favIconUrl != "";
+    }
     const onClick = () => {
         chrome.tabs.update(tab.id, { active: true });
         chrome.windows.update(tab.windowId, { focused: true });
@@ -33,7 +37,7 @@
 </script>
 
 <div
-    class="tab-icon{isInFocus ? ' focus' : ''}"
+    class="tab-icon{isInFocus ? ' focus' : ''}{tab.active ? ' active' : ''}"
     in:fade
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
@@ -57,9 +61,12 @@
     .tab-icon {
         position: relative;
         padding: 5px;
+        height: 20px;
+        width: 20px;
     }
 
-    .tab-icon:hover {
+    .tab-icon:hover,
+    .tab-icon.active {
         background-color: #666666;
         border-radius: 5px;
     }
