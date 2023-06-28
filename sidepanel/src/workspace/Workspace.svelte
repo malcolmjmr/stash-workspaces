@@ -3,7 +3,7 @@
 
     export let tabs;
     export let group;
-    export let lastTabUpdate;
+    export let lastUpdate;
     export let activeTab;
 
     let folder;

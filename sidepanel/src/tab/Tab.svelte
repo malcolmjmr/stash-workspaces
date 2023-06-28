@@ -88,8 +88,10 @@
         }
     };
 
-    const onDrop = () => {
+    const onDrop = (e) => {
         if (isDraggedOver) isDraggedOver = false;
+        const tabId = e.dataTransfer.getData("tabId");
+        chrome.tabs.move(parseInt(tabId), { index: tab.index });
     };
 
     const onTitleClicked = () => {
@@ -226,7 +228,7 @@
 
     .tab.dragged-over {
         border-bottom: 2px solid;
-        border-top: 2px solid;
+        padding-bottom: 3px;
     }
 
     .favicon-container {

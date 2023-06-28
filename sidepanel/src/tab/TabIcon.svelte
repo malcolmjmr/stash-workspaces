@@ -34,19 +34,32 @@
         chrome.tabs.update(tab.id, { active: true });
         chrome.windows.update(tab.windowId, { focused: true });
     };
+
+    const onDragStart = (e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("tabId", tab.id);
+    };
+
+    const onDrop = (e) => {
+        console.log("dropped on tabicon");
+        console.log(tab);
+        //dispatch('')
+    };
 </script>
 
 <div
     class="tab-icon{isInFocus ? ' focus' : ''}{tab.active ? ' active' : ''}"
-    in:fade
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
-    on:mousedown={onClick}
+    on:mouseup={onClick}
+    on:dragstart={onDragStart}
+    draggable="true"
 >
     <img
         src={validIcon ? tab.favIconUrl : webIcon}
         style={!validIcon ? "filter: invert(1);" : ""}
         alt={tab.title}
+        draggable="false"
     />
 
     {#if group}
@@ -63,6 +76,7 @@
         padding: 5px;
         height: 20px;
         width: 20px;
+        user-select: none;
     }
 
     .tab-icon:hover,
@@ -78,6 +92,7 @@
     img {
         height: 20px;
         width: 20px;
+        user-select: none;
     }
 
     .group-indicator {

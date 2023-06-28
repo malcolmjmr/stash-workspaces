@@ -63,7 +63,7 @@
 
     $: {
         lastUpdatedTab;
-        lastUpdate = Date.now();
+        //lastUpdate = Date.now();
         getTabGroupStarts();
     }
 
@@ -138,7 +138,7 @@
         }
 
         lastSelectionUpdate = Date.now();
-        lastUpdate = Date.now();
+        //lastUpdate = Date.now();
         lastGroupUpdate = Date.now();
     };
 </script>
@@ -170,7 +170,7 @@
                     on:updateSelection
                 />
             {:else if loaded}
-                {#key lastUpdate}
+                {#key lastUpdatedTab}
                     {#each tabs as tab (tab)}
                         {#if lastSelectionUpdate && tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
                             <GroupLabel

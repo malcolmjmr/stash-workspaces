@@ -1,4 +1,22 @@
 <script>
+    /*
+        Todo: 
+        - Add More section to window view
+            - [ ] Feedback
+            - [ ] Settings? 
+                - [ ] Only show window manager
+        - Change drag over indicator for tab 
+        - Active tab hover
+            - [ ] Show reload
+            - [ ] Show back
+        - Tab menu
+            - [ ] Back
+            - [ ] Forward
+
+        Bugs:
+        - [ ] Refreshing tabs when active tab selected
+        
+    */
     import { onMount } from "svelte";
     import { get } from "./utilities/chrome.js";
     import { Views } from "./view.js";
@@ -103,7 +121,7 @@
             lastUpdatedTab = tabs[newActiveTabIndex];
         }
         if (view == Views.home && windowId == currentWindowId) {
-            console.log("updating view");
+            // Need to account for when active tab is set after tabs are moved
             view = Views.window;
         }
     };
@@ -120,7 +138,7 @@
             tabs[tabIndex] = tab;
             tabs = tabs;
             lastUpdatedTab = tab;
-            lastUpdatedWindow = tab.windowId;
+            //lastUpdatedWindow = tab.windowId;
         }
     };
 
@@ -208,8 +226,12 @@
     };
 
     const onTabGroupRemoved = (groupId) => {
-        console.log("group removed");
         delete groups[groupId];
+    };
+
+    const onTabMovedBetweenWindows = async ({ detail }) => {
+        const tabId = detail;
+        loadTabsGroupsAndWindows();
     };
 </script>
 
@@ -225,6 +247,7 @@
         {lastUpdatedGroup}
         {lastUpdatedWindow}
         {currentWindowId}
+        on:tabMoved={onTabMovedBetweenWindows}
     />
 {/if}
 

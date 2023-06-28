@@ -51,6 +51,12 @@
     $: {
         lastUpdatedWindow;
         windows = windows;
+        windows.sort((a, b) => {
+            return (
+                (b.id == currentWindowId ? 1 : 0) -
+                (a.id == currentWindowId ? 1 : 0)
+            );
+        });
     }
 
     const updateResults = () => {
@@ -90,6 +96,7 @@
                         tabs={tabs.filter((t) => t.windowId == windowData.id)}
                         {lastUpdatedWindow}
                         {lastUpdatedTab}
+                        on:tabMoved
                     />
                 {/each}
             </div>

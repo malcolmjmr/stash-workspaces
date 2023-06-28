@@ -24,6 +24,12 @@
 
     const goToHomeView = () => {
         view = Views.home;
+        windows.sort((a, b) => {
+            return (
+                (b.id == currentWindowId ? 1 : 0) -
+                (a.id == currentWindowId ? 1 : 0)
+            );
+        });
     };
 
     let selectedTabs = [];
@@ -78,6 +84,7 @@
             {currentWindowId}
             bind:selectedTabs
             on:updateSelection={onUpdateSelection}
+            on:tabMoved
         />
     {:else if view == Views.window}
         <ActiveWindow
@@ -97,7 +104,7 @@
             on:updateSelection={onUpdateSelection}
         />
     {:else if view == Views.workspace}
-        <Workspace {tabs} {activeTab} {group} {lastTabUpdate} />
+        <Workspace {tabs} {activeTab} {group} {lastUpdate} />
     {/if}
 </div>
 

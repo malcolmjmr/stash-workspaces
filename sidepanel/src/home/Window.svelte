@@ -5,9 +5,11 @@
     import closeIcon from "../icons/close.png";
     import webIcon from "../icons/web.png";
 
-    import { onMount } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import TabIcon from "../tab/TabIcon.svelte";
     import { fade } from "svelte/transition";
+
+    let dispatch = createEventDispatcher();
 
     export let windowData;
     export let tabs;
@@ -75,6 +77,7 @@
     const onShowTabDetails = ({ detail }) => {
         activeTab = detail;
         activeGroup = groups[activeTab.groupId];
+        showFavIcon = activeTab.favIconUrl && activeTab.favIconUrl != "";
     };
 
     const closeWindow = () => {
@@ -105,16 +108,54 @@
             lastUpdate = Date.now();
         }
     }
+
+    let isDraggedOver;
+    const onDragOver = (e) => {
+        e.preventDefault();
+        isDraggedOver = true;
+    };
+
+    const onDragLeave = (e) => {
+        e.preventDefault();
+        if (isDraggedOver) {
+            isDraggedOver = false;
+        }
+    };
+
+    const onDrop = (e) => {
+        e.preventDefault();
+        if (isDraggedOver) isDraggedOver = false;
+        const tabId = parseInt(e.dataTransfer.getData("tabId"));
+        chrome.tabs.move(tabId, {
+            index: -1,
+            windowId: windowData.id,
+        });
+        dispatch("tabMoved", tabId);
+    };
+
+    const onDragActiveTab = (e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("tabId", activeTab.id);
+    };
 </script>
 
 {#if loaded && activeTab}
     <div
-        class="window{windowData.incognito ? ' incognito' : ''}"
+        class="window{windowData.incognito ? ' incognito' : ''}{isDraggedOver
+            ? ' dragover'
+            : ''}"
         on:mouseenter={onMouseEnter}
         on:mouseleave={onMouseLeave}
+        on:dragover={onDragOver}
+        on:dragleave={onDragLeave}
+        on:drop={onDrop}
     >
         <div class="top-container">
-            <div class="active-tab">
+            <div
+                class="active-tab"
+                draggable="true"
+                on:dragstart={onDragActiveTab}
+            >
                 <div class="tab-details">
                     {#if closeWindowInFocus}
                         <div class="close-window-instructions">
@@ -126,8 +167,7 @@
                             alt={activeTab.url}
                             style={showFavIcon ? "" : "filter: invert(1);"}
                         />
-                        <span on:mousedown={openActiveTab}
-                            >{activeTab.title}</span
+                        <span on:mouseup={openActiveTab}>{activeTab.title}</span
                         >
                     {/if}
                     {#if activeTabInFocus}
@@ -153,12 +193,11 @@
             {#if activeGroup && !closeWindowInFocus}
                 <div class="active-group-container">
                     <div
-                        in:fade
                         class="active-group"
                         style="background-color: {colorMap[activeGroup.color]}"
                     >
                         <div class="title">
-                            {activeGroup.title}
+                            {activeGroup.title ?? group.color}
                         </div>
                     </div>
                     <div class="spacer" />
@@ -219,7 +258,7 @@
         opacity: 0.5;
     }
 
-    .window.focused {
+    .window.dragover {
         background-color: #666666;
     }
 
