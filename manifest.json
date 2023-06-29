@@ -9,9 +9,6 @@
     "side_panel": {
         "default_path": "sidepanel/index.html"
     },
-    "omnibox": {
-        "keyword": "."
-    },
     "web_accessible_resources": [
         {
             "resources": [
@@ -41,13 +38,14 @@
     "permissions": [
         "tabs",
         "tabGroups",
-        "sidePanel"
+        "sidePanel",
+        "storage"
     ],
     "incognito": "spanning",
     "commands": {
         "_execute_action": {
             "suggested_key": {
-                "default": "Alt+W"
+                "default": "Alt+M"
             }
         }
     },

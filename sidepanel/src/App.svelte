@@ -4,7 +4,7 @@
         - Add More section to window view
             - [ ] Feedback
             - [ ] Settings? 
-                - [ ] Only show window manager
+                - [ ] Only show window view
         - Change drag over indicator for tab 
         - Active tab hover
             - [ ] Show reload
@@ -12,6 +12,13 @@
         - Tab menu
             - [ ] Back
             - [ ] Forward
+        - Create new window by dragging tab icon 
+        - Window view footer
+            - [ ] create new window
+            - [ ] merge windows
+        - Vertical tab view footer
+            - [ ] group all tabs (when no group exists)
+            - [ ] create new tab
 
         Bugs:
         - [ ] Refreshing tabs when active tab selected
@@ -170,9 +177,7 @@
     };
 
     const updateTabsWithinWindow = async (windowId) => {
-        console.log("updating tabs within window");
         let updatedTabs = await chrome.tabs.query({ windowId });
-        console.log(updatedTabs);
         for (const tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) tabs[index] = tab;
@@ -185,10 +190,7 @@
     };
 
     const updateTabsWithinGroup = async (groupId) => {
-        console.log("updating group");
         let updatedTabs = await chrome.tabs.query({ groupId });
-        console.log("tabs to update");
-        console.log(updatedTabs);
         for (const tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) tabs[index] = tab;
@@ -214,7 +216,6 @@
     };
 
     const onTabGroupCreated = (group) => {
-        console.log("group created");
         groups[group.id] = group;
         updateTabsWithinGroup(group.windowId);
         lastUpdatedGroup = group.id;
