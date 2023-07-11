@@ -2,7 +2,7 @@
     import searchIcon from "../icons/search.png";
     import clearIcon from "../icons/close.png";
 
-    export let searchText;
+    export let searchText = "";
     export let backgroundColor = null;
 
     const onClearTextClicked = () => {

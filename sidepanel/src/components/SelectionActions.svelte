@@ -1,6 +1,15 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
 
+    /*
+        group
+        save
+        close
+        copy
+        move
+        
+    */
+
     export let lastSelectionUpdate;
     export let selectedTabs;
 
@@ -50,19 +59,20 @@
 
     const closeTabs = async () => {
         chrome.tabs.remove(selectedTabs.map((t) => t.id));
+        selectedTabs = [];
     };
 </script>
 
 <div class="actions">
     {#if groupCount != 1}
-        <div class="action" on:mouseup={groupTabs}>Group</div>
+        <div class="action" on:mousedown={groupTabs}>Group</div>
     {/if}
 
-    <div class="action" on:mouseup={moveTabsToNewWindow}>
+    <div class="action" on:mousedown={moveTabsToNewWindow}>
         Move to New Window
     </div>
 
-    <div class="action" on:mouseup={closeTabs}>Close</div>
+    <div class="action" on:mousedown={closeTabs}>Close</div>
 </div>
 
 <style>

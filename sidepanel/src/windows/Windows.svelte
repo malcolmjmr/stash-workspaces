@@ -4,8 +4,8 @@
     import Header from "./Header.svelte";
     import Window from "./Window.svelte";
     import SearchResults from "../search/SearchResults.svelte";
-    import Footer from "./Footer.svelte";
-    import SelectionHeader from "../window/header/SelectionHeader.svelte";
+    import Footer from "./WindowsFooter.svelte";
+    import SelectionHeader from "../header/SelectionHeader.svelte";
 
     export let tabs;
     export let activeTab;
@@ -17,6 +17,7 @@
     export let lastUpdatedTab;
     export let lastUpdatedGroup;
     export let lastUpdatedWindow;
+    export let view;
 
     export let selectedTabs;
 
@@ -68,53 +69,28 @@
 
     let workspaces = [];
     const loadWorkspaces = () => {};
+    const onDrop = (e) => {};
+
+    const onDragOver = () => {};
 </script>
 
-<AppContainer {scrollingUp} {lastScrollPosition}>
-    <Header
-        bind:searchText
-        slot="header"
-        bind:selectedTabs
-        {lastSelectionUpdate}
-    />
+<div class="windows" on:drop={onDrop} on:dragover={onDragOver}>
+    {#each windows as windowData (windowData)}
+        <Window
+            bind:view
+            {windowData}
+            {groups}
+            tabs={tabs.filter((t) => t.windowId == windowData.id)}
+            {lastUpdatedWindow}
+            {lastUpdatedTab}
+            on:tabMoved
+        />
+    {/each}
+</div>
 
-    <div class="container" slot="body">
-        {#if searchText.length > 0}
-            <SearchResults
-                {searchText}
-                {searchResults}
-                on:updateSelection
-                {lastSelectionUpdate}
-                {selectedTabs}
-            />
-        {:else}
-            <div class="windows">
-                {#each windows as windowData (windowData)}
-                    <Window
-                        {windowData}
-                        {groups}
-                        tabs={tabs.filter((t) => t.windowId == windowData.id)}
-                        {lastUpdatedWindow}
-                        {lastUpdatedTab}
-                        on:tabMoved
-                    />
-                {/each}
-            </div>
-        {/if}
-
-        {#if workspaces.length > 0}
-            <div class="workspaces" />
-        {/if}
-    </div>
-
-    <Footer
-        {windows}
-        {tabs}
-        slot="footer"
-        {lastSelectionUpdate}
-        {selectedTabs}
-    />
-</AppContainer>
+{#if workspaces.length > 0}
+    <div class="workspaces" />
+{/if}
 
 <style>
     .windows {
@@ -125,8 +101,6 @@
     }
 
     .container {
-        height: calc(100% - 40px);
-        padding-top: 40px;
-        overflow-y: scroll;
+        flex-grow: 1;
     }
 </style>

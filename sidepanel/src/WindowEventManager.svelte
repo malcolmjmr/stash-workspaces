@@ -1,32 +1,8 @@
 <script>
-    /*
-        Todo: 
-        - Add More section to window view
-            - [ ] Feedback
-            - [ ] Settings? 
-                - [ ] Only show window view
-
-        - Vertical tab view footer
-            - [ ] group all tabs (when no group exists)
-            - [ ] create new tab
-
-        Bugs:
-        - [ ] Refreshing tabs when active tab selected
-       
-
-
-        App Tree
-            EventWidget (chrome listeners)
-            AuthWidget (firebase)
-            ViewWidget ()
-        
-    */
-
     import { onMount } from "svelte";
     import { get } from "./utilities/chrome.js";
     import { Views } from "./view.js";
     import SidePanel from "./SidePanel.svelte";
-    import { apiConfig } from "./utilities/config.js";
 
     let settings;
     let tabs = [];
@@ -42,7 +18,7 @@
     let lastUpdatedGroup;
 
     let currentWindowId;
-    let view = Views.tabs;
+    let view = Views.window;
 
     onMount(() => {
         init();
@@ -51,37 +27,20 @@
     let loaded;
     const init = async () => {
         settings = (await get("settings")) ?? {};
-
-        await getActiveTab();
-        await getPermissions();
         await loadTabsGroupsAndWindows();
+        await getActiveTab();
         addListeners();
         //initializeFirebase();
         loaded = true;
     };
 
-    let hasBookmarkPermission;
-    const getPermissions = async () => {
-        hasBookmarkPermission = await chrome.permissions.contains({
-            permissions: ["bookmarks"],
-        });
-    };
-
     const loadTabsGroupsAndWindows = async () => {
         tabs = await chrome.tabs.query({});
-        if (hasBookmarkPermission) {
-            for (let i = 0; i < tabs.length; i++) {
-                tabs[i].bookmarks = await getTabsBookmarks(tabs[i]);
-            }
-        }
         windows = await chrome.windows.getAll();
         const groupsArray = await chrome.tabGroups.query({});
         let tempGroups = {};
-        for (let group of groupsArray) {
+        for (const group of groupsArray) {
             if (!tempGroups[group.id]) {
-                if (hasBookmarkPermission) {
-                    group.folder = await getGroupsBookmarkFolder(group);
-                }
                 tempGroups[group.id] = group;
             }
         }
@@ -129,10 +88,6 @@
         chrome.tabGroups.onRemoved.addListener(onTabGroupRemoved);
         chrome.windows.onCreated.addListener(onWindowCreated);
         chrome.windows.onRemoved.addListener(onWindowRemoved);
-        if (hasBookmarkPermission) {
-            chrome.bookmarks.onCreated.addListener(onBookmarkCreated);
-            chrome.bookmarks.onRemoved.addListener(onBookmarkRemoved);
-        }
     };
 
     const onTabActivated = async ({ tabId, windowId }) => {
@@ -148,14 +103,13 @@
             tabs[newActiveTabIndex].active = true;
             lastUpdatedTab = tabs[newActiveTabIndex];
         }
-        if (view == Views.windows && windowId == currentWindowId) {
+        if (view == Views.home && windowId == currentWindowId) {
             // Need to account for when active tab is set after tabs are moved
-            view = Views.tabs;
+            view = Views.window;
         }
     };
 
-    const onTabCreated = async (tab) => {
-        tab.bookmarks = await getTabsBookmarks(tab);
+    const onTabCreated = (tab) => {
         tabs = [...tabs, tab];
         updateTabsWithinWindow(tab.windowId);
     };
@@ -202,11 +156,8 @@
         let updatedTabs = await chrome.tabs.query({ windowId });
         for (const tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
-            if (index > -1) tabs[index] = { ...tabs[index], ...tab };
-            else {
-                tab.bookmarks = await getTabsBookmarks(tab);
-                tabs.push(tab);
-            }
+            if (index > -1) tabs[index] = tab;
+            else tabs.push(tab);
         }
         tabs.sort((a, b) => a.index - b.index);
         tabs = tabs;
@@ -218,11 +169,8 @@
         let updatedTabs = await chrome.tabs.query({ groupId });
         for (const tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
-            if (index > -1) tabs[index] = { ...tabs[index], ...tab };
-            else {
-                tab.bookmarks = await getTabsBookmarks(tab);
-                tabs.push(tab);
-            }
+            if (index > -1) tabs[index] = tab;
+            else tabs.push(tab);
         }
         tabs.sort((a, b) => a.index - b.index);
         tabs = tabs;
@@ -243,12 +191,10 @@
         windows = windows;
     };
 
-    const onTabGroupCreated = async (group) => {
-        group.folder = await getGroupsBookmarkFolder(group);
+    const onTabGroupCreated = (group) => {
         groups[group.id] = group;
         updateTabsWithinGroup(group.windowId);
         lastUpdatedGroup = group.id;
-        lastUpdate = Date.now();
     };
 
     const onTabGroupUpdated = (group) => {
@@ -264,63 +210,4 @@
         const tabId = detail;
         loadTabsGroupsAndWindows();
     };
-
-    const onBookmarkCreated = async () => {};
-
-    const onBookmarkRemoved = async () => {};
-
-    const getTabsBookmarks = async (tab) => {
-        let bookmarks;
-        if (hasBookmarkPermission) {
-            const bookmarkResults = await chrome.bookmarks.search({
-                url: tab.url,
-            });
-            if (bookmarkResults.length > 0) {
-                bookmarks = bookmarkResults;
-            }
-        }
-
-        return bookmarks;
-    };
-
-    const getGroupsBookmarkFolder = async (group) => {
-        if (hasBookmarkPermission) return null;
-
-        const bookmarkResults = await chrome.bookmarks.search({
-            title: group.title,
-        });
-        if (bookmarkResults.length == 1) return bookmarkResults[0];
-        else return null;
-    };
 </script>
-
-{#if loaded}
-    <SidePanel
-        bind:view
-        {activeTab}
-        {groups}
-        {windows}
-        {tabs}
-        {lastUpdate}
-        {lastUpdatedTab}
-        {lastUpdatedGroup}
-        {lastUpdatedWindow}
-        {currentWindowId}
-        on:tabMoved={onTabMovedBetweenWindows}
-        on:mergedWindows={loadTabsGroupsAndWindows}
-    />
-{/if}
-
-<style>
-    :global(html, body, #app) {
-        margin: 0px;
-        background-color: #28282b;
-        width: 100%;
-        height: 100%;
-        position: relative;
-        font-family: system-ui, sans-serif;
-        font-weight: 300;
-        overflow: hidden;
-        letter-spacing: 0.8px;
-    }
-</style>

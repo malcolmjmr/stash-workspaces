@@ -1,14 +1,44 @@
 <script>
+    /*
+
+        Todo:
+        - [ ] Show reload
+        - [ ] Show back
+        - More menu
+            - [ ] edit and copy url
+            - [ ] back
+            - [ ] duplicate
+
+    */
     export let tab;
     export let group = null;
     export let selectedTabs;
     export let lastSelectionUpdate;
+    export let dragoverItem = null;
 
+    let el;
     let isSelected;
     $: {
         lastSelectionUpdate;
         isSelected = selectedTabs.find((t) => t.id == tab.id) != null;
     }
+
+    // $: {
+    //     tab.active;
+    //     scrollToTabIfActive();
+    // }
+
+    onMount(() => {
+        //scrollToTabIfActive();
+    });
+
+    const scrollToTabIfActive = () => {
+        if (tab.active) {
+            el?.scrollIntoView({
+                behavior: "smooth",
+            });
+        }
+    };
 
     import pinnedIcon from "../icons/pin-filled.png";
     import closeIcon from "../icons/close.png";
@@ -16,10 +46,15 @@
     import emptyBoxIcon from "../icons/empty-box.png";
     import checkedBoxIcon from "../icons/checked-box.png";
     import webIcon from "../icons/web.png";
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import Menu from "./Menu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
+    import { saveTabAsBookmark, tryToSaveBookmark } from "../utilities/chrome";
+
+    import starIcon from "../icons/star.png";
+    import starIconFilled from "../icons/star-filled.png";
+    import BookmarkMenu from "./BookmarkMenu.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -64,21 +99,15 @@
     let isDragged;
     const onDragStart = (e) => {
         isDragged = true;
-
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("tabId", tab.id);
     };
 
     let isDraggedOver;
-    let lastDragOver;
+    let lastDragOver = Date.now();
     const onDragOver = (e) => {
         e.preventDefault();
-        const tabId = e.dataTransfer.getData("tabId");
-
-        if (tab.id.toString() != tabId && !isDraggedOver) {
-            isDraggedOver = true;
-            lastDragOver = Date.now();
-        }
+        if (!isDraggedOver) isDraggedOver = true;
     };
 
     const onDragLeave = (e) => {
@@ -88,10 +117,19 @@
         }
     };
 
+    const onDragEnd = (e) => {
+        isDragged = false;
+    };
+
     const onDrop = (e) => {
         if (isDraggedOver) isDraggedOver = false;
         const tabId = e.dataTransfer.getData("tabId");
-        chrome.tabs.move(parseInt(tabId), { index: tab.index });
+        const groupId = e.dataTransfer.getData("groupId");
+        if (tabId) {
+            chrome.tabs.move(parseInt(tabId), { index: tab.index });
+        } else if (groupId) {
+            chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
+        }
     };
 
     const onTitleClicked = () => {
@@ -102,24 +140,39 @@
     const reload = () => {
         chrome.tabs.reload(tab.id);
     };
+
+    let showBookmarkMenu;
+    const toggleSave = async () => {
+        if (tab.bookmarks) {
+            if (tab.bookmarks.length > 1) {
+                showBookmarkMenu = true;
+            } else {
+                delete tab.bookmarks;
+                dispatch("tabBookmarkRemoved", tab);
+            }
+        } else {
+            await tryToSaveBookmark(tab, group);
+
+            console.log(tab, group);
+        }
+    };
 </script>
 
 <div
+    bind:this={el}
     class="tab{isSelected ? ' selected' : ''}{isInFocus
         ? ' focused'
         : ''}{isDraggedOver ? ' dragged-over' : ''}{tab.active
         ? ' active'
         : ''}{group ? ' grouped' : ''} "
-    style={isDraggedOver
-        ? "border-bottom: 2px solid; padding-bottom: 3px;"
-        : ""}
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
     on:dragstart={onDragStart}
     on:dragover={onDragOver}
     on:dragleave={onDragLeave}
+    on:dragend={onDragEnd}
     on:drop={onDrop}
-    draggable="true"
+    draggable={showMore ? "false" : "true"}
 >
     <div class="main-container">
         <div
@@ -171,6 +224,14 @@
                         on:mouseup={onPinTab}
                     />
                 {/if}
+                {#if tab.bookmarks || (isInFocus && tab.groupId > -1)}
+                    <img
+                        class="icon"
+                        src={tab.bookmarks ? starIconFilled : starIcon}
+                        alt="Save"
+                        on:mousedown={toggleSave}
+                    />
+                {/if}
                 {#if isInFocus && !isDragged}
                     <img
                         src={menuIcon}
@@ -191,12 +252,14 @@
 
     {#if showMore}
         <Menu {tab} />
+    {:else if showBookmarkMenu}
+        <BookmarkMenu {tab} />
     {/if}
 </div>
 
 <style>
     .tab {
-        padding: 5px 5px 5px 5px;
+        padding: 4px 5px;
         width: calc(100% - 10px);
         display: flex;
         flex-direction: column;
@@ -204,6 +267,7 @@
         font-size: 14px;
         color: white;
         user-select: none;
+        margin: 1px 0px;
     }
 
     .main-container {
@@ -227,8 +291,8 @@
     }
 
     .tab.dragged-over {
-        border-bottom: 2px solid;
-        padding-bottom: 3px;
+        opacity: 0.4;
+        background-color: #555555;
     }
 
     .favicon-container {

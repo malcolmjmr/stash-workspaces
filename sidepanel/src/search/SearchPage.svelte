@@ -7,10 +7,11 @@
 
     export let searchText;
     export let searchResults;
+    export let showSearch;
 </script>
 
 <main transition:horizontalSlide={{ axis: "x", duration: 800 }}>
-    <SearchHeader bind:searchText />
+    <SearchHeader bind:searchText bind:showSearch />
     <SearchResults {searchText} {searchResults} />
     <SearchFooter {searchResults} />
 </main>

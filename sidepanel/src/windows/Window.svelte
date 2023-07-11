@@ -8,6 +8,7 @@
     import { createEventDispatcher, onMount } from "svelte";
     import TabIcon from "../tab/TabIcon.svelte";
     import { fade } from "svelte/transition";
+    import { Views } from "../view";
 
     let dispatch = createEventDispatcher();
 
@@ -16,6 +17,7 @@
     export let groups;
     export let lastUpdatedWindow;
     export let lastUpdatedTab;
+    export let view;
 
     let activeTab;
     let activeGroup;
@@ -137,6 +139,10 @@
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("tabId", activeTab.id);
     };
+
+    const onTabIconClicked = () => {
+        view = Views.tabs;
+    };
 </script>
 
 {#if loaded && activeTab}
@@ -197,7 +203,7 @@
                         style="background-color: {colorMap[activeGroup.color]}"
                     >
                         <div class="title">
-                            {activeGroup.title ?? group.color}
+                            {activeGroup.title ?? activeGroup.color}
                         </div>
                     </div>
                     <div class="spacer" />
@@ -216,6 +222,7 @@
                                     group={groups[tab.groupId]}
                                     isClickable={showAllTabs}
                                     on:showTabDetails={onShowTabDetails}
+                                    on:tabIconClicked={onTabIconClicked}
                                 />
                             {/each}
                         </div>

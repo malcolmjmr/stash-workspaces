@@ -8,6 +8,10 @@
     const onCancelClicked = () => {
         selectedTabs = [];
     };
+
+    $: {
+        console.log(selectedTabs);
+    }
 </script>
 
 <div class="selected">
@@ -27,6 +31,7 @@
         justify-content: space-between;
         padding: 0px 5px;
         width: calc(100% - 10px);
+        background-color: #111111;
     }
 
     .text {

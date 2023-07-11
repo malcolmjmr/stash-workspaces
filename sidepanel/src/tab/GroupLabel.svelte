@@ -9,7 +9,7 @@
     import { colorMap } from "../utilities/colors";
     import GroupColors from "./GroupColors.svelte";
 
-    export let group = { title: "Untitle Group" };
+    export let group;
     export let isCollapsed = null;
     export let tabs = [];
     export let lastGroupUpdate = null;
@@ -27,19 +27,13 @@
         showMore = false;
     };
 
-    const onTitleClicked = () => {
-        dispatch("toggleCollapse", group);
-    };
-
     const onCloseClicked = () => {
         chrome.tabs.remove(tabs.map((t) => t.id));
     };
 
     const toggleCollapse = () => {
         dispatch("toggleCollapse", group);
-        if (!group.collapsed) {
-            chrome.tabGroups.update(group.id, { collapsed: true });
-        }
+        chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
     };
 
     const saveGroup = () => {};
@@ -90,12 +84,79 @@
             (await chrome.tabs.query({ groupId: group.id })).map((t) => t.id)
         );
     };
+
+    let isDragged;
+    const onDragStart = (e) => {
+        isDragged = true;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("groupId", group.id);
+        chrome.tabGroups.update(group.id, { collapsed: true });
+    };
+
+    let isDraggedOver;
+    const onDragOver = (e) => {
+        e.preventDefault();
+        if (!isDraggedOver) isDraggedOver = true;
+    };
+
+    const onDragLeave = (e) => {
+        e.preventDefault();
+        isDraggedOver = false;
+    };
+
+    const onDrop = async (e) => {
+        if (isDraggedOver) isDraggedOver = false;
+        let tabId = e.dataTransfer.getData("tabId");
+        const groupId = e.dataTransfer.getData("groupId");
+        const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+        let startIndex = 100000;
+        let endIndex = 0;
+        for (const tab of tabsInGroup) {
+            if (tab.index < startIndex) startIndex = tab.index;
+            if (tab.index > endIndex) endIndex = tab.index;
+        }
+
+        if (tabId) {
+            tabId = parseInt(tabId);
+            const tab = await chrome.tabs.get(tabId);
+            let index;
+            if (tab.groupId == group.id) {
+                index = startIndex - 1;
+            } else if (tab.index > startIndex) {
+                if (group.collapsed) {
+                    index = startIndex;
+                } else {
+                    index = startIndex;
+                }
+            } else if (tab.index < endIndex) {
+                if (group.collapsed) {
+                    index = endIndex;
+                } else {
+                    index = startIndex;
+                }
+            }
+
+            chrome.tabs.move(parseInt(tabId), { index: index });
+        } else if (groupId) {
+            chrome.tabGroups.move(parseInt(groupId), { index: startIndex });
+        }
+    };
+
+    const onDragEnd = () => {
+        isDragged = false;
+    };
 </script>
 
 <div
-    class="group-label"
+    class="group-label{isDraggedOver ? ' dragged-over' : ''}"
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
+    on:dragleave={onDragLeave}
+    on:dragstart={onDragStart}
+    on:dragover={onDragOver}
+    on:drop={onDrop}
+    on:dragend={onDragEnd}
+    draggable="true"
 >
     <div
         class="container"
@@ -113,16 +174,22 @@
                 autofocus="true"
             />
         {:else}
-            <div class="title" on:mousedown={onTitleClicked}>
-                {group.title ?? "Untitled Group"}
-                {#if isCollapsed} ({tabs.length}) {/if}
+            <div class="title">
+                <span class="text">
+                    {group?.title ?? "Untitled Group"}
+                </span>
+                {#if group.collapsed}
+                    <div class="count">
+                        ({tabs.length})
+                    </div>
+                {/if}
             </div>
         {/if}
 
-        {#if isInfocus}
+        {#if isInfocus && !isDragged}
             <div class="actions">
                 <img
-                    src={isCollapsed ? expandIcon : collapseIcon}
+                    src={group.collapsed ? expandIcon : collapseIcon}
                     alt="Toggle Collapsed"
                     on:mousedown={toggleCollapse}
                 />
@@ -165,28 +232,42 @@
         flex-direction: column;
 
         justify-content: center;
-        margin: 5px 0px;
         user-select: none;
     }
 
+    .dragged-over {
+        opacity: 0.5;
+    }
+
     .container {
-        margin: 0px 5px;
         padding: 5px;
         min-height: 25px;
-        border-radius: 5px;
+
         display: flex;
         flex-direction: row;
         align-items: center;
+        border-radius: 5px;
+        margin: 5px;
         width: calc(100% - 20px);
     }
 
     .title {
         color: black;
         font-weight: 400;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    .title .text {
         white-space: nowrap;
         text-overflow: ellipsis;
-        flex-grow: 1;
         overflow: hidden;
+    }
+
+    .title .count {
     }
 
     .title-input {

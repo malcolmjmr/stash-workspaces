@@ -1,8 +1,15 @@
 <script>
+    /*
+        To add:
+            - Move to top
+            - Move to bottom
+    */
+
     import { createEventDispatcher } from "svelte";
     import { actions } from "./actions";
     import MenuItem from "./MenuItem.svelte";
     import { slide } from "svelte/transition";
+    import copyIcon from "../icons/copy.png";
 
     let dispatch = createEventDispatcher();
 
@@ -46,11 +53,23 @@
     const pinTab = () => {
         chrome.tabs.update(tab.id, { pinned: true });
     };
+
+    const copyLink = () => {
+        navigator.clipboard.writeText(tab.url);
+    };
+
+    const onKeyDownInUrlField = (e) => {
+        if (e.key == "Enter") {
+            chrome.tabs.update(tab.id, { url: "https://" + tab.url });
+        }
+    };
+
+    const duplicateTab = () => {
+        chrome.tabs.create({ url: tab.url, index: tab.index + 1 });
+    };
 </script>
 
 <div class="context-menu" in:slide out:slide>
-    <div class="divider" />
-
     <!--
     {#if tab.groupId > -1}
         <MenuItem title="Save Tab to Group" />
@@ -58,9 +77,19 @@
         <MenuItem title="Save Tab to Window" />
     {/if}
     -->
+    <div class="url-field">
+        <img src={copyIcon} alt="Copy Link" on:mousedown={copyLink} />
+        <input
+            type="text"
+            bind:value={tab.url}
+            on:keydown={onKeyDownInUrlField}
+        />
+    </div>
+    <div class="divider" />
 
-    <MenuItem title="Reload" on:mouseup={reloadTab} />
     <MenuItem title="Pin" on:mouseup={pinTab} />
+    <MenuItem title="Reload" on:mouseup={reloadTab} />
+    <MenuItem title="Duplicate" on:mouseup={duplicateTab} />
 
     <div class="divider" />
     <MenuItem title="Move Tab to Pop Up Window" on:mouseup={moveTabToPopup} />
@@ -90,5 +119,35 @@
         width: 100%;
         background-color: #999999;
         margin: 5px 0px;
+    }
+
+    .url-field {
+        width: calc(100% - 10px);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 5px;
+        margin: 5px 0px;
+        background-color: #333333;
+        border-radius: 5px;
+    }
+
+    .url-field input {
+        text-decoration: none;
+        box-shadow: none;
+        border: none;
+        outline: none;
+        width: 100%;
+        height: 100%;
+        font-size: 12px;
+        color: white;
+        background-color: transparent;
+    }
+
+    .url-field img {
+        filter: invert(1);
+        height: 16px;
+        width: 16px;
+        margin-right: 5px;
     }
 </style>

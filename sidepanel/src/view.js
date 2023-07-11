@@ -1,6 +1,7 @@
 
 export const Views = {
-    home: "Home",
-    window: "Window",
+    search: "Search",
+    windows: "Windows",
+    tabs: "Tabs",
     workspace: "Workspace",
 };

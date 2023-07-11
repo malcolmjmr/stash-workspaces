@@ -33,6 +33,8 @@
     const onClick = () => {
         chrome.tabs.update(tab.id, { active: true });
         chrome.windows.update(tab.windowId, { focused: true });
+
+        dispatch("tabIconClicked", tab);
     };
 
     const onDragStart = (e) => {

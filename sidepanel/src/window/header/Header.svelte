@@ -1,6 +1,6 @@
 <script>
     import SearchHeader from "../../search/SearchHeader.svelte";
-    import SelectionHeader from "./SelectionHeader.svelte";
+    import SelectionHeader from "../../header/SelectionHeader.svelte";
     import { createEventDispatcher } from "svelte";
 
     import backIcon from "../../icons/back.png";

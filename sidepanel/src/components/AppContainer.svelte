@@ -3,7 +3,7 @@
     import { slide } from "svelte/transition";
 
     export let scrollingUp;
-    export let lastScrollPosition;
+    export let lastScrollPosition = 0;
 
     let header;
     let body;
@@ -32,6 +32,7 @@
             } else {
                 if (scrollChange > 0) {
                     scrollingUp = true;
+                    console.log(scrollingUp);
                 }
             }
             lastScrollPosition = body.scrollTop;
@@ -50,6 +51,7 @@
         </div>
     {/if}
     <div class="body" bind:this={body}>
+        <div class="padding" />
         <slot name="body" />
     </div>
     {#if scrollingUp || lastScrollPosition < 20}
@@ -64,15 +66,16 @@
         position: relative;
         z-index: 99999;
         background-color: #333333;
-        height: 100%;
         width: 100%;
-
+        height: 100%;
         color: white;
+        display: flex;
+        flex-direction: column;
     }
 
     .header {
         position: absolute;
-        top: 0px;
+        top: 0;
         width: 100%;
         z-index: 999;
     }
@@ -80,13 +83,27 @@
     .body {
         display: flex;
         flex-direction: column;
+        flex-grow: 1;
         overflow-y: scroll;
-        height: 100%;
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+
+    .body::-webkit-scrollbar {
+        display: none;
+    }
+
+    .body .padding {
+        min-height: 40px;
+        width: 100%;
     }
 
     .footer {
+        width: 100%;
         position: absolute;
         bottom: 0px;
-        width: 100%;
+        z-index: 999;
+        background-color: #111111;
+        padding: 5px 0px;
     }
 </style>

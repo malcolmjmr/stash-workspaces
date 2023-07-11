@@ -3,7 +3,7 @@
     import SearchBox from "../components/SearchBox.svelte";
 
     import newWindowIcon from "../icons/new-window.png";
-    import SelectionHeader from "../window/header/SelectionHeader.svelte";
+    import SelectionHeader from "../header/SelectionHeader.svelte";
 
     export let searchText;
     export let selectedTabs;

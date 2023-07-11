@@ -27,7 +27,7 @@
     .search-results {
         display: flex;
         flex-direction: column;
-        height: 100%;
+        flex-grow: 1;
     }
 
     .no-results-container {

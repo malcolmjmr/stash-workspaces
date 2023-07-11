@@ -1,6 +1,6 @@
 {
     "name": "Window Manager",
-    "version": "0.0.0.1",
+    "version": "0.0.0.2",
     "description": "Organize all of your windows and tabs from the side panel.",
     "background": {
         "service_worker": "service-worker.js",
@@ -35,11 +35,15 @@
         "48": "logo.png",
         "128": "logo.png"
     },
+    "optional_permissions": [
+        "bookmarks"
+    ],
     "permissions": [
         "tabs",
         "tabGroups",
         "sidePanel",
-        "storage"
+        "storage",
+        "favicon"
     ],
     "incognito": "spanning",
     "commands": {

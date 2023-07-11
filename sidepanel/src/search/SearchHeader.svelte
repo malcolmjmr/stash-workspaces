@@ -30,5 +30,6 @@
 
     .cancel:hover {
         opacity: 1;
+        cursor: pointer;
     }
 </style>
