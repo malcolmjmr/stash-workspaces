@@ -36,6 +36,8 @@
     let activeTab;
     let folder;
 
+
+    let lastRefresh;
     let lastUpdate;
     let lastUpdatedTab;
     let lastUpdatedWindow;
@@ -47,6 +49,7 @@
     onMount(() => {
         init();
     });
+
 
     let loaded;
     const init = async () => {
@@ -168,8 +171,29 @@
             tabs = tabs;
             lastUpdatedTab = tab;
             //lastUpdatedWindow = tab.windowId;
+
+            if (updated.status == 'completed') {
+                checkForUpdateToTabWithinSpace(tab);
+            }
+            
         }
     };
+
+    const checkForUpdateToTabWithinSpace = async (tab) => {
+        if (tab.groupId == -1) return;
+        
+        const workspace = workspaces.find((w) => w.groupId == groupId);
+        if (!workspace) return;
+
+        const tabData = (await chrome.bookmarks.getChildren(workspace.folderId)).filter((b) => b.title.includes(tab.id));
+        const tabBookmark = tabData.length > 0 ?  tabData[0] : null;
+        if (!tabBookmark) return;
+
+        await chrome.bookmarks.update(tabBookmark.id, { 
+            title: `${tab.title} [tab|${tab.id}]`, 
+            url: tab.url
+        });
+    }
 
     const onTabMoved = async (tabId, { windowId, toIndex, fromIndex }) => {
         const tabIndex = tabs.findIndex((t) => t.id == tabId);
@@ -200,6 +224,7 @@
 
     const updateTabsWithinWindow = async (windowId) => {
         let updatedTabs = await chrome.tabs.query({ windowId });
+
         for (const tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) tabs[index] = { ...tabs[index], ...tab };
@@ -211,8 +236,24 @@
         tabs.sort((a, b) => a.index - b.index);
         tabs = tabs;
         lastUpdate = Date.now();
+        checkForDataRefresh();
         lastUpdatedWindow = windowId;
     };
+
+    const checkForDataRefresh = () => {
+        const now = Date.now()
+        if (!lastRefresh) { 
+            lastRefresh = now;
+            return;
+        }
+
+        if (lastRefresh - now > (1000 * 60 * 10)) {
+            //check first if there are any duplicates
+            loadTabsGroupsAndWindows();
+            lastRefresh = now;
+        }
+    
+    }
 
     const updateTabsWithinGroup = async (groupId) => {
         let updatedTabs = await chrome.tabs.query({ groupId });
@@ -227,7 +268,10 @@
         tabs.sort((a, b) => a.index - b.index);
         tabs = tabs;
         lastUpdatedGroup = groupId;
-        lastUpdatedWindow = updatedTabs[0].windowId;
+        if (updatedTabs.length > 0 && updatedTabs[0].windowId) {
+            lastUpdatedWindow = updatedTabs[0].windowId;
+        }
+        
     };
 
     const onWindowCreated = (window) => {
@@ -244,7 +288,9 @@
     };
 
     const onTabGroupCreated = async (group) => {
-        group.folder = await getGroupsBookmarkFolder(group);
+
+        group.new = true;
+        group.workspace = workspaces[group]
         groups[group.id] = group;
         updateTabsWithinGroup(group.windowId);
         lastUpdatedGroup = group.id;
@@ -283,6 +329,8 @@
         return bookmarks;
     };
 
+
+    
     const getGroupsBookmarkFolder = async (group) => {
         if (hasBookmarkPermission) return null;
 
@@ -291,6 +339,13 @@
         });
         if (bookmarkResults.length == 1) return bookmarkResults[0];
         else return null;
+
+        
+    };
+
+
+    const onBookmarkAdded = () => {
+        lastUpdate = Date.now();
     };
 </script>
 
@@ -307,7 +362,9 @@
         {lastUpdatedWindow}
         {currentWindowId}
         on:tabMoved={onTabMovedBetweenWindows}
+        on:tabBookmarkAdded={onBookmarkAdded}
         on:mergedWindows={loadTabsGroupsAndWindows}
+        on:foundDuplicates={loadTabsGroupsAndWindows}
     />
 {/if}
 

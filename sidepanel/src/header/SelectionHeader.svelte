@@ -24,18 +24,17 @@
 
 <style>
     .selected {
-        height: 100%;
+        min-height: 100%;
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
         padding: 0px 5px;
         width: calc(100% - 10px);
-        background-color: #111111;
     }
 
     .text {
-        font-size: 30px;
+        font-size: 24px;
         display: flex;
         flex-direction: row;
     }

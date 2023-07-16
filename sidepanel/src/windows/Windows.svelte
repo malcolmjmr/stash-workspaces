@@ -69,12 +69,39 @@
 
     let workspaces = [];
     const loadWorkspaces = () => {};
-    const onDrop = (e) => {};
 
-    const onDragOver = () => {};
+
+    
+
+    let isDraggedOver;
+    const onDragOver = () => {
+        isDraggedOver = true;
+    };
+
+    const onDragLeave = () => { 
+        isDraggedOver = false;
+    };
+    
+    const onDrop = async (e) => {
+        console.log('item dropped');
+        if (isDraggedOver) isDraggedOver = false;
+        const tabId = parseInt(e.dataTransfer.getData("tabId"));
+        console.log(tabId);
+        const newWindow = await chrome.windows.create();
+        await chrome.tabs.move(tabId, {
+            index: -1,
+            windowId: newWindow.id,
+        });
+        // delete new tab 
+        const newTab = (await chrome.tabs.query({windowId: newWindow.id})).filter((t) => t.id != tabId)[0];
+        await chrome.tabs.remove(newTab.id);
+        
+    };
+
 </script>
 
-<div class="windows" on:drop={onDrop} on:dragover={onDragOver}>
+<div class="windows" >
+
     {#each windows as windowData (windowData)}
         <Window
             bind:view
@@ -86,11 +113,8 @@
             on:tabMoved
         />
     {/each}
+    
 </div>
-
-{#if workspaces.length > 0}
-    <div class="workspaces" />
-{/if}
 
 <style>
     .windows {
@@ -98,6 +122,12 @@
         display: flex;
         flex-direction: column;
         padding-bottom: 40px;
+        position: relative;
+
+    }
+    
+    .dragged-over {
+        background-color: #666666;
     }
 
     .container {

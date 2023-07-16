@@ -1,5 +1,5 @@
 <script>
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
 
     import collapseIcon from "../icons/collapse.png";
     import expandIcon from "../icons/expand.png";
@@ -8,6 +8,9 @@
     import { slide } from "svelte/transition";
     import { colorMap } from "../utilities/colors";
     import GroupColors from "./GroupColors.svelte";
+    import fullScreenIcon from "../icons/open-in-full.png";
+    import bookmarkIcon from "../icons/star.png";
+
 
     export let group;
     export let isCollapsed = null;
@@ -17,6 +20,19 @@
     let dispatch = createEventDispatcher();
     let isInfocus;
     let showMore;
+
+    let el;
+
+    onMount(() => {
+        if (group.new) {
+            isEditingTitle = true;
+            el?.scrollIntoView({
+                behavior: "smooth",
+            });
+        }
+
+        
+    });
 
     const onMouseEnter = () => {
         isInfocus = true;
@@ -36,7 +52,26 @@
         chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
     };
 
-    const saveGroup = () => {};
+    const saveGroup = async () => {
+        /*
+            
+            create a folder
+            name the folder with the space 
+        */
+
+        const folder = await chrome.bookmarks.create({title: `${group.title} [space|${group.color}|${group.id}]`});
+        for (const tab of tabs) {
+            await chrome.bookmarks.create({
+                parentId: folder.id,
+                title: `${tab.title} [tab|${tab.id}]`, 
+                url: tab.url
+            });
+        }
+      
+        // if (user) {
+        // }
+
+    };
 
     const moveGroup = async () => {
         const window = await chrome.windows.create({});
@@ -121,17 +156,25 @@
             const tab = await chrome.tabs.get(tabId);
             let index;
             if (tab.groupId == group.id) {
-                index = startIndex - 1;
+                // if (tab.index > startIndex) {
+
+                // } else (tab.index == startIndex) {
+                     
+                // }
+                index = startIndex;
             } else if (tab.index > startIndex) {
                 if (group.collapsed) {
                     index = startIndex;
                 } else {
+                    await chrome.tabs.group({tabIds: tab.id, groupId: group.id});
                     index = startIndex;
+
                 }
             } else if (tab.index < endIndex) {
                 if (group.collapsed) {
                     index = endIndex;
                 } else {
+                    await chrome.tabs.group({tabIds: tab.id, groupId: group.id});
                     index = startIndex;
                 }
             }
@@ -145,6 +188,10 @@
     const onDragEnd = () => {
         isDragged = false;
     };
+
+    const openInFullScreen = () => {
+        dispatch('openGroupInFullScreen', group);
+    };
 </script>
 
 <div
@@ -157,6 +204,7 @@
     on:drop={onDrop}
     on:dragend={onDragEnd}
     draggable="true"
+    bind:this={el}
 >
     <div
         class="container"
@@ -183,16 +231,27 @@
                         ({tabs.length})
                     </div>
                 {/if}
+                {#if group.folder}
+                    <img src={bookmarkIcon} alt="Saved" class="icon"/>
+                {/if}
             </div>
         {/if}
 
+        
+
         {#if isInfocus && !isDragged}
             <div class="actions">
-                <img
-                    src={group.collapsed ? expandIcon : collapseIcon}
-                    alt="Toggle Collapsed"
-                    on:mousedown={toggleCollapse}
-                />
+                {#if group.folder}
+                    <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openInFullScreen}/>
+                {:else}
+                    <img src={bookmarkIcon} alt="Saved" class="icon" on:mousedown={saveGroup}/>
+                    <img
+                        src={group.collapsed ? expandIcon : collapseIcon}
+                        alt="Toggle Collapsed"
+                        on:mousedown={toggleCollapse}
+                    />
+                {/if}
+                
                 <img
                     src={moreIcon}
                     alt="More"
@@ -227,10 +286,8 @@
 <style>
     .group-label {
         width: 100%;
-
         display: flex;
         flex-direction: column;
-
         justify-content: center;
         user-select: none;
     }
@@ -242,13 +299,12 @@
     .container {
         padding: 5px;
         min-height: 25px;
-
         display: flex;
         flex-direction: row;
         align-items: center;
         border-radius: 5px;
-        margin: 5px;
-        width: calc(100% - 20px);
+        margin: 6px;
+        width: calc(100% - 22px);
     }
 
     .title {
@@ -324,5 +380,10 @@
     .action:hover {
         cursor: pointer;
         background-color: #555555;
+    }
+
+    .icon {
+        height: 16px;
+        width: 16px;
     }
 </style>

@@ -23,20 +23,29 @@
         isSelected = selectedTabs.find((t) => t.id == tab.id) != null;
     }
 
-    // $: {
-    //     tab.active;
-    //     scrollToTabIfActive();
-    // }
+    $: {
+        tab.active;
+        scrollToTabIfActive();
+
+    }
 
     onMount(() => {
-        //scrollToTabIfActive();
+        scrollToTabIfActive();
     });
 
     const scrollToTabIfActive = () => {
-        if (tab.active) {
-            el?.scrollIntoView({
-                behavior: "smooth",
-            });
+        if (tab.active && el) {
+
+            const rect = el.getBoundingClientRect();
+
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+            // The element is in view
+            } else {
+                el.scrollIntoView({
+                    behavior: "smooth",
+                });
+            }
+
         }
     };
 
@@ -121,20 +130,26 @@
         isDragged = false;
     };
 
-    const onDrop = (e) => {
+    const onDrop = async (e) => {
         if (isDraggedOver) isDraggedOver = false;
-        const tabId = e.dataTransfer.getData("tabId");
+        let tabId = e.dataTransfer.getData("tabId");
         const groupId = e.dataTransfer.getData("groupId");
         if (tabId) {
-            chrome.tabs.move(parseInt(tabId), { index: tab.index });
+            tabId = parseInt(tabId);
+            const draggedTab = await chrome.tabs.get(tabId);
+            if (draggedTab.groupId > -1 && (tab.groupId == -1)) {
+                await chrome.tabs.ungroup(draggedTab.id);
+            }
+            await chrome.tabs.move(draggedTab.id, { index: tab.index });
         } else if (groupId) {
-            chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
+            await chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
         }
     };
 
     const onTitleClicked = () => {
         chrome.tabs.update(tab.id, { active: true });
         chrome.windows.update(tab.windowId, { focused: true });
+        console.log(tab);
     };
 
     const reload = () => {
@@ -151,9 +166,11 @@
                 dispatch("tabBookmarkRemoved", tab);
             }
         } else {
-            await tryToSaveBookmark(tab, group);
+            let results = await tryToSaveBookmark(tab, group);
 
-            console.log(tab, group);
+            if (results) {
+                dispatch("tabBookmarkAdded", results);
+            }
         }
     };
 </script>

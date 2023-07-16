@@ -2,6 +2,7 @@
     import searchIcon from "../icons/search.png";
     import windowsIcon from "../icons/windows.png";
     import tabsIcon from "../icons/vertical-tabs.png";
+    import bookmarksIcon from "../icons/bookmarks.png";
     //import workspaceIcon from "../icons/star.png";
     import moreIcon from "../icons/more-vert.png";
     import { Views } from "../view";
@@ -40,6 +41,12 @@
             >
                 <img src={tabsIcon} alt="Tabs" />
             </div>
+            <div
+                class="action{view == Views.saved ? ' selected' : ''}"
+                on:mousedown={() => (view = Views.saved)}
+            >
+                <img src={bookmarksIcon} alt="Saved" />
+            </div>
         {/if}
 
         <div
@@ -59,7 +66,6 @@
         width: 100%;
         display: flex;
         flex-direction: column;
-        background-color: #111111;
     }
 
     .container {

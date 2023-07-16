@@ -5,7 +5,8 @@
     import SelectionFooter from "../components/SelectionActions.svelte";
 
     import checkboxIcon from "../icons/empty-box.png";
-    import newTabIcon from "../icons/add.png";
+    import newTabIcon from "../icons/add-box.png";
+    import createGroupIcon from "../icons/create-folder.png";
 
     let dispatch = createEventDispatcher();
 
@@ -32,7 +33,7 @@
         const activeTab = (
             await chrome.tabs.query({ active: true, currentWindow: true })
         )[0];
-        await chrome.tabs.create({ index: activeTab.index + 1 });
+        return await chrome.tabs.create({ index: activeTab.index + 1 });
     };
 
     const selectAll = async () => {
@@ -41,12 +42,29 @@
         )[0];
         selectedTabs = tabs.filter((t) => t.windowId == activeTab.windowId);
     };
+
+    const createNewGroup = async () => {
+        // const windowTabs = await chrome.tabs.query({currentWindow: true});
+        // const windowHasGroup = windowTabs.filter((t) => t.groupId > -1).length > 0;
+        // let tabIds;
+        // if (windowHasGroup) {
+        //     const tab = await createNewTab();
+        //     tabIds = [tab.id];
+        // } else {
+        //     tabIds = windowTabs.map((t) => t.id);
+        // }
+
+        // await chrome.tabs.update(tabIds[0], {active:true});
+
+        // const group = await chrome.tabs.group({tabIds});
+    };
+
 </script>
 
 {#key lastSelectionUpdate}
     <div class="main-container">
-        <div class="action" on:mousedown={selectAll}>
-            <img src={checkboxIcon} alt="Select All" />
+        <div class="action" on:mousedown={createNewGroup}>
+            <img src={createGroupIcon} alt="Select All" />
         </div>
         <div class="counts">
             <div class="container">
@@ -78,7 +96,6 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-
         width: 100%;
         height: 100%;
         z-index: 100;

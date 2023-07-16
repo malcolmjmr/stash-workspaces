@@ -14,6 +14,7 @@
     import ActiveWindowFooter from "./window/ActiveWindowFooter.svelte";
     import FooterContainer from "./components/FooterContainer.svelte";
     import SearchResults from "./search/SearchResults.svelte";
+  import Workspaces from "./workspaces/Workspaces.svelte";
 
     export let view;
     export let tabs;
@@ -118,7 +119,7 @@
 </script>
 
 <main>
-    {#if scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
+    {#if true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
         <div class="container header">
             {#if selectedTabs.length > 0}
                 {#key lastSelectionUpdate}
@@ -138,7 +139,6 @@
     {/if}
 
     <div class="body" bind:this={body}>
-        <div class="padding" />
         {#if searchText.length > 0}
             <SearchResults
                 {searchText}
@@ -163,6 +163,7 @@
                 bind:view
                 on:updateSelection={onUpdateSelection}
                 on:tabMoved
+            
             />
         {:else if view == Views.tabs}
             <ActiveWindow
@@ -175,13 +176,24 @@
                 bind:searchText
                 {searchResults}
                 on:updateSelection={onUpdateSelection}
+                on:tabBookmarkAdded
+                on:foundDuplicates
             />
         {:else if view == Views.workspace}
-            <Workspace {tabs} {activeTab} {group} {lastUpdate} />
+            <Workspace 
+                tabs={tabs.filter((t) => t.groupId == activeTab.groupId)} 
+                {activeTab} 
+                group={groups[activeTab.groupId]} 
+                {lastUpdate} 
+                {lastSelectionUpdate} 
+                bind:selectedTabs
+            />
+        {:else if view == Views.saved}
+            <Workspaces {groups}/>
         {/if}
-        <div class="padding" />
     </div>
-    {#if scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
+    
+    {#if view != Views.saved && (true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0)}
         <div class="container footer">
             {#if selectedTabs.length > 0}
                 <SelectionActions {lastSelectionUpdate} bind:selectedTabs />
@@ -217,10 +229,11 @@
     }
 
     .container.header {
-        position: absolute;
-        top: 0;
         width: 100%;
         z-index: 999;
+        background-color: #333333;
+        border-bottom: 1px solid #555555;
+        
     }
 
     .body {
@@ -243,11 +256,10 @@
 
     .container.footer {
         width: 100%;
-        position: absolute;
-        bottom: 0px;
         z-index: 999;
-        background-color: #111111;
+        background-color: #333333;
         padding: 5px 0px;
+        border-top: 1px solid #555555;
     }
     .container {
         position: relative;

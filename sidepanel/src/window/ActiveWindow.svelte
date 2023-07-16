@@ -3,15 +3,17 @@
     Bug:
     - When tab removed from active window either in a group or above a group the group label is in the wrong spot 
 */
-    import { onDestroy, onMount } from "svelte";
+    import { createEventDispatcher, onDestroy, onMount } from "svelte";
 
     import Header from "./header/Header.svelte";
     import Footer from "./ActiveWindowFooter.svelte";
     import Tab from "../tab/Tab.svelte";
     import { slide } from "svelte/transition";
-    import GroupLabel from "../tab/GroupLabel.svelte";
+    import GroupLabel from "../group/GroupLabel.svelte";
     import SearchResults from "../search/SearchResults.svelte";
     import { horizontalSlide } from "../utilities/transitions";
+
+    let dispatch = createEventDispatcher();
 
     export let tabs;
     export let groups;
@@ -33,12 +35,16 @@
     $: {
         lastUpdatedTab;
         lastUpdate;
+
+        checkIndexes();
         getTabGroupStarts();
     }
 
     let groupStarts = {};
+    let groupEnds = {};
     const getTabGroupStarts = () => {
         groupStarts = {};
+        groupEnds = {};
         tabs.sort((a, b) => a.index - b.index);
         for (const tab of tabs) {
             if (tab.groupId > -1 && groupStarts[tab.groupId] == null) {
@@ -58,11 +64,37 @@
             collapsedGroups.push(group.id);
         }
 
-        console.log(collapsedGroups);
         lastSelectionUpdate = Date.now();
         lastUpdate = Date.now();
         lastGroupUpdate = Date.now();
     };
+
+    const checkIndexes = () => {
+        // Check for tabs that have been duplicated and get tab group start and end index values
+
+        tabs.sort((a, b) => a.index - b.index);
+        let indexes = [];
+        let duplicateIndexes = [];
+        groupStarts = {};
+        groupEnds = {};
+
+        for (const tab of tabs) {
+            if (!indexes.includes(tab.index)) {
+                indexes.push(tab.index);
+            } else {
+                duplicateIndexes.push(tab.index);
+                dispatch('foundDuplicates');
+            }
+            if (tab.groupId > -1 && groupStarts[tab.groupId] == null) {
+                groupStarts[tab.groupId] = tab.index;
+            } else if (tab.groupId > -1) {
+                groupEnds[tab.groupId] = tab.index;
+            }
+        }
+
+        
+
+    };  
 </script>
 
 {#if loaded}
@@ -84,6 +116,7 @@
                     {lastSelectionUpdate}
                     {dragoverItem}
                     on:updateSelection
+                    on:tabBookmarkAdded
                 />
             {/if}
         {/each}

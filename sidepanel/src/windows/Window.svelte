@@ -1,5 +1,5 @@
 <script>
-    import GroupLabel from "../tab/GroupLabel.svelte";
+    import GroupLabel from "../group/GroupLabel.svelte";
 
     import { colorMap } from "../utilities/colors";
     import closeIcon from "../icons/close.png";
@@ -196,14 +196,14 @@
         </div>
 
         {#if tabs.length > 1}
-            {#if activeGroup && !closeWindowInFocus}
+            {#if activeGroup && !closeWindowInFocus }
                 <div class="active-group-container">
                     <div
                         class="active-group"
                         style="background-color: {colorMap[activeGroup.color]}"
                     >
                         <div class="title">
-                            {activeGroup.title ?? activeGroup.color}
+                            {activeGroup.title.length > 0 ? activeGroup.title : activeGroup.color}
                         </div>
                     </div>
                     <div class="spacer" />
@@ -223,6 +223,7 @@
                                     isClickable={showAllTabs}
                                     on:showTabDetails={onShowTabDetails}
                                     on:tabIconClicked={onTabIconClicked}
+                                    
                                 />
                             {/each}
                         </div>
@@ -259,6 +260,7 @@
         padding: 5px;
         user-select: none;
         margin: 10px 5px;
+        z-index: 1;
     }
 
     .window.incognito {
@@ -322,7 +324,8 @@
         align-items: center;
         justify-content: left;
         border-radius: 5px;
-        margin: 2px;
+        height: 18px;
+        margin: 2.5px;
     }
     .active-group .title {
         color: black;
