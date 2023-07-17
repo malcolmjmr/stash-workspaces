@@ -4,7 +4,12 @@
     export let group;
 
     const setColor = (color) => {
-        chrome.tabGroups.update(group.id, { color });
+        if (group.id) {
+            chrome.tabGroups.update(group.id, { color });
+        } else {
+            group.color = color;
+        }
+        
     };
 </script>
 

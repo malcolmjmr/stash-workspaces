@@ -7,6 +7,7 @@
     import checkboxIcon from "../icons/empty-box.png";
     import newTabIcon from "../icons/add-box.png";
     import createGroupIcon from "../icons/create-folder.png";
+  import CreateGroup from "../group/CreateGroup.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -43,25 +44,26 @@
         selectedTabs = tabs.filter((t) => t.windowId == activeTab.windowId);
     };
 
+    let showCreateGroupModal;
     const createNewGroup = async () => {
-        // const windowTabs = await chrome.tabs.query({currentWindow: true});
-        // const windowHasGroup = windowTabs.filter((t) => t.groupId > -1).length > 0;
-        // let tabIds;
-        // if (windowHasGroup) {
-        //     const tab = await createNewTab();
-        //     tabIds = [tab.id];
-        // } else {
-        //     tabIds = windowTabs.map((t) => t.id);
-        // }
-
-        // await chrome.tabs.update(tabIds[0], {active:true});
-
-        // const group = await chrome.tabs.group({tabIds});
+        const windowTabs = await chrome.tabs.query({currentWindow: true});
+        const windowHasGroup = windowTabs.filter((t) => t.groupId > -1).length > 0;
+        
+        if (windowHasGroup) {
+            showCreateGroupModal = true;
+        } else {
+            let tabIds = windowTabs.map((t) => t.id);
+            await chrome.tabs.update(tabIds[0], {active:true});
+            const group = await chrome.tabs.group({tabIds});
+        }
     };
 
 </script>
 
 {#key lastSelectionUpdate}
+    {#if showCreateGroupModal}
+        <CreateGroup on:exitModal={()=> showCreateGroupModal = false}/>
+    {/if}
     <div class="main-container">
         <div class="action" on:mousedown={createNewGroup}>
             <img src={createGroupIcon} alt="Select All" />

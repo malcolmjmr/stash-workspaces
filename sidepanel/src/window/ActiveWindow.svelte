@@ -98,7 +98,7 @@
 </script>
 
 {#if loaded}
-    {#key lastUpdate}
+    {#key lastUpdatedTab}
         {#each tabs as tab (tab)}
             {#if tab.groupId > -1 && groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
                 <GroupLabel
