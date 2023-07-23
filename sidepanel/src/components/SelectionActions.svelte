@@ -1,5 +1,6 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
+    import { Views } from "../view";
 
     /*
         group
@@ -12,6 +13,7 @@
 
     export let lastSelectionUpdate;
     export let selectedTabs;
+    export let view;
 
     let dispatch = createEventDispatcher();
     let groupCount = 0;
@@ -61,6 +63,19 @@
         chrome.tabs.remove(selectedTabs.map((t) => t.id));
         selectedTabs = [];
     };
+
+    const saveTabs = async () => {
+        dispatch('saveSelectedTabs');
+    };
+
+    const stashTabs = async () => {
+        // get context
+        // create bookmark folder if it doesn't exist
+        // ask user for bookmark permission if they haven't provided it? 
+        // if user 
+        //closeTabs();
+        dispatch('stashSelectedTabs');
+    };
 </script>
 
 <div class="actions">
@@ -68,9 +83,18 @@
         <div class="action" on:mousedown={groupTabs}>Group</div>
     {/if}
 
-    <div class="action" on:mousedown={moveTabsToNewWindow}>
-        Move to New Window
-    </div>
+    {#if view == Views.workspace}
+        <div class="action" on:mousedown={saveTabs}>
+            Save
+        </div>
+        <div class="action" on:mousedown={stashTabs}>
+            Stash
+        </div>
+    {:else}
+        <div class="action" on:mousedown={moveTabsToNewWindow}>
+            Move to New Window
+        </div>
+    {/if}
 
     <div class="action" on:mousedown={closeTabs}>Close</div>
 </div>

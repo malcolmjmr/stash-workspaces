@@ -58,7 +58,6 @@
     .menu {
         display: flex;
         flex-direction: column;
-        background-color: #111111;
     }
 
     .menu-item {

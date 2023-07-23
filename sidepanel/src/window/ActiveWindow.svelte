@@ -98,14 +98,16 @@
 </script>
 
 {#if loaded}
-    {#key lastUpdatedTab}
-        {#each tabs as tab (tab)}
+    {#key lastUpdate}
+        {#each tabs as tab (tab.id + '' + tab.index + '' + tab.updated)}
             {#if tab.groupId > -1 && groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
                 <GroupLabel
                     group={groups[tab.groupId]}
                     {lastGroupUpdate}
                     isCollapsed={collapsedGroups.includes(tab.groupId)}
                     tabs={tabs.filter((t) => t.groupId == tab.groupId)}
+                    on:groupSaved
+                    on:openGroupInFullScreen
                 />
             {/if}
             {#if !groups[tab.groupId]?.collapsed}

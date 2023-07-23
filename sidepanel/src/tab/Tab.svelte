@@ -26,7 +26,6 @@
     $: {
         tab.active;
         scrollToTabIfActive();
-
     }
 
     onMount(() => {

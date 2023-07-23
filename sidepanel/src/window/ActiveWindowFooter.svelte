@@ -7,6 +7,7 @@
     import checkboxIcon from "../icons/empty-box.png";
     import newTabIcon from "../icons/add-box.png";
     import createGroupIcon from "../icons/create-folder.png";
+    
   import CreateGroup from "../group/CreateGroup.svelte";
 
     let dispatch = createEventDispatcher();

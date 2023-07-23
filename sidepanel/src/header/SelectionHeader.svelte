@@ -30,11 +30,12 @@
         align-items: center;
         justify-content: space-between;
         padding: 0px 5px;
+        height: 40px;
         width: calc(100% - 10px);
     }
 
     .text {
-        font-size: 24px;
+        font-size: 20px;
         display: flex;
         flex-direction: row;
     }

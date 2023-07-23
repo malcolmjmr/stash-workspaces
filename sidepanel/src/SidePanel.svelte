@@ -14,11 +14,16 @@
     import ActiveWindowFooter from "./window/ActiveWindowFooter.svelte";
     import FooterContainer from "./components/FooterContainer.svelte";
     import SearchResults from "./search/SearchResults.svelte";
-  import Workspaces from "./workspaces/Workspaces.svelte";
+    import Workspaces from "./workspaces/Workspaces.svelte";
+    import SignIn from "./signin/SignIn.svelte";
 
+
+    export let user;
+    export let db;
     export let view;
     export let tabs;
     export let groups;
+    export let workspaces;
     export let windows;
     export let activeTab;
     export let currentWindowId;
@@ -37,6 +42,7 @@
     let body;
 
     onMount(() => {
+        console.log(tabs);
         addEventListeners();
     });
 
@@ -59,7 +65,7 @@
             } else {
                 if (scrollChange > 0) {
                     scrollingUp = true;
-                    console.log(scrollingUp);
+                    
                 }
             }
             lastScrollPosition = body.scrollTop;
@@ -116,6 +122,25 @@
             (t.title + " " + t.url).toLowerCase().includes(text)
         );
     };
+
+    const onOpenGroupInFullScreen = async ({detail}) => {
+        const group = detail;
+
+        if (activeTab.groupId != group.id) {
+            const newActiveTab = (await chrome.tabs.query({groupId: group.id}))[0];
+            await chrome.tabs.update(newActiveTab.id, {active: true});
+        }
+        view = Views.workspace;
+    
+    }
+
+    let showFooter;
+    $: {
+        showFooter = (selectedTabs.length > 0  
+            || ((view != Views.saved && view != Views.workspace) 
+            && (true || scrollingUp || lastScrollPosition < 20))
+        );
+    }
 </script>
 
 <main>
@@ -125,7 +150,7 @@
                 {#key lastSelectionUpdate}
                     <SelectionHeader bind:selectedTabs />
                 {/key}
-            {:else}
+            {:else if view != Views.workspace}
                 <Header
                     bind:view
                     {windows}
@@ -178,25 +203,33 @@
                 on:updateSelection={onUpdateSelection}
                 on:tabBookmarkAdded
                 on:foundDuplicates
+                on:groupSaved
+                on:openGroupInFullScreen={onOpenGroupInFullScreen}
+                
             />
         {:else if view == Views.workspace}
             <Workspace 
                 tabs={tabs.filter((t) => t.groupId == activeTab.groupId)} 
                 {activeTab} 
                 group={groups[activeTab.groupId]} 
+                {db}
+                {user}
+                workspace={workspaces.find((w) => w.title == groups[activeTab.groupId]?.title)}
                 {lastUpdate} 
                 {lastSelectionUpdate} 
                 bind:selectedTabs
+                on:updateSelection={onUpdateSelection}
+                on:showWindowView={() => view = Views.tabs}
             />
         {:else if view == Views.saved}
-            <Workspaces {groups}/>
+            <Workspaces {activeTab} {groups} {workspaces}/>
         {/if}
     </div>
     
-    {#if view != Views.saved && (true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0)}
+    {#if showFooter}
         <div class="container footer">
             {#if selectedTabs.length > 0}
-                <SelectionActions {lastSelectionUpdate} bind:selectedTabs />
+                <SelectionActions {lastSelectionUpdate} {view} bind:selectedTabs />
             {:else if view == Views.windows}
                 <WindowsFooter
                     {windows}

@@ -1,6 +1,7 @@
 <script>
 
-    import createFolderIcon from "../icons/new-folder.png"
+    import createFolderIcon from "../icons/new-folder.png";
+    import publicIcon from "../icons/public.png";
 
     export let workspaces;
     export let recentFolders;
@@ -8,8 +9,8 @@
 </script>
 
 <div class="footer">
-    <div class="action spacer">
-
+    <div class="action">
+        <img src={publicIcon} alt="Explore"/>
     </div>
 
         {#if workspaces.length > 0 || recentFolders.length > 0}

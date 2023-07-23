@@ -30,7 +30,7 @@
     let loaded;
     onMount(() => {
         loadWindows();
-        loadWorkspaces();
+   
         loaded = true;
     });
 
@@ -67,8 +67,6 @@
         );
     };
 
-    let workspaces = [];
-    const loadWorkspaces = () => {};
 
 
     

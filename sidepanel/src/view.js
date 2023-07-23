@@ -5,4 +5,5 @@ export const Views = {
     tabs: "Tabs",
     saved: "Saved",
     workspace: "Workspace",
+    signin: "Signin",
 };

@@ -28,7 +28,7 @@
     <div class="container">
         <SearchBox bind:searchText />
 
-        {#if windowCount > 1}
+
             <div
                 class="action{view == Views.windows ? ' selected' : ''}"
                 on:mousedown={() => (view = Views.windows)}
@@ -47,8 +47,7 @@
             >
                 <img src={bookmarksIcon} alt="Saved" />
             </div>
-        {/if}
-
+        
         <div
             class="action more{showMenu ? ' selected' : ''}"
             on:mousedown={() => (showMenu = true)}

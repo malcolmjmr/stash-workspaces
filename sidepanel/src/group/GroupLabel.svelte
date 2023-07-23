@@ -9,7 +9,8 @@
     import { colorMap } from "../utilities/colors";
     import GroupColors from "./GroupColors.svelte";
     import fullScreenIcon from "../icons/open-in-full.png";
-    import bookmarkIcon from "../icons/star.png";
+    import starIcon from "../icons/star.png";
+    import starFilledIcon from "../icons/star-filled.png";
 
 
     export let group;
@@ -53,24 +54,20 @@
     };
 
     const saveGroup = async () => {
-        /*
-            
-            create a folder
-            name the folder with the space 
-        */
 
-        const folder = await chrome.bookmarks.create({title: `${group.title} [space|${group.color}|${group.id}]`});
-        for (const tab of tabs) {
-            await chrome.bookmarks.create({
-                parentId: folder.id,
-                title: `${tab.title} [tab|${tab.id}]`, 
-                url: tab.url
-            });
-        }
-      
-        // if (user) {
+        // const folder = await chrome.bookmarks.create({title: `${group.title} [space|${group.color}|${group.id}]`});
+        // for (const tab of tabs) {
+        //     await chrome.bookmarks.create({
+        //         parentId: folder.id,
+        //         title: `${tab.title} [tab|${tab.id}]`, 
+        //         url: tab.url
+        //     });
         // }
 
+        // dispatch('groupSaved', {
+        //     group,
+        //     folder,
+        // });
     };
 
     const moveGroup = async () => {
@@ -189,9 +186,10 @@
         isDragged = false;
     };
 
-    const openInFullScreen = () => {
+    const openWorkspace = () => {
         dispatch('openGroupInFullScreen', group);
     };
+
 </script>
 
 <div
@@ -216,6 +214,7 @@
             <input
                 type="text"
                 class="title-input"
+                placeholder="Name this group"
                 bind:value={newTitle}
                 on:blur={onTitleInputBlur}
                 on:keydown={onInput}
@@ -231,20 +230,21 @@
                         ({tabs.length})
                     </div>
                 {/if}
-                {#if group.folder}
-                    <img src={bookmarkIcon} alt="Saved" class="icon"/>
-                {/if}
+                
             </div>
+            {#if group.workspace}
+                <img src={starFilledIcon} alt="Saved" class="icon"/>
+            {/if}
         {/if}
 
         
 
         {#if isInfocus && !isDragged}
             <div class="actions">
-                {#if group.folder}
-                    <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openInFullScreen}/>
+                {#if group.workspace}
+                    <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openWorkspace}/>
                 {:else}
-                    <img src={bookmarkIcon} alt="Saved" class="icon" on:mousedown={saveGroup}/>
+                    <img src={starIcon} alt="Saved" class="icon" on:mousedown={saveGroup}/>
                     <img
                         src={group.collapsed ? expandIcon : collapseIcon}
                         alt="Toggle Collapsed"
@@ -273,12 +273,16 @@
             <div class="action" on:mousedown={onEditTitleClicked}>
                 Edit title
             </div>
-            <!--<div class="action" on:mousedown={saveGroup}>Save Group</div>-->
-            <div class="action" on:mousedown={ungroupTabs}>Ungroup Tabs</div>
-            <div class="action" on:mousedown={closeGroup}>Close Group</div>
+            <div class="divider"/>
             <div class="action" on:mousedown={moveGroup}>
                 Move Group to New Window
             </div>
+            <div class="action" on:mousedown={openWorkspace}>Open Workspace</div>
+            <div class="divider"/>
+            <div class="action" on:mousedown={saveGroup}>Save Group</div>
+            <div class="divider"/>
+            <div class="action" on:mousedown={ungroupTabs}>Ungroup Tabs</div>
+            <div class="action" on:mousedown={closeGroup}>Close Group</div>
         </div>
     {/if}
 </div>
@@ -385,5 +389,12 @@
     .icon {
         height: 16px;
         width: 16px;
+    }
+
+    .divider {
+        height: 1px;
+        width: 100%;
+        background-color: #999999;
+        margin: 5px 0px;
     }
 </style>

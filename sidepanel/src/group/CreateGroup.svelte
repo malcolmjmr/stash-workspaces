@@ -28,7 +28,7 @@
         workspaces = folders.filter((f) => f.title.includes('[space'));
         recentFolders = folders.filter((f) => f.dateGroupModified > aMonthAgo && !f.title.includes('[space'));
         resetSuggestions();
-        console.log(suggestions);
+        //console.log(suggestions);
 
     };
 

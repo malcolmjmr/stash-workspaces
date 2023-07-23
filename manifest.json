@@ -39,6 +39,7 @@
         "bookmarks"
     ],
     "permissions": [
+        "identity",
         "tabs",
         "tabGroups",
         "sidePanel",
@@ -51,7 +52,37 @@
             "suggested_key": {
                 "default": "Alt+M"
             }
-        }
+        },
+        "01newTab": {
+            "description": "NEW TAB - opens a new tab within the active group (replaces cmd/ctrl + T) "
+          },
+          "02groupTabs": {
+            "description": "GROUP TABS - creates a group from highlighted tabs (highlight a tab by holding cmd/ctrl and clicking the tab's label)",
+            "suggested_key": {
+              "default": "Alt+G"
+            }
+          },
+          "03undoGroup": {
+            "description": "UNDO GROUP - ungroups all tabs in active group"
+          },
+          "04closeGroup": {
+            "description": "CLOSE GROUP - closes the active group"
+          },
+          "05shutdown": {
+            "description": "CLOSE ALL GROUPS - closes all open groups"
+          },
+          "06openTabs": {
+            "description": "OPEN TAB IN WINDOW - open active tab in pop-up window"
+          },
+          "07saveTab": {
+            "description": "SAVE TAB - save tab to active group's bookmark folder"
+          },
+          "08stashTab": {
+            "description": "STASH TAB - closes active tab and saves it to the active group's bookmark folder",
+            "suggested_key": {
+              "default": "Alt+S"
+            }
+          }
     },
     "manifest_version": 3
 }
