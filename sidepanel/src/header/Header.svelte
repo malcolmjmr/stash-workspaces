@@ -28,7 +28,7 @@
 
 <div class="header">
     <div class="container">
-        <SearchBox bind:searchText/>
+        <SearchBox bind:searchText placeholderText={view == Views.saved ? 'Search' : 'Search Tabs'}/>
             <div
                 class="action{view == Views.windows ? ' selected' : ''}"
                 on:mousedown={() => (view = Views.windows)}
@@ -56,7 +56,7 @@
         </div>
     </div>
     {#if showMenu}
-        <Menu bind:showMenu bind:view/>
+        <Menu bind:showMenu bind:view {user}/>
     {/if}
 </div>
 

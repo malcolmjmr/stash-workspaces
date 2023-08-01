@@ -29,10 +29,15 @@
     const getCounts = () => {
         windowCount = windows.length;
         tabCount = tabs.length;
-        groupCount = groups.length
+        groupCount = Object.keys(groups).length;
+        
+        console.log('group count');
+        console.log(groupCount);
+        console.log(groups);
     };
 
     $: {
+        groups;
         windows;
         getCounts();
     }
@@ -83,11 +88,14 @@
             currentWindow: false,
             groupId: -1,
         });
-        // sort tabs by window and index
-        await chrome.tabs.move(
-            tabs.map((t) => t.id),
-            moveProperties
-        );
+
+        if (tabs.length > 0) {
+            await chrome.tabs.move(
+                tabs.map((t) => t.id),
+                moveProperties
+            );
+        }
+       
         dispatch("mergedWindows");
     };
 </script>

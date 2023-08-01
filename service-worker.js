@@ -257,7 +257,9 @@ async function onTabsGroupUpdated(tabId, groupId) {
 async function onTabGroupCreated(group) {
 
 
-    let context;
+    let context = await getContextFromGroupId(group.id);
+    if (context) return;
+    
     const workspaceToOpen = await get('workspaceToOpen');
     if (workspaceToOpen) {
         const workspace = workspaceToOpen.workspace;
@@ -650,7 +652,7 @@ async function checkOpenContexts() {
         const group = await tryToGetTabGroup(groupId);
         console.log('group');
         console.log(group);
-        
+
         if (group) continue;
 
         let context = await getContext(contextId);

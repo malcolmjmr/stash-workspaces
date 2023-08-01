@@ -145,11 +145,9 @@
     const onDeleteWorkspace = async ({detail}) => {
         const workspace = detail;
         await removeContext(workspace);
-        console.log('removing context');
         if (user) {
             const ref = doc(db, StorePaths.userContext(user.id, workspace.id));
             await deleteDoc(ref);
-            console.log('removed from cloud');
         }
         const index = workspaces.findIndex((w) => w.id == workspace.id);
         if (index > -1) {

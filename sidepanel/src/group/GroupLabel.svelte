@@ -303,11 +303,12 @@
 
 <style>
     .group-label {
-        width: 100%;
+        width: calc(100% - 10px);
         display: flex;
         flex-direction: column;
         justify-content: center;
         user-select: none;
+        margin: 10px 5px 0px 5px;
     }
 
     .dragged-over {
@@ -315,14 +316,13 @@
     }
 
     .container {
-        padding: 5px;
+        padding: 3px;
         min-height: 25px;
         display: flex;
         flex-direction: row;
         align-items: center;
         border-radius: 5px;
-        margin: 6px 6px 0px 6px;
-        width: calc(100% - 22px);
+        width: calc(100% - 6px);
     }
 
     .title {
@@ -383,12 +383,12 @@
     }
 
     .more-actions {
-        margin: 0px 5px;
         font-size: 14px;
         border-right: 2px solid;
         border-left: 2px solid;
         border-bottom: 2px solid;
         border-radius: 0px 0px 5px 5px;
+        width: calc(100% - 4px);
     }
 
     .action {

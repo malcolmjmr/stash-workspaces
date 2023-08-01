@@ -98,6 +98,7 @@
 
 {#if loaded}
     {#key lastUpdate}
+        <div class="padding"></div>
         {#each tabs as tab (tab.id + '' + tab.index + '' + tab.updated)}
             {#if tab.groupId > -1 && groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
                 <GroupLabel
@@ -132,4 +133,7 @@
 {/if}
 
 <style>
+    .padding {
+        height: 5px;
+    }
 </style>

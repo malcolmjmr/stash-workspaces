@@ -68,12 +68,15 @@
         if (user) {
             if (!user.lastSync) user.lastSync = 0;
             const config = await get('config');
-            if (config.lastSync) config.lastSync = 0;
-            const contextsToUpload = localContexts.filter((c) => c.updated > user.lastSync || c.created > user.lastSync);
+            if (!config.lastSync) config.lastSync = 0;
+            const contextsToUpload = localContexts.filter((c) => c.updated > config.lastSync || c.created > config.lastSync);
+            
             for (const context of contextsToUpload) {
                 const ref = doc(db, StorePaths.userContext(user.id, context.id));
                 await setDoc(ref, context, {merge: true});
             }
+
+            await set({ config });
             user.lastSync = Date.now();
             await setDoc(userRef, user);
 

@@ -225,17 +225,17 @@
         flex-direction: column;
         align-items: center;
         color: black;
-        margin: 5px 0px;
+        margin: 5px;
     }
 
     .container {
-        padding: 5px;
+        padding: 3px;
         min-height: 25px;
         display: flex;
         flex-direction: row;
         align-items: center;
         border-radius: 5px;
-        width: calc(100% - 10px);
+        width: calc(100% - 6px);
     }
 
     .title {
@@ -299,14 +299,13 @@
     }
 
     .more-actions {
-        margin: 0px 5px;
         font-size: 14px;
         border-right: 2px solid;
         border-left: 2px solid;
         border-bottom: 2px solid;
         border-radius: 0px 0px 5px 5px;
         color: white;
-        width: calc(100% - 15px);
+        width: calc(100% - 4px);
     }
 
     .action {
@@ -340,7 +339,7 @@
     .tabs {
         display: flex;
         flex-direction: column;
-        width: 100%;
+        width: calc(100% + 10px);
     }
 
     .time {

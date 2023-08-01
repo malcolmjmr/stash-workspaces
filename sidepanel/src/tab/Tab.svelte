@@ -310,7 +310,7 @@
 
 <style>
     .tab {
-        padding: 2px 5px;
+        padding: 2px;
         border-radius: 5px;
         display: flex;
         flex-direction: column;
@@ -318,7 +318,7 @@
         font-size: 12px;
         color: white;
         user-select: none;
-        margin: 1px 2px;
+        margin: 2px 5px;
     }
 
     .main-container {
@@ -356,6 +356,7 @@
     .favicon {
         height: 20px;
         width: 20px;
+        margin-left: 3px;
     }
 
     .group-indicator {
@@ -373,6 +374,7 @@
         max-lines: 1;
         overflow: hidden;
         margin-left: 8px;
+        width: 100%;
     }
 
     .title:hover {

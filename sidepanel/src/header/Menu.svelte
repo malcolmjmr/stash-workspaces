@@ -57,6 +57,7 @@
             <span>{menuItem.title}</span>
         </div>
     {/each}
+        <!--
         <div class="menu-item" on:mousedown={() => view = Views.signin }>
             <img
                 class="icon"
@@ -64,7 +65,12 @@
                 alt=""
             />
             <span>{user ? 'Synced' : ' Sync Disabled'}</span>
+
+
         </div>
+
+        -->
+        
 </div>
 
 <style>
