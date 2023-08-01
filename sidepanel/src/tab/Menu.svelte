@@ -14,6 +14,7 @@
     let dispatch = createEventDispatcher();
 
     export let tab;
+    export let workspace;
 
     const moveTabToNewWindow = async () => {
         await chrome.windows.create({ tabId: tab.id, focused: true });
@@ -51,11 +52,17 @@
     };
 
     const pinTab = () => {
-        chrome.tabs.update(tab.id, { pinned: true });
+        if (tab.groupId == -1) {
+            chrome.tabs.update(tab.id, { pinned: !tab.pinned });
+        } else {
+            dispatch('pinTab', tab);
+        }
+        
     };
-
+    let linkCopied;
     const copyLink = () => {
         navigator.clipboard.writeText(tab.url);
+        linkCopied = true;
     };
 
     const onKeyDownInUrlField = (e) => {
@@ -78,7 +85,7 @@
     {/if}
     -->
     <div class="url-field">
-        <img src={copyIcon} alt="Copy Link" on:mousedown={copyLink} />
+        <img src={copyIcon} style='opacity: {linkCopied ? '1' : '.8'}' alt="Copy Link" on:mousedown={copyLink} />
         <input
             type="text"
             bind:value={tab.url}
@@ -87,7 +94,7 @@
     </div>
     <div class="divider" />
 
-    <MenuItem title="Pin" on:mouseup={pinTab} />
+    <MenuItem title={tab.pinned ? 'Unpin Tab' : 'Pin Tab'} on:mouseup={pinTab} />
     <MenuItem title="Reload" on:mouseup={reloadTab} />
     <MenuItem title="Duplicate" on:mouseup={duplicateTab} />
 

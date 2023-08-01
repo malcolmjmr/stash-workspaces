@@ -11,6 +11,7 @@
 
     import googleIcon from "../icons/google.png";
     import { onMount } from "svelte";
+  import { set } from "../utilities/chrome";
 
     export let fbApp;
 
@@ -47,7 +48,11 @@
             error = 'Please provide a password';
         } else {
             try {
-                signInWithEmailAndPassword(auth, email, password);
+                signInWithEmailAndPassword(auth, email, password)
+                    .then((userCredential) => {
+                        console.log(userCredential);
+                        set({auth: email, password });
+                    });
             } catch (e) {
                 console.log(e);
                 /*

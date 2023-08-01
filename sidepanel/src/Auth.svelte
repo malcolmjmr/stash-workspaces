@@ -24,9 +24,12 @@
     export let userRef;
     export let fbApp;
     export let authLoaded;
+    export let view;
 
   
-    import {onMount } from "svelte";
+    import {createEventDispatcher, onMount } from "svelte";
+    import { get } from "./utilities/chrome.js";
+    import { Views } from "./view.js";
     
     
     let fbAuth;
@@ -38,6 +41,8 @@
     let claimAccessCode;
     let extensionAuth;
 
+    let dispatch = createEventDispatcher();
+
     
   
     onMount(async() => {
@@ -45,9 +50,8 @@
     });
   
     const init = async () => {
-        console.log('loading auth');
         await initializeFirebase();
-        authLoaded = true;
+        authLoaded = Date.now();
     
     }
   
@@ -70,30 +74,25 @@
   
   
     const fbAuthChange = async (newUser) => {
-      console.log("auth change");
-      const userSignedOut = fbUser && !newUser;
-      fbUser = newUser;
-      console.log(fbUser);
-  
-      if (userSignedOut) {
-        // user signed out
-        // update extension auth so that user is not automatically logged in
-      } else {
-  
-  
-        if (!navigator.onLine) {
-          console.log("offline");
-          loaded = true;
-        } else if (fbUser) await loadUser();
-        //else if (extensionAuth.password)
-        //else if (needToSignIn) await signInWithExtensionCredentials();
-        // only create account when user confirms that they are a new user
-        //else if (!extensionAuth) await createNewFirebaseUser();
+        console.log("auth change");
+        fbUser = newUser;
+        if (fbUser) await loadUser();
         else {
-          console.log('user not logged in');
+            console.log('checking stored auth');
+            const auth = await get('auth');
+            if (auth?.password) tryToSignInWithStoredCredentials(auth);
+            else {
+                console.log('user not logged in');
+            }
         }
-        //else if (hasChrome && !isMobile)
-      }
+    };
+
+    const tryToSignInWithStoredCredentials = (auth) => {
+        try {
+            signInWithEmailAndPassword(fbAuth, auth.email, auth.password);
+        } catch (e)  {
+            view = Views.signin;
+        }
     };
   
     const loadUser = async () => {
@@ -112,8 +111,10 @@
         user.language = navigator.language;
         await setDoc(userRef, user);
       }
-  
-      loaded = true;
+
+      
+      authLoaded = Date.now();
+      
     };
 
 

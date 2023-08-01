@@ -24,6 +24,7 @@
     export let tabs;
     export let groups;
     export let workspaces;
+    export let workspacesLoaded;
     export let windows;
     export let activeTab;
     export let currentWindowId;
@@ -31,6 +32,7 @@
     export let lastUpdatedTab;
     export let lastUpdatedGroup;
     export let lastUpdatedWindow;
+    export let hasBookmarkPermission;
 
     let group;
     let window;
@@ -42,7 +44,6 @@
     let body;
 
     onMount(() => {
-        console.log(tabs);
         addEventListeners();
     });
 
@@ -116,14 +117,21 @@
         if (searchText != "") updateResults();
     }
 
-    const updateResults = () => {
+    const updateResults = async () => {
         const text = searchText.toLowerCase();
         searchResults = tabs.filter((t) =>
             (t.title + " " + t.url).toLowerCase().includes(text)
         );
+
+        if (searchResults.length > 0 || !hasBookmarkPermission) return;
+        
+        if (hasBookmarkPermission) {
+            searchResults = await chrome.bookmarks.search({query: text});
+        }
+        
     };
 
-    const onOpenGroupInFullScreen = async ({detail}) => {
+    const showWorkspaceView = async ({detail}) => {
         const group = detail;
 
         if (activeTab.groupId != group.id) {
@@ -140,6 +148,15 @@
             || ((view != Views.saved && view != Views.workspace) 
             && (true || scrollingUp || lastScrollPosition < 20))
         );
+    };
+
+    const onWorkspaceClosed = ({detail}) => {
+
+    };
+
+    const onSearchBookmarks = () => {
+        hasBookmarkPermission = true;
+        updateResults();
     }
 </script>
 
@@ -152,6 +169,7 @@
                 {/key}
             {:else if view != Views.workspace}
                 <Header
+                    {user}
                     bind:view
                     {windows}
                     windowCount={windows?.length ?? 0}
@@ -164,13 +182,15 @@
     {/if}
 
     <div class="body" bind:this={body}>
-        {#if searchText.length > 0}
+        {#if searchText.length > 0 && view != Views.saved}
             <SearchResults
                 {searchText}
                 {searchResults}
                 on:updateSelection
                 {lastSelectionUpdate}
                 {selectedTabs}
+                {hasBookmarkPermission}
+                on:searchBookmarks={onSearchBookmarks}
             />
         {:else if view == Views.windows}
             <Home
@@ -193,6 +213,8 @@
         {:else if view == Views.tabs}
             <ActiveWindow
                 tabs={tabs.filter((t) => t.windowId == currentWindowId)}
+                {user}
+                {db}
                 {groups}
                 {lastUpdate}
                 {selectedTabs}
@@ -204,25 +226,32 @@
                 on:tabBookmarkAdded
                 on:foundDuplicates
                 on:groupSaved
-                on:openGroupInFullScreen={onOpenGroupInFullScreen}
+                on:showWorkspaceView={showWorkspaceView}
                 
+            />
+        {:else if view == Views.saved}
+            <Workspaces 
+                {user} 
+                {db} 
+                {groups} 
+                {activeTab}
+                {lastUpdatedGroup}
+                bind:workspaces 
+                {workspacesLoaded} 
+                {searchText}
+
             />
         {:else if view == Views.workspace}
             <Workspace 
-                tabs={tabs.filter((t) => t.groupId == activeTab.groupId)} 
-                {activeTab} 
-                group={groups[activeTab.groupId]} 
+                {tabs}
+                {group}
                 {db}
                 {user}
-                workspace={workspaces.find((w) => w.title == groups[activeTab.groupId]?.title)}
                 {lastUpdate} 
+                {lastUpdatedTab}
                 {lastSelectionUpdate} 
-                bind:selectedTabs
-                on:updateSelection={onUpdateSelection}
-                on:showWindowView={() => view = Views.tabs}
+                on:goBack={() => view == Views.tabs}
             />
-        {:else if view == Views.saved}
-            <Workspaces {activeTab} {groups} {workspaces}/>
         {/if}
     </div>
     
@@ -234,6 +263,7 @@
                 <WindowsFooter
                     {windows}
                     {tabs}
+                    {groups}
                     {lastSelectionUpdate}
                     {selectedTabs}
                     on:mergedWindows

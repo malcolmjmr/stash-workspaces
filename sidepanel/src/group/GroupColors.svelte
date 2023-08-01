@@ -1,20 +1,21 @@
 <script>
+    import { createEventDispatcher } from "svelte";
     import { colorMap } from "../utilities/colors";
 
-    export let group;
+    export let group = {};
+    export let colors = [];
+
+    let dispatch = createEventDispatcher();
 
     const setColor = (color) => {
-        if (group.id) {
-            chrome.tabGroups.update(group.id, { color });
-        } else {
-            group.color = color;
-        }
-        
+        dispatch('colorSelected', color);
     };
+
 </script>
 
 <div class="colors">
     {#each Object.entries(colorMap) as [name, hex]}
+        {#if colors.length == 0 || colors.includes(name)}
         <div class="color-container">
             <div
                 class="color {group.color == name ? ' selected' : ''}"
@@ -24,6 +25,7 @@
                 }}
             />
         </div>
+        {/if}
     {/each}
 </div>
 
@@ -35,6 +37,7 @@
         justify-content: space-between;
         margin: 5px 3px 0px 3px;
         height: 25px;
+        width: calc(100% - 6px);
     }
 
     .color-container {

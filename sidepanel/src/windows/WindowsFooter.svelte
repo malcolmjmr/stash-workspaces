@@ -4,17 +4,21 @@
     import CircleDivider from "../components/CircleDivider.svelte";
     import newWindowIcon from "../icons/new-window.png";
     import mergeIcon from "../icons/merge.png";
+    import splitIcon from "../icons/split.png";
     import SelectionActions from "../components/SelectionActions.svelte";
 
     let dispatch = createEventDispatcher();
 
     export let windows;
     export let tabs;
+    export let groups;
+
     export let lastSelectionUpdate;
     export let selectedTabs;
 
     let windowCount = 0;
     let tabCount = 0;
+    let groupCount = 0;
 
     let loaded;
     onMount(() => {
@@ -25,6 +29,7 @@
     const getCounts = () => {
         windowCount = windows.length;
         tabCount = tabs.length;
+        groupCount = groups.length
     };
 
     $: {
@@ -34,6 +39,22 @@
 
     const createNewWindow = () => {
         chrome.windows.create({ focused: true });
+    };
+
+    const splitTabGroups = async () => {
+        const tabGroups = await chrome.tabGroups.query({});
+        for (const group of tabGroups) {
+            const window = await chrome.windows.create();
+            const newTab = (await chrome.tabs.query({windowId: window.id}))[0];
+            await chrome.tabGroups.move(group.id, {
+                windowId: window.id,
+                index: -1
+            });
+            await chrome.tabs.remove(newTab.id);
+            await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+        dispatch("mergedWindows");
+    
     };
 
     const mergeWindows = async () => {
@@ -58,10 +79,11 @@
             }
         }
 
-        const tabs = await chrome.tabs.query({
+        let tabs = await chrome.tabs.query({
             currentWindow: false,
             groupId: -1,
         });
+        // sort tabs by window and index
         await chrome.tabs.move(
             tabs.map((t) => t.id),
             moveProperties
@@ -73,9 +95,18 @@
 {#if loaded}
     {#key lastSelectionUpdate}
         <div class="home-footer">
+            {#if windowCount == 1 && groupCount > 0}
+            <div class="action" on:mousedown={splitTabGroups}>
+                <img src={splitIcon} alt="Split Groups" />
+            </div>
+            {:else if windowCount > 1}
             <div class="action" on:mousedown={mergeWindows}>
                 <img src={mergeIcon} alt="Merge Windows" />
             </div>
+            {:else}
+            <div class="action spacer"></div>
+            {/if}
+
             <div class="counts">
                 <div class="count">
                     {windowCount} Window{#if windowCount > 0}s{/if}
@@ -85,6 +116,7 @@
                     {tabCount} Tab{#if tabCount > 0}s{/if}
                 </div>
             </div>
+            
             <div class="action" on:mousedown={createNewWindow}>
                 <img src={newWindowIcon} alt="Create Window" />
             </div>

@@ -7,6 +7,11 @@ chrome.sidePanel
     .setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error(error));
 
+
+// Windows 
+
+chrome.windows.onCreated.addListener((window) => onWindowCreated(window));
+
 // Tabs
 chrome.tabs.onCreated.addListener((tab) => onTabCreated(tab));
 //chrome.tabs.onActivated.addListener((activeInfo) => onTabActivated(activeInfo.tabId))
@@ -171,6 +176,8 @@ async function onTabCreated(tab) {
         context.tabs.push(getTabInfo(tab));
     } else {
         // check if tab should be grouped
+
+        
     }
 }
 
@@ -190,17 +197,17 @@ async function onTabDetached(tabId, detachInfo) {
 }
 
 async function onTabMoved(tabId, moveInfo) {
-    // check if tab moved out of saved group
-    // const tab = await tryToGetTab(tabId)
-    // const context = await getContextFromTab(tab);
+    // check if tab moved within group
+    const tab = await chrome.tabs.get(tabId);
+    const context = await getContextFromTab(tab);
 
-    // if (context) {
-    //     const tabsInGroup = await chrome.tabs.query({ groupId: tab.groupId });
-    //     tabsInGroup.sort((a, b) => a.index - b.index);
-    //     context.tabs = tabsInGroup.map(getTabInfo);
-    //     context.activeTabId = tabId;
-    //     await saveContext(context);
-    // }
+    if (context) {
+        const tabsInGroup = await chrome.tabs.query({ groupId: tab.groupId });
+        tabsInGroup.sort((a, b) => a.index - b.index);
+        context.tabs = tabsInGroup.map(getTabInfo);
+        context.activeTabId = tabId;
+        await saveContext(context);
+    }
 }
 
 async function onTabUpdated(tabId, updated) {
@@ -220,10 +227,11 @@ async function onTabClosed(tabId) {
 }
 
 async function updateContextTabs(context) {
+    
     const tabsInGroup = await chrome.tabs.query({ groupId: context.groupId });
     tabsInGroup.sort((a, b) => a.index - b.index);
     context.tabs = tabsInGroup.map(getTabInfo);
-    context.activeTabId = tabsInGroup.find((t) => t.active);
+    context.activeTabId = tabsInGroup.find((t) => t.active).id;
     await saveContext(context);
 }
 
@@ -231,29 +239,67 @@ async function onResourceLoaded(tabId) {
 
     let tab = await chrome.tabs.get(tabId);
     var context = await getContextFromTab(tab);
-
     updateTabInfoIfNeeded(context, tab);
 }
 
 async function onTabsGroupUpdated(tabId, groupId) {
+
     const context = await getContextFromGroupId(groupId);
+
     if (context) {
+        if (!context.groupId) context.groupId = groupId;
         updateContextTabs(context);
-    } else {
-        removeTabData(tabId);
     }
 
 }
 // Tab Groups
 
 async function onTabGroupCreated(group) {
-    let context = await getContextFromGroupId(group.id);
-    if (!context) {
-        context = await findExistingContextForGroup(group);
-        if (!context) {
-            context = await createContextFromGroup(group);
-            await updateOpenContexts(context);
-        }
+
+
+    let context;
+    const workspaceToOpen = await get('workspaceToOpen');
+    if (workspaceToOpen) {
+        const workspace = workspaceToOpen.workspace;
+        if (Date.now() - workspaceToOpen.time < 10000) {
+            context = await getContext(workspace.id);
+            if (!context) {
+                context = workspace;
+                context.groupId = group.id;
+                await saveRemoteContext(context);
+            }
+            context.groupId = group.id;
+            let openGroups = await get('openGroups');
+            openGroups[group.id] = context.id;
+            await set({ openGroups });
+            await saveContext(context);
+            console.log('opened context');
+            console.log(context);
+        } 
+
+        await set({workspaceToOpen: null})
+    } else {
+
+        setTimeout(async () => {
+            group = await chrome.tabGroups.get(group.id);
+
+
+            const contexts = await getContexts();
+            context = (
+                contexts.find((c) => c.title == group.title)
+                ?? await createContextFromGroup(group)
+            );
+
+            console.log('created context');
+            console.log(context);
+            
+            let openGroups = await get('openGroups');
+            openGroups[group.id] = context.id;
+            await set({ openGroups });
+            
+        }, 500);
+        
+        
     }
 }
 
@@ -261,14 +307,11 @@ async function onTabGroupUpdated(group) {
     // Update context data 
     var context = await getContextFromGroupId(group.id);
     if (!context) return;
+
     //const [collapsed, expanded] = await groupCollapsedHandler(group, context);
     const edited = await groupTitleHandler(group, context) || await groupColorHandler(group, context);
 
-
-
     context = await getContext(context.id);
-
-    console.log(context);
 
 }
 
@@ -300,7 +343,7 @@ async function groupColorHandler(group, context) {
 
 
 async function onTabGroupClosed(group) {
-    // Remove context and delete if it hasn't been made into a workspace
+
     let context = await getContextFromGroupId(group.id);
     if (!context) return;
 
@@ -323,6 +366,23 @@ async function onTabGroupClosed(group) {
     }
 }
 
+async function getContextFromGroup(group) {
+    let context = await getContextFromGroupId(group.id);
+    if (!context) {
+        let contexts = await getContexts();
+        context = contexts.find((c) => c.title == group.title);
+        if (context) {
+            context.color = group.color;
+            context.tabs = (await chrome.tabs.query({groupId: group.id})).map(getTabInfo);
+            await saveRemoteContext(context);
+            const openGroups = await get('openGroups');
+            openGroups[group.id] = context.id;
+            await set({ openGroups });
+        }
+    }
+    return context;
+}
+
 
 
 
@@ -340,11 +400,13 @@ async function findExistingContextForGroup(group) {
 }
 
 async function createContextFromGroup(group) {
+    const window = await chrome.windows.get(group.windowId);
     return await createContext({
         title: group.title,
         groupId: group.id,
         color: group.color,
-        tabs: (await chrome.tabs.query({groupId: group.id})).map(getTabInfo)
+        tabs: (await chrome.tabs.query({groupId: group.id})).map(getTabInfo),
+        isIncognito: window.incognito
     });
 }
 
@@ -361,21 +423,12 @@ async function createContext(properties = {}, save = true) {
     };
 
     if (save) {
-        var config = await get('config');
 
-        if (!config.usage?.contextCount) {
-            const contexts = await getContexts();
-            config.usage.contextCount = contexts.length - 1;
-        }
-
-        config.usage.contextCount += 1;
-        context.color = config?.settings?.defaultColor ?? getRandomColor();
         const contextKey = getContextKey(context.id);
 
         let contextKeys = (await get('contextKeys') ?? []);
         contextKeys.push(contextKey);
 
-        await set({ config });
         await set({ contextKeys });
         await saveContext(context);
     }
@@ -410,10 +463,14 @@ async function updateOpenContexts(context) {
 
 async function closeContext(context) {
 
+    console.log('closing context:');
+    console.log(context);
+
     if (!context) return;
+    await removeOpenContext(context);
 
     context.closed = Date.now();
-    context.activeTabIndex = context.tabs.findIndex((t) => context.activeTabId == t.id);
+    context.activeTabIndex = context.tabs.findIndex((t) => context.activeTabId == t.id) ?? 0;
     delete context.isOpen;
     delete context.isActive;
     delete context.activeTabId;
@@ -421,8 +478,22 @@ async function closeContext(context) {
     delete context.groupId;
     await saveContext(context);
 
-    await removeOpenContext(context);
+    
 
+}
+
+
+
+async function saveRemoteContext(context) {
+    const contextKey = getContextKey(context.id);
+    let contextKeys = await get('contextKeys');
+
+    if (!contextKeys.includes(contextKey)) {
+        contextKeys.push(contextKey);
+        await set({contextKeys});
+    }
+
+    await saveContext(context);
 }
 
 async function saveContext(context) {
@@ -516,13 +587,15 @@ async function saveContextData(context, contextData) {
 }
 
 async function removeTabData(tabId) {
+
     const openContextIds = Object.values(await get('openGroups'));
     const contexts = Object.values(await chrome.storage.local.get(openContextIds.map((id) => getContextKey(id))));
     for (const context of contexts) {
         if (!context) continue;
         const tabIndex = context.tabs.findIndex((t) => t.id == tabId);
         if (tabIndex > -1) {
-            let [tab] = context.tabs.splice(tabIndex, 1);
+            const tabs = (await chrome.tabs.query({ groupId: context.groupId })).map(getTabInfo);
+            context.tabs = tabs.length > 0 ? tabs : context.tabs;
             // if (tab.bookmarkId) await removeBookmark(tab.bookmarkId);
             if (context.activeTabId == tabId) {
                 delete context.activeTabId;
@@ -566,6 +639,49 @@ async function updateTabInfoIfNeeded(context, tab, options) {
     }
 }
 
+async function onBrowserOpen() {
+    console.log('browser opneed');
+    await checkOpenContexts();
+}
+
+
+async function checkOpenContexts() {
+    for (const [groupId, contextId] of Object.entries(await get('openGroups'))) {
+        const group = await tryToGetTabGroup(groupId);
+        console.log('group');
+        console.log(group);
+        
+        if (group) continue;
+
+        let context = await getContext(contextId);
+        if (context) await closeContext(context);
+
+    }
+}
+
+async function tryToGetTabGroup(groupId) {
+    if (!groupId) return;
+
+    if (typeof groupId == 'string') groupId = parseInt(groupId);
+
+    let group;
+    try {
+        group = await chrome.tabGroups.get(groupId);
+    } catch (error) {
+
+    }
+    return group;
+}
+
+
+
+// Windows
+
+async function onWindowCreated(window) {
+    const windows = await chrome.windows.getAll();
+    const windowCount = windows.length;
+    if (windowCount == 1) await onBrowserOpen();
+}
 
 
 // Helpers
@@ -616,6 +732,44 @@ function getTabInfo(tab) {
     };
 
     return tabInfo;
+}
+
+
+async function addAutoUpdate(objectId, update) {
+    update.time = Date.now();
+
+    let key = autoUpdateKeyPrefix() + objectId;
+
+    let record = {};
+    record[key] = update;
+    await chrome.storage.local.set(record);
+
+}
+
+function autoUpdateKeyPrefix() {
+    return 'au-';
+}
+
+async function getAutoUpdates() {
+    const allData = (await chrome.storage.local.get(null));
+    const updates = filterObject(allData,
+        (key, val) => key.startsWith(autoUpdateKeyPrefix())
+    );
+    return updates;
+}
+
+async function isAutoUpdate(id, update) {
+
+    const key = autoUpdateKeyPrefix() + id;
+    const storedUpdate = await get(key);
+    if (storedUpdate) {
+        await chrome.storage.local.remove(key);
+        return storedUpdate;
+    }
+}
+
+async function removeAutoUpdate(updateId) {
+    await chrome.storage.local.remove(updateId);
 }
 
 

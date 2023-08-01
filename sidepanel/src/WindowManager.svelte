@@ -1,6 +1,6 @@
 <script>
     import { onMount } from "svelte";
-    import { get } from "./utilities/chrome.js";
+    import { get, getPermissions } from "./utilities/chrome.js";
     import { Views } from "./view.js";
 
     let settings;
@@ -36,18 +36,13 @@
         await getPermissions();
         await loadTabsGroupsAndWindows();
         addListeners();
-        setView();
+        //setView();
         //initializeFirebase();
         windowsLoaded = true;
-        console.log(tabs);
     };
 
-    let hasBookmarkPermission;
-    const getPermissions = async () => {
-        hasBookmarkPermission = await chrome.permissions.contains({
-            permissions: ["bookmarks"],
-        });
-    };
+    export let hasBookmarkPermission;
+
 
     const setView = async () => {
 
@@ -68,12 +63,16 @@
         // }
         windows = await chrome.windows.getAll();
         const groupsArray = await chrome.tabGroups.query({});
+
+        const openGroups = await get('openGroups');
+        console.log('open groups');
+        console.log(openGroups);
         let tempGroups = {};
         for (let group of groupsArray) {
             if (!tempGroups[group.id]) {
-                if (hasBookmarkPermission) {
-                    group.workspace = workspaces.find((w) => w.groupId == group.id);
-                }
+     
+                group.workspaceId = openGroups[group.id];
+                
                 tempGroups[group.id] = group;
             }
         }
@@ -297,6 +296,7 @@
 
     const onTabGroupRemoved = (groupId) => {
         delete groups[groupId];
+        lastUpdatedGroup = groupId;
     };
 
     const onBookmarkCreated = async () => {};

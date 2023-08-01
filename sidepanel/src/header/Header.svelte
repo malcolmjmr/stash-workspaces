@@ -9,11 +9,13 @@
     import Menu from "./Menu.svelte";
     import SearchBox from "../components/SearchBox.svelte";
 
+    export let user;
     export let view;
     export let windowCount;
     export let tabCount;
     export let showSearch;
     export let searchText;
+    
 
     let showMenu;
 
@@ -26,9 +28,7 @@
 
 <div class="header">
     <div class="container">
-        <SearchBox bind:searchText />
-
-
+        <SearchBox bind:searchText/>
             <div
                 class="action{view == Views.windows ? ' selected' : ''}"
                 on:mousedown={() => (view = Views.windows)}
@@ -56,7 +56,7 @@
         </div>
     </div>
     {#if showMenu}
-        <Menu bind:showMenu />
+        <Menu bind:showMenu bind:view/>
     {/if}
 </div>
 

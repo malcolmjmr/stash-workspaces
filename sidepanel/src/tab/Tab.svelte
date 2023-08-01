@@ -10,11 +10,17 @@
             - [ ] duplicate
 
     */
+
+    export let user;
     export let tab;
     export let group = null;
-    export let selectedTabs;
-    export let lastSelectionUpdate;
+    export let workspace = null;
+    export let selectedTabs = [];
+    export let lastSelectionUpdate = null;
     export let dragoverItem = null;
+    export let isOpen = true;
+    export let lastUpdatedTab;
+
 
     let el;
     let isSelected;
@@ -24,13 +30,31 @@
     }
 
     $: {
-        tab.active;
-        scrollToTabIfActive();
+        if (lastUpdatedTab && lastUpdatedTab.id == tab.id) {
+            updateFavIconUrl();
+            console.log(tab.title);
+            if (tab.id && tab.active) {
+                scrollToTabIfActive();
+            }
+        }
     }
 
+    let loaded;
+    let favIconUrl;
     onMount(() => {
-        scrollToTabIfActive();
+        init();
     });
+
+    let isBookmark;
+    const init = async () => {
+        updateFavIconUrl();
+        isBookmark = tab.parentId;
+        loaded = true;
+    };
+
+    const updateFavIconUrl = async () => {
+        favIconUrl = tab.favIconUrl && !tab.favIconUrl.includes('chrome:') ? tab.favIconUrl : await getFavIconUrl();
+    }
 
     const scrollToTabIfActive = () => {
         if (tab.active && el) {
@@ -58,7 +82,7 @@
     import Menu from "./Menu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
-    import { saveTabAsBookmark, tryToSaveBookmark } from "../utilities/chrome";
+    import { getFavIconUrl, saveTabAsBookmark, tryToSaveBookmark } from "../utilities/chrome";
 
     import starIcon from "../icons/star.png";
     import starIconFilled from "../icons/star-filled.png";
@@ -70,7 +94,7 @@
     let favIconInFocus;
 
     const onPinTab = () => {
-        chrome.tabs.update(tab.id, { pinned: true });
+        chrome.tabs.update(tab.id, { pinned: !tab.pinned });
     };
 
     const onMouseEnter = (e) => {
@@ -93,7 +117,7 @@
 
     let showMore;
     const onMenuOpen = (e) => {
-        showMore = true;
+        showMore = !showMore;
     };
 
     const onCloseTab = () => {
@@ -145,10 +169,21 @@
         }
     };
 
-    const onTitleClicked = () => {
-        chrome.tabs.update(tab.id, { active: true });
-        chrome.windows.update(tab.windowId, { focused: true });
-        console.log(tab);
+    const onTitleClicked = async () => {
+        if (isSelected) return;
+
+        if (isBookmark) {
+            const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
+            const newTab = await chrome.tabs.create({url: tab.url, index: activeTab.index + 1});
+            if (activeTab.groupId > -1) {
+                await chrome.tabs.group(({tabIds: newTab.id, groupId: activeTab.groupId}));
+            }
+        } else {
+            chrome.tabs.update(tab.id, { active: true });
+            chrome.windows.update(tab.windowId, { focused: true });
+        }
+       
+        
     };
 
     const reload = () => {
@@ -157,23 +192,25 @@
 
     let showBookmarkMenu;
     const toggleSave = async () => {
-        if (tab.bookmarks) {
-            if (tab.bookmarks.length > 1) {
-                showBookmarkMenu = true;
-            } else {
-                delete tab.bookmarks;
-                dispatch("tabBookmarkRemoved", tab);
-            }
-        } else {
-            let results = await tryToSaveBookmark(tab, group);
+        dispatch('toggleTabSaved', tab);
+        
+        // if (tab.bookmarks) {
+        //     if (tab.bookmarks.length > 1) {
+        //         showBookmarkMenu = true;
+        //     } else {
+        //         delete tab.bookmarks;
+        //         dispatch("tabBookmarkRemoved", tab);
+        //     }
+        // } else {
+        //     let results = await tryToSaveBookmark(tab, group);
 
-            if (results) {
-                dispatch("tabBookmarkAdded", results);
-            }
-        }
+        //     if (results) {
+        //         dispatch("tabBookmarkAdded", results);
+        //     }
+        // }
     };
 </script>
-
+{#if loaded}
 <div
     bind:this={el}
     class="tab{isSelected ? ' selected' : ''}{isInFocus
@@ -210,15 +247,8 @@
                     alt="Select"
                     on:mousedown={onSelectionUpdated}
                 />
-            {:else if tab.favIconUrl && tab.favIconUrl != ""}
-                <img class="favicon" src={tab.favIconUrl} alt={tab.title} />
             {:else}
-                <img
-                    class="favicon"
-                    src={webIcon}
-                    alt={tab.title}
-                    style="filter: invert(1);"
-                />
+                <img class="favicon" src={favIconUrl} alt={tab.title} />
             {/if}
             {#if group}
                 <div
@@ -230,7 +260,7 @@
         <div class="title" on:mousedown={onTitleClicked}>{tab.title}</div>
         <div class="spacer" on:mousedown={onTitleClicked} />
 
-        {#if !isSelected && !isDragged}
+        {#if !isSelected && !isDragged && isOpen}
             <div class="actions">
                 {#if tab.pinned}
                     <img
@@ -240,14 +270,18 @@
                         on:mouseup={onPinTab}
                     />
                 {/if}
-                {#if tab.bookmarks || (isInFocus && tab.groupId > -1)}
-                    <img
-                        class="icon"
-                        src={tab.bookmarks ? starIconFilled : starIcon}
-                        alt="Save"
-                        on:mousedown={toggleSave}
-                    />
-                {/if}
+                <!--
+                    {#if tab.bookmarks || (isInFocus && tab.groupId > -1)}
+                        <img
+                            class="icon"
+                            src={tab.bookmarks ? starIconFilled : starIcon}
+                            alt="Save"
+                            on:mousedown={toggleSave}
+                        />
+                    {/if}
+
+                -->
+                
                 {#if isInFocus && !isDragged}
                     <img
                         src={menuIcon}
@@ -267,23 +301,24 @@
     </div>
 
     {#if showMore}
-        <Menu {tab} />
+        <Menu {tab} {workspace} on:pinTab/>
     {:else if showBookmarkMenu}
         <BookmarkMenu {tab} />
     {/if}
 </div>
+{/if}
 
 <style>
     .tab {
-        padding: 4px 5px;
-        width: calc(100% - 10px);
+        padding: 2px 5px;
+        border-radius: 5px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        font-size: 14px;
+        font-size: 12px;
         color: white;
         user-select: none;
-        margin: 1px 0px;
+        margin: 1px 2px;
     }
 
     .main-container {

@@ -2,8 +2,13 @@
     import { slide } from "svelte/transition";
     import bugIcon from "../icons/bug.png";
     import featureIcon from "../icons/new-feature.png";
+    import { Views } from "../view";
+    import syncConnectedIcon from "../icons/sync.png";
+    import syncDisabledIcon from "../icons/sync-disabled.png";
 
     export let showMenu;
+    export let user;
+    export let view;
 
     /*
         Bug
@@ -27,7 +32,7 @@
         },
         {
             icon: bugIcon,
-            title: "Report bug",
+            title: "Report Bug",
             url: "https://docs.google.com/forms/d/e/1FAIpQLSd1mztaIj3bvp0HvqMIbw1G0d_OXmbLYVRMqD8bsv-07WNt3g/viewform?usp=sf_link",
         },
     ];
@@ -52,6 +57,14 @@
             <span>{menuItem.title}</span>
         </div>
     {/each}
+        <div class="menu-item" on:mousedown={() => view = Views.signin }>
+            <img
+                class="icon"
+                src={user ? syncConnectedIcon : syncDisabledIcon }
+                alt=""
+            />
+            <span>{user ? 'Synced' : ' Sync Disabled'}</span>
+        </div>
 </div>
 
 <style>

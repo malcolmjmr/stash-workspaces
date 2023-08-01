@@ -35,7 +35,13 @@
         const activeTab = (
             await chrome.tabs.query({ active: true, currentWindow: true })
         )[0];
-        return await chrome.tabs.create({ index: activeTab.index + 1 });
+        const newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
+
+        if (activeTab.groupId > -1) {
+            await chrome.tabs.group({tabIds: newTab.id, groupId: activeTab.groupId });
+        }
+        
+        return  
     };
 
     const selectAll = async () => {

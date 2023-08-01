@@ -1,4 +1,9 @@
 
+export const getPermissions = async () => {
+    return await chrome.permissions.contains({
+        permissions: ["bookmarks"],
+    });
+};
 
 export const get = async (key) => {
     const data = (await chrome.storage.local.get([key])) ?? {};
@@ -16,14 +21,18 @@ export const getFavIconUrl = async (u) => {
     return url.toString();
 };
 
+export const requestBookmarkPermssion = async () => {
+    const granted = await chrome.permissions.request({
+        permissions: ['bookmarks']
+    });
+
+}
+
 export const tryToSaveBookmark = async (tab, group) => {
     try {
         return await saveTabAsBookmark(tab, group);
     } catch (e) {
-        const granted = await chrome.permissions.request({
-            permissions: ['bookmarks']
-        });
-
+        await requestBookmarkPermssion();
         if (granted) {
             return await saveTabAsBookmark(tab, group);
         }
@@ -54,7 +63,7 @@ export const saveTabAsBookmark = async (tab, group) => {
 
 // Contexts
 
-async function getContext(contextId) {
+export async function getContext(contextId) {
     if (!contextId) return null;
     else
         return await get(getContextKey(contextId));
@@ -71,7 +80,7 @@ async function getContextIdFromGroupId(groupId) {
 }
 
 
-async function getContextFromGroupId(groupId) {
+export async function getContextFromGroupId(groupId) {
     const contextId = await getContextIdFromGroupId(groupId);
     return contextId ? await getContext(contextId) : null;
 }
@@ -81,7 +90,7 @@ async function getContextFromTab(tab) {
     return null;
 }
 
-async function closeContext(context) {
+export async function closeContext(context) {
 
     if (!context) return;
 
@@ -98,7 +107,7 @@ async function closeContext(context) {
 
 }
 
-async function saveContext(context) {
+export async function saveContext(context) {
 
     context.updated = Date.now();
 
@@ -116,6 +125,8 @@ async function removeOpenContext(context) {
     await set({ openGroups: openGroups });
 }
 
+
+
 export async function getContexts(filter) {
     let results = [];
     const contextKeys = await get('contextKeys') ?? [];
@@ -129,6 +140,34 @@ export async function getContexts(filter) {
 
     }
     return results;
+}
+
+export async function removeContext(context) {
+
+    await removeOpenContext(context);
+
+    const contextKey = getContextKey(context.id);
+    let contextKeys = await get('contextKeys');
+
+    const index = contextKeys.indexOf(contextKey);
+    if (index > -1) {
+        contextKeys.splice(index, 1);
+        await set({ contextKeys });
+    }
+
+    await chrome.storage.local.remove(contextKey);
+
+    // const bookmarkFolder = await tryToGetBookmark(context.folderId);
+    // if (bookmarkFolder) {
+    //     const extensionFolder = await getExtensionFolder();
+    //     if (extensionFolder.id == bookmarkFolder.parentId) {
+    //         await chrome.bookmarks.removeTree(context.folderId);
+    //     }
+    // }
+
+    const collectionKey = getContextDataKey(context.id);
+    await chrome.storage.local.remove(collectionKey);
+
 }
 
 export async function removeContexts(contexts) {

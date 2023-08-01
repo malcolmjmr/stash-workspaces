@@ -1,20 +1,20 @@
 <script>
+
+    /*
+
+        Todo: 
+        - 
+    */
     import { createEventDispatcher, onMount } from "svelte";
-    import collapseIcon from "../icons/collapse.png";
-    import moreIcon from "../icons/more-horiz.png";
-    import shareIcon from "../icons/share.png";
+    import moreIcon from "../icons/more-vert.png";
     import backArrowIcon from "../icons/back.png"
-    import tabsIcon from "../icons/tab-group.png";
-    import bookmarkIcon from "../icons/folder.png";
-    import queueIcon from "../icons/inbox.png";
-    import clipboardIcon from "../icons/paste.png";
-    import publicIcon from "../icons/public.png";
-    import WorkspaceTabs from "./WorkspaceTabs.svelte";
-    import WorkspaceBookmarks from "./WorkspaceBookmarks.svelte";
-    import WorkspaceReadingList from "./WorkspaceReadingList.svelte";
-    import WorkspaceClipboard from "./WorkspaceClipboard.svelte";
+    import searchIcon from "../icons/search.png";
+    import closeIcon from "../icons/close.png";
+    import openIcon from "../icons/open-in-new-window.png";
     import { colorMap } from "../utilities/colors";
     import { StorePaths } from "../utilities/storepaths";
+    import { getContext, get} from "../utilities/chrome";
+
 
     import {
       getFirestore,
@@ -31,32 +31,28 @@
         onAuthStateChanged,
         signInWithEmailAndPassword,
     } from "firebase/auth";
+    import OpenTabs from "./OpenTabs.svelte";
+    import Bookmarks from "./Bookmarks.svelte";
+    import Queue from "./Queue.svelte";
 
     
 
     let dispatch = createEventDispatcher();
 
-    export let tabs;
-    export let group;
-    export let lastUpdate;
-    export let activeTab;
-    export let selectedTabs;
-    export let lastSelectionUpdate;
+    export let tabs = null;
+    export let group = null;
+    export let lastUpdate = null;
+    export let activeTab = null;
+    export let lastSelectionUpdate = null;
+    export let lastUpdatedTab;
     export let user;
     export let db;
     
 
-    export let workspace;
-    
-    const Views = {
-        tabs: 'tabs',
-        bookmarks: 'bookmarks',
-        readingList: 'readingList',
-        clipboard: 'clipboard',
-        related: 'related',
-    };
+    export let workspace = null;
 
-    let view = Views.tabs;
+
+    let selectedTabs = []
     let bookmarks = [];
     let queue = [];
 
@@ -65,32 +61,77 @@
         init();
     });
 
+    let tabsExpanded = true;
+    let bookmarksExpanded = false;
+    let queueExpanded = false;
+
+    let showSearch;
+
     
+
+    let isOpen;
     const init = async () => {
-    
+        console.log('rebuilding workspace page');
+        if (!group) return;
         if (workspace) {
             await loadResources();
-        } else if (group?.workspace) {
-            workspace = group.workspace;
+        } else if (group?.workspaceId) {
+            await loadWorkspace();
         } else {
+
+            // should check openGroups and add the workspace if it doesn't exist
             workspace = {
                 title: group.title,
-            }
+                color: group.color
+            };
+            isOpen = true;
         }
+
+        updateTabData();
         loaded = true;
+    }
+
+    $: {
+        if (group?.workspaceId) {
+            init();
+        }
+    }
+
+    const loadWorkspace = async () => {
+        workspace = await getContext(group.workspaceId);
+        console.log('workspace:');
+        console.log(workspace);
+        await loadResources();
+        isOpen = true;
     }
 
     let resources = [];
     const loadResources = async () => {
-        const path = StorePaths.userResources(user.id);
-        const q = query(
-            collection(db, path),
-            where("contexts", "array-contains", workspace.id)
-        );
-        resources = (await getDocs(q)).docs.map((d) => d.data());
-        bookmarks = resources.filter((b) => b.url && !b.title.startsWith('* '));
-        queue = resources.filter((b) => b.url && b.title.startsWith('* '));
+        if (user) {
+            console.log('fetching resources from the cloud');
+            const path = StorePaths.userResources(user.id);
+            const q = query(
+                collection(db, path),
+                where("contexts", "array-contains", workspace.id)
+            );
+            resources = (await getDocs(q)).docs.map((d) => d.data());
+            bookmarks = resources.filter((b) => b.url && !b.title.startsWith('* '));
+            queue = resources.filter((b) => b.url && b.title.startsWith('* '));
+            console.log('resources:');
+            console.log(resources);
+
+        } else {
+            
+        }
+        if (!tabs) tabs = workspace.tabs;
     };
+
+    const updateTabData = () => {
+        for (let i = 0; i < tabs.length; i++) {
+            tabs[i].saved = resources.find((r) => r.url == tabs[i].url);
+        }
+    }
+
 
     let showMore;
     const onMoreClicked = () => {
@@ -98,15 +139,21 @@
     };
 
     const onCloseClicked = () => {
-        chrome.tabGroups.remove(group.id);
+        dispatch('close');
+        //chrome.tabGroups.remove(group.id);
     };
 
+    const onOpenClicked = () => {
+        dispatch('open');
+    }
+
     const updateTitle = () => {
-        chrome.tabGroups.update(group.id, {title: group.title});
+        dispatch('workspaceUpdated', workspace);
+        //chrome.tabGroups.update(group.id, {title: group.title});
     };
 
     const onBackButtonClicked = () => {
-        dispatch('showWindowView');
+        dispatch('goBack');
     };
 
     let relatedWorkspaces = [];
@@ -116,86 +163,101 @@
         const tab = await chrome.tabs.create({url: bookmark.url});
         await chrome.tabs.group({tabIds: tab.id, groupId: group.id});
     };
+
+    /*
+        Todo
+        - Pull in bookmark folder if one exists
+        - Let user save tab
+        - Let user stash tab
+        - Let user select multiple tabs
+            - Update header actions when multiple tabs selected (create or save to sub folder, pin)
+
+    */
+
+    const onToggleTabSaved = async ({detail}) => {
+        const tab = detail;
+        let folder = await tryToGetBookmarkFolder(workspace.folderId);
+        if (tab.savedResource) {
+            if (folder) {
+
+            }
+            if (user?.cloudStorage) {
+                
+            }
+        } else {
+            if (!folder) {
+
+            } 
+
+            await chrome.tabs
+            if (user?.cloudStorage) {
+
+            }
+        }
+    };
+
     
 </script>
 
 {#if loaded}
     <div class="workspace">
-        {#if selectedTabs.length == 0}
-        <div class="header" style='background-color: {colorMap[group.color]}' >
+        <div class="header" style='color: {colorMap[workspace.color]}' >
             <div class="main">
                 <img src={backArrowIcon} class="action icon" alt="back" on:mousedown={onBackButtonClicked}>
-                <div class="title">{group.title} </div>
+                <div class="title">{workspace?.title} </div>
 
                 <div class="actions">
-                    <img src={shareIcon} class="action icon" alt="" on:mousedown={onCloseClicked}/>
+                    <img src={searchIcon} class="action icon" alt="" on:mousedown={() => showSearch = true}/>
                     <img src={moreIcon} class="action icon" alt="" on:mousedown={onMoreClicked} />
                 </div>
             </div>
-            {#if showMore}
+        </div>
+        <OpenTabs 
+            {workspace} 
+            {tabs} 
+            {lastUpdatedTab} 
+            {group} 
+            bind:expanded={tabsExpanded} 
+            bind:selectedTabs 
+            on:saveSelectedTabs
+            on:saveSelectedTabsToFolder 
+            on:stashSelectedTabs 
+            on:toggleTabSaved={onToggleTabSaved}
+        />
 
-            {/if}
-        </div>
-        {/if}
-        <div class="page-selection" style="border-color:{colorMap[group.color]}">
-            <div class="page-selector{view == Views.tabs ? ' selected' : ''}" on:mousedown={() => view = Views.tabs}>
-                <img src={tabsIcon} alt='Tabs'/>
-                
-            </div>
-            <div class="page-selector{view == Views.bookmarks ? ' selected' : ''}" on:mousedown={() => view = Views.bookmarks}>
-                <img src={bookmarkIcon} alt="Bookmarks"/>
-                
-            </div>
-            <div class="page-selector{view == Views.readingList ? ' selected' : ''}" on:mousedown={() => view = Views.readingList}>
-                <img src={queueIcon} alt="Queue" />
-                
-            </div>
-            <div class="page-selector{view == Views.clipboard ? ' selected' : ''}" on:mousedown={() => view = Views.clipboard} >
-                <img src={clipboardIcon} alt="Clipboard" />
-            </div>
-            {#if true}
-                <div class="page-selector">
-                    <img src={publicIcon} alt="Related Spaces" />
-                    
-                </div>
-            {/if}
-        </div>
-        <div class="container">
-            {#if view == Views.tabs}
-                <WorkspaceTabs {tabs} {group} {lastUpdate} {lastSelectionUpdate} bind:selectedTabs on:updateSelection/>
-            {:else if view == Views.bookmarks}
-                <WorkspaceBookmarks {bookmarks} on:bookmarkClicked={onBookmarkClicked}/>
-            {:else if view == Views.readingList}
-                <WorkspaceReadingList {queue} on:bookmarkClicked={onBookmarkClicked}/>
-            {:else if view == Views.clipboard}
-                <WorkspaceClipboard />
-            {/if}
-        </div>
+        <Bookmarks {workspace} {bookmarks} bind:expanded={bookmarksExpanded}/>
 
+        <Queue {workspace} {queue} bind:expanded={queueExpanded}/>
     </div>
-
+    
 {/if}
 
 <style>
     .workspace {
+        position: fixed;
         display: flex;
         flex-direction: column;
         align-items: center;
         height: 100%;
+        width: 100%;
+        top: 0px;
+        left: 0px;
+        background-color: #333333;
+        z-index: 999999;
     }
 
     .header {
         display: flex;
         flex-direction: column;
-        
-        width: calc(100% - 20px);
+        width: calc(100% - 10px);
         color: black;
         font-size: 30px;
-        padding: 0px 5px;
-        margin: 10px 5px 5px 5px;
-       
-        border-radius: 7px;
+        padding: 5px;
+        border-bottom: 1px solid #555555;
+        white-space: nowrap;
+        text-overflow: ellipsis;
     }
+
 
     .header .main {
         display: flex;
@@ -204,8 +266,6 @@
         width: 100%;
         justify-content: space-between;
     }
-
-
 
     .header .title {
         font-size: 20px;
@@ -230,6 +290,10 @@
         display: flex;
         flex-direction: row;
         align-items: center;
+    }
+
+    .action.icon {
+        filter: invert(1);
     }
 
     .page-selection {
@@ -273,8 +337,6 @@
         display: flex;
         flex-grow: 1;
         flex-direction: column;
-        width: 100%;
-        overflow-y: scroll;
     }
 
 

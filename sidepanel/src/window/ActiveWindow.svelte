@@ -1,8 +1,5 @@
 <script>
-    /*
-    Bug:
-    - When tab removed from active window either in a group or above a group the group label is in the wrong spot 
-*/
+
     import { createEventDispatcher, onDestroy, onMount } from "svelte";
 
     import Header from "./header/Header.svelte";
@@ -15,6 +12,8 @@
 
     let dispatch = createEventDispatcher();
 
+    export let user;
+    export let db;
     export let tabs;
     export let groups;
     export let lastUpdatedTab;
@@ -104,10 +103,15 @@
                 <GroupLabel
                     group={groups[tab.groupId]}
                     {lastGroupUpdate}
+                    {lastSelectionUpdate}
+                    {lastUpdate}
+                    {lastUpdatedTab}
+                    {user}
+                    {db}
                     isCollapsed={collapsedGroups.includes(tab.groupId)}
                     tabs={tabs.filter((t) => t.groupId == tab.groupId)}
                     on:groupSaved
-                    on:openGroupInFullScreen
+                    on:showWorkspaceView
                 />
             {/if}
             {#if !groups[tab.groupId]?.collapsed}
@@ -115,6 +119,7 @@
                     {tab}
                     group={groups[tab.groupId]}
                     {selectedTabs}
+                    {lastUpdatedTab}
                     {lastSelectionUpdate}
                     {dragoverItem}
                     on:updateSelection
@@ -123,6 +128,7 @@
             {/if}
         {/each}
     {/key}
+    
 {/if}
 
 <style>

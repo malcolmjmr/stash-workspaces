@@ -4,6 +4,7 @@
 
     export let searchText = "";
     export let backgroundColor = null;
+    export let placeholderText = 'Search';
 
     const onClearTextClicked = () => {
         searchText = "";
@@ -15,7 +16,7 @@
     style={backgroundColor ? "background-color: " + backgroundColor : ""}
 >
     <img src={searchIcon} alt="Search" />
-    <input type="text" bind:value={searchText} placeholder="Search Tabs" />
+    <input type="text" bind:value={searchText} placeholder={placeholderText} />
     {#if searchText.length > 0}
         <img
             class="clear button"

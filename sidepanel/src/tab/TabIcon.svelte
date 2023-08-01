@@ -4,6 +4,8 @@
     import webIcon from "../icons/web.png";
     import { createEventDispatcher } from "svelte";
     import { colorMap } from "../utilities/colors";
+    import { getFavIconUrl } from "../utilities/chrome";
+    import { onMount } from "svelte";
 
     export let tab;
     export let group;
@@ -14,6 +16,17 @@
     let dispatch = createEventDispatcher();
 
     let isInFocus;
+
+    let loaded;
+    let favIconUrl;
+    onMount(() => {
+        init();
+    });
+
+    const init = async () => {
+        favIconUrl = await getFavIconUrl(tab.url);
+        loaded = true;
+    };
 
     const onMouseEnter = () => {
         if (!isClickable) return;
@@ -50,6 +63,7 @@
     };
 </script>
 
+{#if loaded}
 <div
     class="tab-icon{isInFocus ? ' focus' : ''}{tab.active ? ' active' : ''}"
     on:mouseenter={onMouseEnter}
@@ -72,6 +86,7 @@
         />
     {/if}
 </div>
+{/if}
 
 <style>
     .tab-icon {

@@ -11,12 +11,18 @@
     import fullScreenIcon from "../icons/open-in-full.png";
     import starIcon from "../icons/star.png";
     import starFilledIcon from "../icons/star-filled.png";
+    import Workspace from "../workspace/Workspace.svelte";
 
 
     export let group;
     export let isCollapsed = null;
     export let tabs = [];
     export let lastGroupUpdate = null;
+    export let user;
+    export let db;
+    export let lastUpdate;
+    export let lastUpdatedTab;
+    export let lastSelectionUpdate;
 
     let dispatch = createEventDispatcher();
     let isInfocus;
@@ -37,6 +43,7 @@
 
     const onMouseEnter = () => {
         isInfocus = true;
+        console.log(group);
     };
 
     const onMouseLeave = () => {
@@ -88,20 +95,16 @@
 
     const onEditTitleClicked = () => {
         isEditingTitle = true;
-
         //showMore = false;
     };
 
-    let newTitle = "";
+    let hasInputedText;
     const onTitleInputBlur = (e) => {
-        if (newTitle != "") {
-            setTitle();
-        }
-        newTitle = "";
+        if (hasInputedText) setTitle();
     };
 
     const setTitle = () => {
-        chrome.tabGroups.update(group.id, { title: newTitle });
+        chrome.tabGroups.update(group.id, { title: group.title });
         isEditingTitle = false;
     };
 
@@ -109,6 +112,7 @@
         if (e.key == "Enter") {
             setTitle();
         }
+        if (!hasInputedText) hasInputedText = true;
     };
 
     const ungroupTabs = async () => {
@@ -186,11 +190,23 @@
         isDragged = false;
     };
 
+    let showWorkspace;
     const openWorkspace = () => {
-        dispatch('openGroupInFullScreen', group);
+        //showWorkspace = true;
+        dispatch('showWorkspaceView', group);
+    };
+
+    const onColorSelected = ({detail}) => {
+        const color = detail;
+        if (group.id) {
+            chrome.tabGroups.update(group.id, { color });
+        } else {
+            group.color = color;
+        }
     };
 
 </script>
+
 
 <div
     class="group-label{isDraggedOver ? ' dragged-over' : ''}"
@@ -215,7 +231,7 @@
                 type="text"
                 class="title-input"
                 placeholder="Name this group"
-                bind:value={newTitle}
+                bind:value={group.title}
                 on:blur={onTitleInputBlur}
                 on:keydown={onInput}
                 autofocus="true"
@@ -232,9 +248,6 @@
                 {/if}
                 
             </div>
-            {#if group.workspace}
-                <img src={starFilledIcon} alt="Saved" class="icon"/>
-            {/if}
         {/if}
 
         
@@ -244,7 +257,6 @@
                 {#if group.workspace}
                     <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openWorkspace}/>
                 {:else}
-                    <img src={starIcon} alt="Saved" class="icon" on:mousedown={saveGroup}/>
                     <img
                         src={group.collapsed ? expandIcon : collapseIcon}
                         alt="Toggle Collapsed"
@@ -255,7 +267,7 @@
                 <img
                     src={moreIcon}
                     alt="More"
-                    on:mousedown={() => (showMore = true)}
+                    on:mousedown={() => (showMore = !showMore)}
                 />
 
                 <img src={closeIcon} alt="close" on:mouseup={onCloseClicked} />
@@ -269,7 +281,7 @@
             in:slide
             out:slide
         >
-            <GroupColors {group} />
+            <GroupColors {group} on:colorSelected={onColorSelected}/>
             <div class="action" on:mousedown={onEditTitleClicked}>
                 Edit title
             </div>
@@ -277,9 +289,11 @@
             <div class="action" on:mousedown={moveGroup}>
                 Move Group to New Window
             </div>
+            <!--
             <div class="action" on:mousedown={openWorkspace}>Open Workspace</div>
             <div class="divider"/>
             <div class="action" on:mousedown={saveGroup}>Save Group</div>
+            -->
             <div class="divider"/>
             <div class="action" on:mousedown={ungroupTabs}>Ungroup Tabs</div>
             <div class="action" on:mousedown={closeGroup}>Close Group</div>
@@ -307,7 +321,7 @@
         flex-direction: row;
         align-items: center;
         border-radius: 5px;
-        margin: 6px;
+        margin: 6px 6px 0px 6px;
         width: calc(100% - 22px);
     }
 

@@ -1,29 +1,7 @@
 <script>
-    /*
-        Todo: 
-        - Add More section to window view
-            - [ ] Feedback
-            - [ ] Settings? 
-                - [ ] Only show window view
-
-        - Vertical tab view footer
-            - [ ] group all tabs (when no group exists)
-            - [ ] create new tab
-
-        Bugs:
-        - [ ] Refreshing tabs when active tab selected
-       
-
-
-        App Tree
-            EventWidget (chrome listeners)
-            AuthWidget (firebase)
-            ViewWidget ()
-        
-    */
 
     import { onMount } from "svelte";
-    import { get } from "./utilities/chrome.js";
+    import { get, getContexts, getPermissions } from "./utilities/chrome.js";
     import { Views } from "./view.js";
     import SidePanel from "./SidePanel.svelte";
     import Auth from "./Auth.svelte";
@@ -50,12 +28,14 @@
     let lastUpdatedTab;
     let lastUpdatedWindow;
     let lastUpdatedGroup;
+    let lastWorkspaceCreated;
 
     let currentWindowId;
-    let view; 
+    let view = Views.windows; 
 
     let authLoaded;
     let windowsLoaded;
+    let workspacesLoaded;
 
     
     const saveGroup = () => {
@@ -63,31 +43,66 @@
     }
     
     onMount(() => {
-        console.log('hey');
+        init();
+        
     });
 
+
+    const setUser = ({ detail }) => {
+        user = detail;
+    };
+
+    let loaded;
+    let hasBookmarkPermission;
+    const init = async () => {
+        hasBookmarkPermission = await getPermissions();
+        loaded = true;
+    };
+
+    
+
+   
 
 
 
 </script>
-
-<Auth bind:user bind:userRef bind:db bind:fbApp bind:authLoaded/>
+{#if loaded}
+<Auth 
+    bind:user
+    bind:userRef 
+    bind:db 
+    bind:fbApp 
+    bind:authLoaded 
+    bind:view
+/>
 <WindowManager 
-        bind:lastRefresh
-        bind:windowsLoaded
-        bind:activeTab
-        bind:groups
-        bind:windows
-        bind:tabs
-        bind:lastUpdate
-        bind:lastUpdatedTab
-        bind:lastUpdatedGroup
-        bind:lastUpdatedWindow
-        bind:currentWindowId
-    />
-<WorkspaceManager bind:user bind:workspaces/>
+    bind:lastRefresh
+    bind:windowsLoaded
+    bind:activeTab
+    bind:groups
+    bind:windows
+    bind:tabs
+    bind:lastUpdate
+    bind:lastUpdatedTab
+    bind:lastUpdatedGroup
+    bind:lastUpdatedWindow
+    bind:currentWindowId
+    bind:view
+    bind:hasBookmarkPermission
+/>
+
 {#if authLoaded && windowsLoaded}
-    
+    <WorkspaceManager 
+        {db} 
+        {userRef} 
+        {authLoaded} 
+        {activeTab}
+        {lastUpdatedGroup}
+        bind:user 
+        bind:workspaces 
+        bind:groups 
+        bind:workspacesLoaded
+    />
     {#if view == Views.signin}
         <SignIn {fbApp}/>
     {:else}
@@ -95,7 +110,8 @@
             bind:view
             {db}
             {user}
-            {workspaces}
+            {workspacesLoaded}
+            bind:workspaces
             {activeTab}
             {groups}
             {windows}
@@ -105,12 +121,14 @@
             {lastUpdatedGroup}
             {lastUpdatedWindow}
             {currentWindowId}
+            bind:hasBookmarkPermission
             on:tabMoved={() => lastRefresh = Date.now()}
             on:mergedWindows={() => lastRefresh = Date.now()}
             on:foundDuplicates={() => lastRefresh = Date.now()}
         />
     {/if}
 
+{/if}
 {/if}
 
 <style>

@@ -1,9 +1,23 @@
 <script>
+  import { createEventDispatcher } from "svelte";
     import Tab from "../tab/Tab.svelte";
     export let searchText;
     export let searchResults;
     export let selectedTabs = [];
     export let lastSelectionUpdate = null;
+    export let hasBookmarkPermission;
+    //export let userSettings?
+
+    let dispatch = createEventDispatcher();
+    const getPermissionToSearchBookmarks = async () => {
+        const granted = await chrome.permissions.request({
+            permissions: ['bookmarks']
+        });
+
+        if (granted) {
+            dispatch('searchBookmarks');
+        }
+    }
 </script>
 
 <div class="search-results">
@@ -19,6 +33,11 @@
     {:else}
         <div class="no-results-container">
             <span>No results could be found for "{searchText}"</span>
+            {#if !hasBookmarkPermission}
+                <div class="bookmarks-permission" on:mousedown={getPermissionToSearchBookmarks}>
+                    Search Bookmarks
+                </div>
+            {/if}
         </div>
     {/if}
 </div>
@@ -37,4 +56,18 @@
         align-items: center;
         justify-content: center;
     }
+
+    .bookmarks-permission {
+        color: rgb(136, 136, 236);
+        opacity: 0.8;
+        border-radius: 7px;
+        padding: 5px;
+        margin: 10px;
+    }
+
+    .bookmarks-permission:hover {
+        opacity: 1;
+        cursor: pointer;
+    }
+
 </style>
