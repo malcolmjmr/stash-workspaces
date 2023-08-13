@@ -275,7 +275,7 @@
                     />
                 {/if}
 
-                {#if user.isPremium}
+                {#if user.canBookmark}
                     <img
                         class="icon"
                         src={tab.bookmarks ? starIconFilled : starIcon}
