@@ -2,7 +2,7 @@
     import searchIcon from "../icons/search.png";
     import windowsIcon from "../icons/windows.png";
     import tabsIcon from "../icons/vertical-tabs.png";
-    import bookmarksIcon from "../icons/bookmarks.png";
+    import bookmarksIcon from "../icons/folders.png";
     //import workspaceIcon from "../icons/star.png";
     import moreIcon from "../icons/more-vert.png";
     import { Views } from "../view";
@@ -93,8 +93,8 @@
 
     .action > img {
         filter: invert(1);
-        height: 20px;
-        width: 20px;
+        height: 22px;
+        width: 22px;
     }
 
     .action.more {

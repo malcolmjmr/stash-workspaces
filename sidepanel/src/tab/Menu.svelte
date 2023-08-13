@@ -13,9 +13,10 @@
 
     let dispatch = createEventDispatcher();
 
+    export let user;
     export let tab;
     export let workspace;
-
+   
     const moveTabToNewWindow = async () => {
         await chrome.windows.create({ tabId: tab.id, focused: true });
     };

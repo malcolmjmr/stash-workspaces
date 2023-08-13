@@ -226,6 +226,7 @@
         align-items: center;
         color: black;
         margin: 5px;
+        font-weight: 300;
     }
 
     .container {

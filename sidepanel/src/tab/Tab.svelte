@@ -11,6 +11,24 @@
 
     */
 
+    import pinnedIcon from "../icons/pin-filled.png";
+    import closeIcon from "../icons/close.png";
+    import menuIcon from "../icons/more-vert.png";
+    import emptyBoxIcon from "../icons/empty-box.png";
+    import checkedBoxIcon from "../icons/checked-box.png";
+    import webIcon from "../icons/web.png";
+    import { createEventDispatcher, onMount } from "svelte";
+    import Menu from "./Menu.svelte";
+    import { colorMap } from "../utilities/colors";
+    import { slide } from "svelte/transition";
+    import { getFavIconUrl, saveTabAsBookmark, tryToSaveBookmark } from "../utilities/chrome";
+
+    import starIcon from "../icons/star.png";
+    import starIconFilled from "../icons/star-filled.png";
+    import BookmarkMenu from "./BookmarkMenu.svelte";
+
+
+    export let db;
     export let user;
     export let tab;
     export let group = null;
@@ -72,21 +90,6 @@
         }
     };
 
-    import pinnedIcon from "../icons/pin-filled.png";
-    import closeIcon from "../icons/close.png";
-    import menuIcon from "../icons/more-vert.png";
-    import emptyBoxIcon from "../icons/empty-box.png";
-    import checkedBoxIcon from "../icons/checked-box.png";
-    import webIcon from "../icons/web.png";
-    import { createEventDispatcher, onMount } from "svelte";
-    import Menu from "./Menu.svelte";
-    import { colorMap } from "../utilities/colors";
-    import { slide } from "svelte/transition";
-    import { getFavIconUrl, saveTabAsBookmark, tryToSaveBookmark } from "../utilities/chrome";
-
-    import starIcon from "../icons/star.png";
-    import starIconFilled from "../icons/star-filled.png";
-    import BookmarkMenu from "./BookmarkMenu.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -192,7 +195,8 @@
 
     let showBookmarkMenu;
     const toggleSave = async () => {
-        dispatch('toggleTabSaved', tab);
+        console.log(group);
+        //dispatch('toggleTabSaved', tab);
         
         // if (tab.bookmarks) {
         //     if (tab.bookmarks.length > 1) {
@@ -270,17 +274,16 @@
                         on:mouseup={onPinTab}
                     />
                 {/if}
-                <!--
-                    {#if tab.bookmarks || (isInFocus && tab.groupId > -1)}
-                        <img
-                            class="icon"
-                            src={tab.bookmarks ? starIconFilled : starIcon}
-                            alt="Save"
-                            on:mousedown={toggleSave}
-                        />
-                    {/if}
 
-                -->
+                {#if user.isPremium}
+                    <img
+                        class="icon"
+                        src={tab.bookmarks ? starIconFilled : starIcon}
+                        alt="Save"
+                        on:mousedown={toggleSave}
+                    />
+                {/if}  
+
                 
                 {#if isInFocus && !isDragged}
                     <img
@@ -301,7 +304,7 @@
     </div>
 
     {#if showMore}
-        <Menu {tab} {workspace} on:pinTab/>
+        <Menu {user} {tab} {workspace} on:pinTab/>
     {:else if showBookmarkMenu}
         <BookmarkMenu {tab} />
     {/if}
@@ -310,15 +313,14 @@
 
 <style>
     .tab {
-        padding: 2px;
-        border-radius: 5px;
+        padding: 2px 5px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        font-size: 12px;
+        font-size: 14px;
+        font-weight: 300;
         color: white;
         user-select: none;
-        margin: 2px 5px;
     }
 
     .main-container {
@@ -349,14 +351,12 @@
     .favicon-container {
         position: relative;
         min-width: 20px;
-
         display: flex;
     }
 
     .favicon {
         height: 20px;
         width: 20px;
-        margin-left: 3px;
     }
 
     .group-indicator {

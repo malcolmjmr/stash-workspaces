@@ -153,8 +153,8 @@
 
     .action img {
         filter: invert(1);
-        height: 20px;
-        width: 20px;
+        height: 22px;
+        width: 22px;
     }
 
     .action {

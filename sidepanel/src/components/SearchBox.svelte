@@ -55,7 +55,25 @@
         width: 100%;
         height: 100%;
         font-size: 16px;
+        font-weight: 100;
+        letter-spacing: 1px;
         color: white;
+    }
+
+    input::placeholder {
+        color: white;
+        font-weight: 100;
+        font-size: 16px;
+        opacity: 0.5;
+        letter-spacing: 1px;
+    }
+
+    ::-webkit-input-placeholder { /* Chrome/Opera/Safari */
+        color: white;
+        font-weight: 100;
+        font-size: 16px;
+        opacity: 0.5;
+        letter-spacing: 1px;
     }
 
     .button:hover {

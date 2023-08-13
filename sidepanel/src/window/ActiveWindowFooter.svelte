@@ -119,6 +119,7 @@
         justify-content: space-around;
         width: 100%;
         font-size: 14px;
+        opacity: 0.8;
     }
 
     .counts .container {
@@ -129,8 +130,8 @@
 
     .action img {
         filter: invert(1);
-        height: 20px;
-        width: 20px;
+        height: 22px;
+        width: 22px;
     }
 
     .action {

@@ -57,6 +57,10 @@
         justify-content: center;
     }
 
+    .no-results-container span {
+        text-align: center;
+    }
+
     .bookmarks-permission {
         color: rgb(136, 136, 236);
         opacity: 0.8;
@@ -69,5 +73,7 @@
         opacity: 1;
         cursor: pointer;
     }
+
+    
 
 </style>

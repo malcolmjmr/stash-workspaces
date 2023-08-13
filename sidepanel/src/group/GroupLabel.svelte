@@ -217,7 +217,7 @@
     on:dragover={onDragOver}
     on:drop={onDrop}
     on:dragend={onDragEnd}
-    draggable="true"
+    draggable={isEditingTitle ? 'false' : 'true'}
     bind:this={el}
 >
     <div
@@ -289,11 +289,11 @@
             <div class="action" on:mousedown={moveGroup}>
                 Move Group to New Window
             </div>
-            <!--
+            {#if user}
             <div class="action" on:mousedown={openWorkspace}>Open Workspace</div>
             <div class="divider"/>
             <div class="action" on:mousedown={saveGroup}>Save Group</div>
-            -->
+            {/if}
             <div class="divider"/>
             <div class="action" on:mousedown={ungroupTabs}>Ungroup Tabs</div>
             <div class="action" on:mousedown={closeGroup}>Close Group</div>
@@ -308,7 +308,8 @@
         flex-direction: column;
         justify-content: center;
         user-select: none;
-        margin: 10px 5px 0px 5px;
+        margin: 5px 5px 0px 5px;
+        font-weight: 300;
     }
 
     .dragged-over {
@@ -409,6 +410,6 @@
         height: 1px;
         width: 100%;
         background-color: #999999;
-        margin: 5px 0px;
+        
     }
 </style>

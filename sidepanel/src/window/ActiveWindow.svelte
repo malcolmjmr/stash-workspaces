@@ -28,6 +28,7 @@
     let loaded;
     onMount(() => {
         getTabGroupStarts();
+        
         loaded = true;
     });
 
@@ -117,7 +118,9 @@
             {/if}
             {#if !groups[tab.groupId]?.collapsed}
                 <Tab
+                    {db}
                     {tab}
+                    {user}
                     group={groups[tab.groupId]}
                     {selectedTabs}
                     {lastUpdatedTab}

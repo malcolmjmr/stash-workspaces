@@ -141,6 +141,7 @@
         font-family: system-ui, sans-serif;
         font-weight: 300;
         overflow: hidden;
-        letter-spacing: 0.8px;
+        letter-spacing: 1px;
+        font-weight: 200;
     }
 </style>

@@ -74,6 +74,7 @@
         flex-direction: row;
         align-items: center;
         font-size: 14px;
+        opacity: 0.8;
     }
 
     div.count {
