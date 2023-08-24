@@ -268,12 +268,16 @@ async function onTabGroupCreated(group) {
             if (!context) {
                 context = workspace;
                 context.groupId = group.id;
+                
                 await saveRemoteContext(context);
             }
+            delete context.deleted;
             context.groupId = group.id;
             let openGroups = await get('openGroups');
             openGroups[group.id] = context.id;
+
             await set({ openGroups });
+            context.opened = Date.now();
             await saveContext(context);
             console.log('opened context');
             console.log(context);
@@ -292,8 +296,9 @@ async function onTabGroupCreated(group) {
                 ?? await createContextFromGroup(group)
             );
 
-            console.log('created context');
-            console.log(context);
+            delete context.deleted;
+            context.opened = Date.now();
+            await saveContext(context);
             
             let openGroups = await get('openGroups');
             openGroups[group.id] = context.id;
@@ -354,18 +359,21 @@ async function onTabGroupClosed(group) {
     const tabs = (await chrome.tabs.query({ windowId: group.windowId }))
         .filter((t) => contextTabIds.includes(t.id));
 
-    const isUngrouping = tabs.length > 0;
-    if (isUngrouping) {
-        if (context.size) {
-            context.deleted = Date.now();
-            await saveContext(context);
+    const activeGroup = (await chrome.tabGroups.query({})).find((g) => g.id == context.groupId);
+    if (!activeGroup) {
+        const isUngrouping = tabs.length > 0;
+        if (isUngrouping) {
+            if (context.size) {
+                context.deleted = Date.now();
+                await saveContext(context);
+            } else {
+                await removeContext(context);
+            }
         } else {
-            await removeContext(context);
+            closeContext(context);
         }
-    } else {
-        const activeGroup = (await chrome.tabGroups.query({})).find((g) => g.id == context.groupId);
-        if (!activeGroup) closeContext(context);
     }
+
 }
 
 async function getContextFromGroup(group) {
@@ -584,7 +592,7 @@ async function saveContextData(context, contextData) {
 
     // context.openWindows = contextData.windows?.length
     // if (context.openWindows == 0) delete context.openWindows;
-    await saveContext(context);
+    //await saveContext(context);
     //notifyCollectionInterface(context);
 }
 

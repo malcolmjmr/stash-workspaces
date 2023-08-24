@@ -22,7 +22,7 @@
     import backArrowIcon from "../icons/back.png";
     import GroupColors from "../group/GroupColors.svelte";
     import { get, removeContext, saveContext } from "../utilities/chrome";
-    import { deleteDoc, doc, setDoc } from "firebase/firestore";
+    import { deleteDoc, doc, setDoc, updateDoc} from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import Workspace from "../workspace/Workspace.svelte";
 
@@ -76,6 +76,8 @@
 
  
     let showTrash;
+
+
     const updateVisibleWorkspaces = () => {
         let text = searchText.toLowerCase();
         let tempWorkspaces = [];
@@ -87,7 +89,7 @@
             } else if (workspace.deleted) {
                 continue;
             }
-            const title = workspace.title.toLowerCase();
+            const title = (workspace.title ?? '').toLowerCase();
             const titleMatches = title.includes(text);
             const colorMatches = !selectedColor || workspace.color == selectedColor;
             
@@ -138,6 +140,7 @@
 
     const onWorkspaceUpdated = async ({detail}) => {
         const workspace = detail;
+        console.log('workspace updated');
         saveWorkspace(workspace);
     };
 

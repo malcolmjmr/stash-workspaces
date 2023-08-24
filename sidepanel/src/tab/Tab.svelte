@@ -38,6 +38,8 @@
     export let dragoverItem = null;
     export let isOpen = true;
     export let lastUpdatedTab;
+    export let isStartingTab = false;
+    export let isEndingTab = false;
 
 
     let el;
@@ -50,7 +52,6 @@
     $: {
         if (lastUpdatedTab && lastUpdatedTab.id == tab.id) {
             updateFavIconUrl();
-            console.log(tab.title);
             if (tab.id && tab.active) {
                 scrollToTabIfActive();
             }
@@ -221,7 +222,9 @@
         ? ' focused'
         : ''}{isDraggedOver ? ' dragged-over' : ''}{tab.active
         ? ' active'
-        : ''}{group ? ' grouped' : ''} "
+        : ''}{group ? ' grouped' : ''}
+        {isStartingTab ? ' start-tab' : ''}
+        {isEndingTab ? ' end-tab' : ''}"
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
     on:dragstart={onDragStart}
@@ -275,14 +278,15 @@
                     />
                 {/if}
 
-                {#if user.canBookmark}
-                    <img
-                        class="icon"
-                        src={tab.bookmarks ? starIconFilled : starIcon}
-                        alt="Save"
-                        on:mousedown={toggleSave}
-                    />
-                {/if}  
+                {#if isInFocus}
+                <img
+                    class="icon"
+                    src={tab.bookmarks ? starIconFilled : starIcon}
+                    alt="Save"
+                    on:mousedown={toggleSave}
+                />
+                {/if}
+
 
                 
                 {#if isInFocus && !isDragged}
@@ -331,6 +335,11 @@
         align-items: center;
     }
 
+    .tab.grouped {
+        background-color: #333333;
+        margin: 0px 5px;
+    }
+
     .tab.focused {
         background-color: #444444;
     }
@@ -339,6 +348,8 @@
         background-color: #444444;
     }
 
+    
+
     .tab.active {
         background-color: #666666;
     }
@@ -346,6 +357,11 @@
     .tab.dragged-over {
         opacity: 0.4;
         background-color: #555555;
+    }
+
+    .tab.end-tab {
+        border-radius: 0px 0px 8px 8px;
+        margin-bottom: 10px;
     }
 
     .favicon-container {
@@ -358,6 +374,8 @@
         height: 20px;
         width: 20px;
     }
+
+
 
     .group-indicator {
         position: absolute;

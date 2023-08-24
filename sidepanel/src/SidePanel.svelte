@@ -132,7 +132,7 @@
     };
 
     const showWorkspaceView = async ({detail}) => {
-        const group = detail;
+        group = detail;
 
         if (activeTab.groupId != group.id) {
             const newActiveTab = (await chrome.tabs.query({groupId: group.id}))[0];
@@ -243,14 +243,14 @@
             />
         {:else if view == Views.workspace}
             <Workspace 
-                {tabs}
+                tabs={tabs.filter((t) => t.groupId == group.id)}
                 {group}
                 {db}
                 {user}
                 {lastUpdate} 
                 {lastUpdatedTab}
                 {lastSelectionUpdate} 
-                on:goBack={() => view == Views.tabs}
+                on:goBack={() => view = Views.tabs}
             />
         {/if}
     </div>
@@ -283,7 +283,7 @@
     main {
         position: relative;
         z-index: 99999;
-        background-color: #333333;
+        background-color: #111111;
         width: 100%;
         height: 100%;
         color: white;
@@ -294,7 +294,7 @@
     .container.header {
         width: 100%;
         z-index: 999;
-        background-color: #333333;
+        background-color: #111111;
         border-bottom: 1px solid #555555;
         
     }
@@ -320,7 +320,7 @@
     .container.footer {
         width: 100%;
         z-index: 999;
-        background-color: #333333;
+        background-color: #111111;
         padding: 5px 0px;
         border-top: 1px solid #555555;
     }

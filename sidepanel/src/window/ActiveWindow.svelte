@@ -47,9 +47,15 @@
         groupEnds = {};
         tabs.sort((a, b) => a.index - b.index);
         for (const tab of tabs) {
-            if (tab.groupId > -1 && groupStarts[tab.groupId] == null) {
-                groupStarts[tab.groupId] = tab.index;
+            if (tab.groupId > -1) {
+                if (groupStarts[tab.groupId] == null) {
+                    groupStarts[tab.groupId] = tab.index;
+                }
+                groupEnds[tab.groupId] = tab.index;
             }
+
+
+            
         }
     };
 
@@ -126,6 +132,8 @@
                     {lastUpdatedTab}
                     {lastSelectionUpdate}
                     {dragoverItem}
+                    isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
+                    isEndingTab={tab.groupId > -1 && groupEnds[tab.groupId] == tab.index}
                     on:updateSelection
                     on:tabBookmarkAdded
                 />

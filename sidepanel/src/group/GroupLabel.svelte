@@ -43,7 +43,6 @@
 
     const onMouseEnter = () => {
         isInfocus = true;
-        console.log(group);
     };
 
     const onMouseLeave = () => {
@@ -209,7 +208,7 @@
 
 
 <div
-    class="group-label{isDraggedOver ? ' dragged-over' : ''}"
+    class="group-label{isDraggedOver ? ' dragged-over' : ''}{group.collapsed ? ' collapsed': ''}"
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
     on:dragleave={onDragLeave}
@@ -222,9 +221,7 @@
 >
     <div
         class="container"
-        style="background-color: {colorMap[group.color]};{showMore
-            ? 'border-radius: 5px 5px 0px 0px;'
-            : ''}"
+        style="background-color: {colorMap[group.color]};"
     >
         {#if isEditingTitle}
             <input
@@ -237,8 +234,8 @@
                 autofocus="true"
             />
         {:else}
-            <div class="title">
-                <span class="text">
+            <div class="title" >
+                <span class="text" on:mousedown={openWorkspace}>
                     {group?.title ?? "Untitled Group"}
                 </span>
                 {#if group.collapsed}
@@ -322,14 +319,21 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        border-radius: 5px;
+        border-radius: 8px 8px 0px 0px;
         width: calc(100% - 6px);
+    }
+
+    .collapsed .container {
+        border-radius: 8px;
+        margin-bottom: 10px;
     }
 
     .title {
         color: black;
         font-weight: 400;
         flex-grow: 1;
+        font-size: 16px;
+        margin-left: 5px;
         display: flex;
         flex-direction: row;
         align-items: center;

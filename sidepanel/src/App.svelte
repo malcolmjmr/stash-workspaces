@@ -14,6 +14,7 @@
     let groups = [];
     let windows = [];
     let workspaces = [];
+    let resources = [];
     let activeTab;
     let folder;
 
@@ -76,6 +77,7 @@
     bind:view
 />
 <WindowManager 
+    {db}
     bind:lastRefresh
     bind:windowsLoaded
     bind:activeTab
@@ -89,6 +91,7 @@
     bind:currentWindowId
     bind:view
     bind:hasBookmarkPermission
+    bind:resources
 />
 
 {#if authLoaded && windowsLoaded}
@@ -98,6 +101,7 @@
         {authLoaded} 
         {activeTab}
         {lastUpdatedGroup}
+        bind:resources
         bind:user 
         bind:workspaces 
         bind:groups 

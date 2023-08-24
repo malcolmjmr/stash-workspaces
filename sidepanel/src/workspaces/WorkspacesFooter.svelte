@@ -47,11 +47,11 @@
         {/if}
     </div>
     <div class="action">
-        <!--
+ 
             {#if !showTrash && workspaceCount > 0}
                 <img src={trashIcon} alt="Trash" on:mousedown={() => showTrash = true}/>
             {/if}
-        -->
+        
         
     </div>
 </div>

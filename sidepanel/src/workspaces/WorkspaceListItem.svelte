@@ -136,6 +136,11 @@
         dispatch('deleteWorkspace', workspace);
     };
 
+    const restoreWorkspace = async () => {
+        workspace.deleted = null;
+        dispatch('workspaceUpdated', workspace);
+    }
+
 
 </script>
 
@@ -201,7 +206,11 @@
         <div class="action" on:mousedown={openWorkspace}>Open {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} in Current Window</div>
         <div class="action" on:mousedown={openWorkspaceInNewWindow}>Open {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} in New Window</div>
         <div class="divider"/>
+        {#if !workspace.deleted}
         <div class="action" on:dblclick={deleteWorkspace}>Delete {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} <div class="spacer"></div><span>Double Click</span></div>
+        {:else}
+        <div class="action" on:mousedown={restoreWorkspace}>Restore {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} </div>
+        {/if}
     </div>
     {/if}
 

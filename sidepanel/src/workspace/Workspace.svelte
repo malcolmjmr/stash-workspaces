@@ -51,6 +51,7 @@
 
     export let workspace = null;
 
+    let folder = [];
 
     let selectedTabs = []
     let bookmarks = [];
@@ -71,7 +72,7 @@
 
     let isOpen;
     const init = async () => {
-        console.log('rebuilding workspace page');
+        
         if (!group) return;
         if (workspace) {
             await loadResources();
@@ -99,14 +100,15 @@
 
     const loadWorkspace = async () => {
         workspace = await getContext(group.workspaceId);
-        console.log('workspace:');
-        console.log(workspace);
         await loadResources();
         isOpen = true;
     }
 
     let resources = [];
     const loadResources = async () => {
+
+
+
         if (user) {
             console.log('fetching resources from the cloud');
             const path = StorePaths.userResources(user.id);
@@ -115,12 +117,13 @@
                 where("contexts", "array-contains", workspace.id)
             );
             resources = (await getDocs(q)).docs.map((d) => d.data());
-            bookmarks = resources.filter((b) => b.url && !b.title.startsWith('* '));
-            queue = resources.filter((b) => b.url && b.title.startsWith('* '));
-            console.log('resources:');
-            console.log(resources);
+            
+            bookmarks = resources.filter((b) => b.url && !b.title.startsWith('* ') && !b.isQueued);
+            queue = resources.filter((b) => b.url && (b.title.startsWith('* ') || b.isQueued));
 
         } else {
+
+
             
         }
         if (!tabs) tabs = workspace.tabs;
@@ -177,16 +180,16 @@
     const onToggleTabSaved = async ({detail}) => {
         const tab = detail;
         let folder = await tryToGetBookmarkFolder(workspace.folderId);
-        if (tab.savedResource) {
+        if (tab.saved) {
             if (folder) {
 
             }
-            if (user?.cloudStorage) {
+            if (user?.cloudSync) {
                 
             }
         } else {
             if (!folder) {
-
+                //workspace.folder = 
             } 
 
             await chrome.tabs

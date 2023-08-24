@@ -56,11 +56,6 @@
         e.dataTransfer.setData("tabId", tab.id);
     };
 
-    const onDrop = (e) => {
-        console.log("dropped on tabicon");
-        console.log(tab);
-        //dispatch('')
-    };
 </script>
 
 {#if loaded}

@@ -107,9 +107,9 @@ export async function closeContext(context) {
 
 }
 
-export async function saveContext(context) {
+export async function saveContext(context, saveUpdateTime = true) {
 
-    context.updated = Date.now();
+    if (saveUpdateTime) context.updated = Date.now();
 
     let record = {};
     record[getContextKey(context.id)] = context;
@@ -176,7 +176,7 @@ export async function removeContexts(contexts) {
     
 }
 
-async function getContextData(contextId) {
+export async function getContextData(contextId) {
     return (await get(getContextDataKey(contextId))) ?? {};
 }
 
@@ -190,4 +190,43 @@ function contextKeyPrefix() {
 
 function getContextDataKey(contextId) {
     return 'cr-' + contextId;
+}
+
+export async function saveContextData(context, contextData) {
+
+    if (!contextData) return;
+
+    contextData.updated = Date.now();
+    const record = {};
+    record[getContextDataKey(context.id)] = contextData;
+    await set(record);
+
+    // context.openWindows = contextData.windows?.length
+    // if (context.openWindows == 0) delete context.openWindows;
+    //await saveContext(context);
+    //notifyCollectionInterface(context);
+}
+
+export async function tryToGetBookmark(bookmarkId) {
+    if (!bookmarkId) return;
+
+    let bookmark;
+    try {
+        bookmark = (await chrome.bookmarks.get(bookmarkId))[0];
+    } catch (error) {
+
+    }
+    return bookmark;
+}
+
+export async function tryToGetBookmarkChildren(bookmarkId) {
+    if (!bookmarkId) return [];
+
+    let bookmarks = [];
+    try {
+        bookmarks = (await chrome.bookmarks.getChildren(bookmarkId));
+    } catch (error) {
+
+    }
+    return bookmarks;
 }
