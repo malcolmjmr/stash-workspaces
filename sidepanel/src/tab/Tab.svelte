@@ -174,20 +174,23 @@
     };
 
     const onTitleClicked = async () => {
-        if (isSelected) return;
+        if (isOpen) {
+            if (isSelected) return;
 
-        if (isBookmark) {
-            const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
-            const newTab = await chrome.tabs.create({url: tab.url, index: activeTab.index + 1});
-            if (activeTab.groupId > -1) {
-                await chrome.tabs.group(({tabIds: newTab.id, groupId: activeTab.groupId}));
+            if (isBookmark) {
+                const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
+                const newTab = await chrome.tabs.create({url: tab.url, index: activeTab.index + 1});
+                if (activeTab.groupId > -1) {
+                    await chrome.tabs.group(({tabIds: newTab.id, groupId: activeTab.groupId}));
+                }
+            } else {
+                chrome.tabs.update(tab.id, { active: true });
+                chrome.windows.update(tab.windowId, { focused: true });
             }
+            
         } else {
-            chrome.tabs.update(tab.id, { active: true });
-            chrome.windows.update(tab.windowId, { focused: true });
+            chrome.tabs.create({url: tab.url});
         }
-       
-        
     };
 
     const reload = () => {
@@ -196,8 +199,9 @@
 
     let showBookmarkMenu;
     const toggleSave = async () => {
+
         console.log(group);
-        //dispatch('toggleTabSaved', tab);
+        dispatch('saveIconClicked', tab);
         
         // if (tab.bookmarks) {
         //     if (tab.bookmarks.length > 1) {

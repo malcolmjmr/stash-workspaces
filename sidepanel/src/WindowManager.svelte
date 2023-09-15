@@ -8,6 +8,7 @@
     export let groups = [];
     export let windows = [];
     export let activeTab;
+    export let resources = [];
 
 
 
@@ -309,6 +310,11 @@
             const bookmarkResults = await chrome.bookmarks.search({
                 url: tab.url,
             });
+
+            // check that bookmark parent matches 
+
+
+
             if (bookmarkResults.length == 1) {
                 const isNotTabBookmark = !bookmarkResults[0].title.includes('tab|');
                 if (isNotTabBookmark) {

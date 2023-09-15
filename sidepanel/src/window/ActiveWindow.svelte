@@ -9,6 +9,8 @@
     import GroupLabel from "../group/GroupLabel.svelte";
     import SearchResults from "../search/SearchResults.svelte";
     import { horizontalSlide } from "../utilities/transitions";
+  import { setDoc } from "firebase/firestore";
+  import { createId, getContextData, getTabInfo, saveContextData } from "../utilities/chrome";
 
     let dispatch = createEventDispatcher();
 
@@ -16,6 +18,7 @@
     export let db;
     export let tabs;
     export let groups;
+    export let workspaces;
     export let lastUpdatedTab;
     export let lastUpdate;
     export let lastSelectionUpdate;
@@ -97,10 +100,63 @@
                 groupEnds[tab.groupId] = tab.index;
             }
         }
+    }; 
 
-        
+    const onSaveIconClicked = async ({detail}) => {
 
-    };  
+        const tab = detail;
+        const group = groups[tab.groupId];
+        const index = workspaces.findIndex((w) => w.id == group.workspaceId);
+        if (index > -1) {
+            const now = Date.now();
+            const workspace = workspaces[index];
+            if (user) {
+                let resource = tab.resource;
+                if (user.settings?.saveLocally) {
+                    const workspaceData = await getContextData(workspace.id);
+                    if (!workspaceData.resources) workspaceData.resources = {};
+                    resource = workspaceData.resources[tab.url];
+                    if (resource) {
+                        resource.deleted = now;
+                    } else {
+                        resource = {
+                            ...getTabInfo(tab),
+                            id: createId(), 
+                        }
+                    }
+                    resource.updated = now;
+                    saveContextData(workspace, workspaceData);
+                }
+
+                if (user.settings?.saveToCloud) {
+                    if (resource) {
+                        resource.deleted = true;
+                    } else {
+                        resource = {
+                            ...getTabInfo(tab),
+                            id: createId(), 
+                        }
+                    }
+                    resource.updated = now;
+                }
+
+                if (user.settings?.saveToBookmarks) {
+                    if (tab.bookmark) {
+
+                    } else {
+
+                    }
+                }
+
+                // update tab 
+                
+            } else {
+                
+            }
+        } 
+    }
+    
+    
 </script>
 
 {#if loaded}
@@ -135,7 +191,7 @@
                     isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
                     isEndingTab={tab.groupId > -1 && groupEnds[tab.groupId] == tab.index}
                     on:updateSelection
-                    on:tabBookmarkAdded
+                    on:saveIconClicked={onSaveIconClicked}
                 />
             {/if}
         {/each}

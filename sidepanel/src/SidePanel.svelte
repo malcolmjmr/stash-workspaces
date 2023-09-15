@@ -220,6 +220,7 @@
                 {selectedTabs}
                 {lastUpdatedTab}
                 {lastSelectionUpdate}
+                {workspaces}
                 bind:searchText
                 {searchResults}
                 on:updateSelection={onUpdateSelection}

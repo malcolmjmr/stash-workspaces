@@ -508,8 +508,9 @@ async function saveRemoteContext(context) {
 
 async function saveContext(context) {
 
+    console.log('saving context');
+    console.log(context);
     context.updated = Date.now();
-
     let record = {};
     record[getContextKey(context.id)] = context;
     await chrome.storage.local.set(record);

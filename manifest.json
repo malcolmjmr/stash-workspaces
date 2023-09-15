@@ -44,7 +44,7 @@
         "tabGroups",
         "sidePanel",
         "storage",
-        "unlimited",
+        "unlimitedStorage",
         "favicon"
     ],
     "incognito": "spanning",

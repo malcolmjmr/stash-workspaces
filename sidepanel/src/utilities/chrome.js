@@ -129,16 +129,35 @@ async function removeOpenContext(context) {
 
 export async function getContexts(filter) {
     let results = [];
-    const contextKeys = await get('contextKeys') ?? [];
-    if (contextKeys.length == 0) return results;
-    const data = await chrome.storage.local.get(contextKeys);
+    let contextKeys = await get('contextKeys') ?? [];
+    // if (contextKeys.length == 0) return results;
+    // const data = await chrome.storage.local.get(contextKeys);
     
+    // for (const [key, val] of Object.entries(data)) {
+
+    //     if (!filter || filter(val))
+    //         results.push(val);
+
+    // }
+
+    let updateContextKeys = false;
+    const data = await chrome.storage.local.get(null);
     for (const [key, val] of Object.entries(data)) {
+        if (key.startsWith(contextKeyPrefix())) {
+            if (!filter || filter(val))
+                results.push(val);
 
-        if (!filter || filter(val))
-            results.push(val);
-
+            if (!contextKeys.includes(key)) {
+                contextKeys.push(key);
+                updateContextKeys = true;
+            }
+        }
     }
+
+    if (updateContextKeys) {
+        await set({ contextKeys });
+    }
+        
     return results;
 }
 
@@ -229,4 +248,26 @@ export async function tryToGetBookmarkChildren(bookmarkId) {
 
     }
     return bookmarks;
+}
+
+export function createId() {
+    let string = '';
+    for (let i = 0; i < 8; i++) string += S4();
+    return string;
+}
+
+function S4() {
+    return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+}
+
+export function getTabInfo(tab) {
+
+    let tabInfo = {
+        id: tab.id,
+        title: tab.title,
+        url: tab.url && tab.url != '' ? tab.url : tab.pendingUrl,
+        favIconUrl: tab.favIconUrl,
+    };
+
+    return tabInfo;
 }

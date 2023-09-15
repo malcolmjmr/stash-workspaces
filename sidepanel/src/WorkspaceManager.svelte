@@ -90,13 +90,17 @@
             tempWorkspaces = await getContexts();
         }
 
-
         workspaces = tempWorkspaces.filter((w) => (w.isIncognito ?? false) == activeTab.incognito);
+        
         workspacesLoaded = Date.now();
 
     };
 
     const getSyncedContexts = async () => {
+
+        //let config = await get('config');
+        
+        //if (!config.lastSync) lastSync = 0;
 
         const now = Date.now();
         const aMonthAgo = now - (1000 * 60 * 60 * 24 * 30);
@@ -108,6 +112,11 @@
         for (const context of localContexts) {
             contextsToUpdate[context.id] = { context };
             contexts[context.id] = context;
+
+            if (context.title == 'Edvo') {
+                console.log('local edvo context');
+                console.log(context);
+            } 
         }  
 
         const serverContexts = (await getDocs(
@@ -118,6 +127,11 @@
 
         for (const context of serverContexts) {
             const localContextExists = contextsToUpdate[context.id];
+            if (context.title == 'Edvo') {
+                console.log('remote edvo context');
+                console.log(context);
+            } 
+        
             if (localContextExists) {
                 const localContext = contextsToUpdate[context.id].context;
                 const localUpdateTime = localContext.updated ?? localContext.created;
@@ -155,7 +169,7 @@
         const openWorkspaceIds = Object.values(openGroups);
         const openContextsToUpdate = localContextsToUpdate.filter((c) => openWorkspaceIds.includes(c.id));
 
-        updateOpenContexts(openContextsToUpdate, openWorkspaceIds);
+        updateOpenContexts(openContextsToUpdate, openGroups);
 
 
         const serverContextsToUpdate = Object.values(contextsToUpdate)
@@ -186,42 +200,54 @@
     };
 
     const updateOpenContexts = async (contextsToUpdate, openGroups) => {
-        console.log('Open contexts to update');
-        console.log(contextsToUpdate);
 
-        // let contextToGroups = {};
-        // for (const [groupId, contextId] of Object.entries(openGroups)) {
-        //     contextToGroups[contextId] = groupId;
-        // }
+        let contextToGroups = {};
 
-        // for (const context of contextsToUpdate) {
-        //     const groupId = parseInt(contextToGroups[context.id]);
-        //     const openTabs = await chrome.tabs.query({ groupId });
+        for (const [groupId, contextId] of Object.entries(openGroups)) {
+            contextToGroups[contextId] = groupId;
+        }
 
-        //     let tabsToCreate = [];
-        //     let tabs = {};
+        for (const context of contextsToUpdate) {
 
 
-        //     for (const tab of openTabs) {
-        //         tabs[tab.url] = tab;
-        //     }
+            const groupId = parseInt(contextToGroups[context.id]);
+            const openTabs = await chrome.tabs.query({ groupId });
+
+            // const contextResources = (await getDocs(
+            //     query(collection(db, StorePaths.userResources(user.id)), 
+            //         where('context', 'array-contains', context.id), 
+            //         orderBy('updated', 'desc'),
+            //         limit(1)
+            //     )
+            // )).docs.map((doc) => doc.data());
+
+            // resources = [...resources, ...contextResources];
+
+            let tabsToCreate = [];
+            let tabs = {};
 
 
-        //     for (const tab of context.tabs) {
-        //         if (!tabs[tab.url]) {
-        //             tabsToCreate.push(tab);
-        //             delete tabs[tab.url];
-        //         }
-        //     }
+            for (const tab of openTabs) {
+                tabs[tab.url] = tab;
+            }
 
-        //     await chrome.tabs.remove(Object.values(tabs).map((t) => t.id));
-        //     //let createdTabs = [];
-        //     for (let tab of tabsToCreate) {
-        //         tab = await chrome.tabs.create({ url: tab.url });
-        //         await chrome.tabs.group({ tabIds: tab.id, groupId });
-        //     }
+
+            for (const tab of context.tabs) {
+                if (!tabs[tab.url]) {
+                    tabsToCreate.push(tab);
+                } else {
+                    delete tabs[tab.url];
+                }
+            }
             
-        // }
+            //let createdTabs = [];
+            for (let tab of tabsToCreate) {
+                tab = await chrome.tabs.create({ url: tab.url });
+                await chrome.tabs.group({ tabIds: tab.id, groupId });
+            }
+
+            await chrome.tabs.remove(Object.values(tabs).map((t) => t.id));
+        }
     }
 
     const getLastUpdatedResourceForContext = async (context) => {
