@@ -10,7 +10,7 @@
     export let tab;
     export let group;
     export let isClickable = true;
-    export let isActive;
+    export let isActive = null;
 
 
     let dispatch = createEventDispatcher();
@@ -60,7 +60,7 @@
 
 {#if loaded}
 <div
-    class="tab-icon{isInFocus ? ' focus' : ''}{tab.active ? ' active' : ''}"
+    class="tab-icon{isInFocus ? ' focus' : ''}{isActive ?? tab.active ? ' active' : ''}"
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
     on:mouseup={onClick}

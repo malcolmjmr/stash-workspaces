@@ -188,6 +188,7 @@
                     {lastUpdatedTab}
                     {lastSelectionUpdate}
                     {dragoverItem}
+                    {workspaces}
                     isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
                     isEndingTab={tab.groupId > -1 && groupEnds[tab.groupId] == tab.index}
                     on:updateSelection

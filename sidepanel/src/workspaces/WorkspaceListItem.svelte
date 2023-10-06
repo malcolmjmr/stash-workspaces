@@ -13,6 +13,8 @@
     import { createEventDispatcher, onMount } from "svelte";
     import { getTimeSinceString } from "./helpers";
     import Tab from "../tab/Tab.svelte";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import WorkspaceMenu from "./WorkspaceMenu.svelte";
     
 
     export let workspace;
@@ -23,7 +25,7 @@
     let loaded;
     let timeSinceLastUpdate;
     onMount(() => {
-        timeSinceLastUpdate = getTimeSinceString(workspace.updated, true);
+        timeSinceLastUpdate = getTimeSinceString(workspace.updated);
         loaded = true;
     });
 
@@ -144,6 +146,12 @@
 
 </script>
 
+{#if showMenu}
+<ModalContainer on:exit={() => showMenu = false}>
+    <WorkspaceMenu bind:workspace />
+</ModalContainer>
+{/if}
+
 {#if loaded}
 <div 
     class="workspace" 
@@ -176,6 +184,7 @@
                 </div>
             </div>
         {/if}
+        <div class="spacer" on:mousedown={onTitleClicked} />
         {#if isInFocus}
             <div class="actions">
                 <img src={isExpanded ? collapseIcon : expandIcon} alt="Expand" on:mousedown={toggleExpanded}/>
@@ -188,31 +197,6 @@
             </div>
         {/if}
     </div>
-    {#if showMenu}
-    <div
-        class="more-actions"
-        style="border-color: #555555;"
-        in:slide
-        out:slide
-        on:mouseleave={() => { showMenu = false; }}
-    >
-        <div class="group-selection-container">
-            <GroupColors group={workspace} on:colorSelected={onColorSelected}/>
-        </div>
-        <div class="action" on:mousedown={onEditTitleClicked}>
-            Edit title
-        </div>
-        <div class="divider"/>
-        <div class="action" on:mousedown={openWorkspace}>Open {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} in Current Window</div>
-        <div class="action" on:mousedown={openWorkspaceInNewWindow}>Open {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} in New Window</div>
-        <div class="divider"/>
-        {#if !workspace.deleted}
-        <div class="action" on:dblclick={deleteWorkspace}>Delete {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} <div class="spacer"></div><span>Double Click</span></div>
-        {:else}
-        <div class="action" on:mousedown={restoreWorkspace}>Restore {(workspace?.size ?? 0 > 0)? 'Workspace' : 'Group'} </div>
-        {/if}
-    </div>
-    {/if}
 
     {#if isExpanded}
         <div class="tabs">
@@ -249,7 +233,7 @@
     }
 
     .title {
-        flex-grow: 1;
+        width: 100%;
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -260,6 +244,8 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap; 
+        max-lines: 1;
+        width: 100%;
     }
 
     .title-input {
@@ -272,6 +258,10 @@
         color: black;
         flex-grow: 1;
         padding: 5px;
+    }
+
+    .spacer {
+        flex-grow: 1;
     }
 
     .counts {

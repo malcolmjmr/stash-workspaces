@@ -2,7 +2,7 @@
     import { onDestroy, onMount } from "svelte";
     import SelectionHeader from "./header/SelectionHeader.svelte";
 
-    import Home from "./windows/Windows.svelte";
+    import Windows from "./windows/Windows.svelte";
     import Workspace from "./workspace/Workspace.svelte";
     import ActiveWindow from "./window/ActiveWindow.svelte";
     import { Views } from "./view";
@@ -16,12 +16,17 @@
     import SearchResults from "./search/SearchResults.svelte";
     import Workspaces from "./workspaces/Workspaces.svelte";
     import SignIn from "./signin/SignIn.svelte";
+    import Home from "./home/Home.svelte";
+  import HomeFooter from "./home/HomeFooter.svelte";
+  import History from "./history/History.svelte";
+  import Trash from "./trash/Trash.svelte";
 
 
     export let user;
     export let db;
     export let view;
     export let tabs;
+    export let recentTabs;
     export let groups;
     export let workspaces;
     export let workspacesLoaded;
@@ -34,7 +39,20 @@
     export let lastUpdatedWindow;
     export let hasBookmarkPermission;
 
-    let group;
+    let activeWorkspace;
+    let activeGroup;
+    $: {
+        workspacesLoaded;
+        const neeedToSetActiveGroup = (
+            activeTab.groupId != activeGroup?.id 
+            || (!activeGroup && activeTab.groupId != -1)
+        );
+        if (neeedToSetActiveGroup) {
+           setActiveGroup();
+        }
+    }
+
+    let selectedGroup;
     let window;
 
     let scrollingUp;
@@ -50,6 +68,16 @@
     onDestroy(() => {
         removeListeners();
     });
+
+    const setActiveGroup = () => {
+        activeGroup = groups[activeTab.groupId];
+        if (!activeGroup) return;
+        activeWorkspace = workspaces.find((w) => w.groupId == activeTab.groupId);
+        if (!activeWorkspace) return;
+        if (activeTab.windowId == currentWindowId) {
+            view = Views.workspace;
+        }
+    }
 
     let isScrolling;
     let scrollListener;
@@ -132,12 +160,12 @@
     };
 
     const showWorkspaceView = async ({detail}) => {
-        group = detail;
+        selectedGroup = detail;
 
-        if (activeTab.groupId != group.id) {
-            const newActiveTab = (await chrome.tabs.query({groupId: group.id}))[0];
-            await chrome.tabs.update(newActiveTab.id, {active: true});
-        }
+        // if (activeTab.groupId != selectedGroup.id) {
+        //     const newActiveTab = (await chrome.tabs.query({groupId: selectedGroup.id}))[0];
+        //     await chrome.tabs.update(newActiveTab.id, {active: true});
+        // }
         view = Views.workspace;
     
     }
@@ -145,7 +173,7 @@
     let showFooter;
     $: {
         showFooter = (selectedTabs.length > 0  
-            || ((view != Views.saved && view != Views.workspace) 
+            || (!(fullScreenViews.includes(view)) 
             && (true || scrollingUp || lastScrollPosition < 20))
         );
     };
@@ -158,6 +186,9 @@
         hasBookmarkPermission = true;
         updateResults();
     }
+
+
+    const fullScreenViews = [Views.workspace, Views.trash, Views.history];
 </script>
 
 <main>
@@ -167,7 +198,7 @@
                 {#key lastSelectionUpdate}
                     <SelectionHeader bind:selectedTabs />
                 {/key}
-            {:else if view != Views.workspace}
+            {:else if !fullScreenViews.includes(view)}
                 <Header
                     {user}
                     bind:view
@@ -192,8 +223,26 @@
                 {hasBookmarkPermission}
                 on:searchBookmarks={onSearchBookmarks}
             />
+        {:else if view == Views.home}
+            <Home 
+                {db}
+                {user}
+                bind:view
+                {workspaces}
+                {recentTabs}
+                {groups}
+                {lastUpdatedGroup}
+                {lastUpdatedTab}
+            />
+        {:else if view == Views.history}
+            <History
+                {db}
+                {user}
+                bind:view
+                {workspaces}
+            />
         {:else if view == Views.windows}
-            <Home
+            <Windows
                 {tabs}
                 {groups}
                 {activeTab}
@@ -243,9 +292,11 @@
 
             />
         {:else if view == Views.workspace}
-            <Workspace 
-                tabs={tabs.filter((t) => t.groupId == group.id)}
-                {group}
+            <Workspace
+                tabs={tabs.filter((t) => t.groupId == (selectedGroup ?? activeGroup)?.id)}
+                group={selectedGroup ?? activeGroup}
+                {groups}
+                {workspaces}
                 {db}
                 {user}
                 {lastUpdate} 
@@ -253,13 +304,26 @@
                 {lastSelectionUpdate} 
                 on:goBack={() => view = Views.tabs}
             />
+        {:else if view == Views.trash}
+            <Trash
+                {db}
+                {user}
+                on:goBack={() => view = Views.home}
+                {workspaces}
+            />
         {/if}
     </div>
     
     {#if showFooter}
         <div class="container footer">
             {#if selectedTabs.length > 0}
-                <SelectionActions {lastSelectionUpdate} {view} bind:selectedTabs />
+                <SelectionActions 
+                    {view} 
+                    {lastSelectionUpdate}
+                    bind:selectedTabs 
+                    {workspaces} 
+                    {groups}
+                />
             {:else if view == Views.windows}
                 <WindowsFooter
                     {windows}
@@ -271,9 +335,21 @@
                 />
             {:else if view == Views.tabs}
                 <ActiveWindowFooter
+                    bind:view
                     tabs={tabs.filter((t) => t.windowId == currentWindowId)}
                     {lastSelectionUpdate}
                     bind:selectedTabs
+                    {groups}
+                    {workspaces}
+                />
+            {:else if view == Views.home}
+                <HomeFooter
+                    bind:view
+                    tabs={tabs.filter((t) => t.windowId == currentWindowId)}
+                    {lastSelectionUpdate}
+                    bind:selectedTabs
+                    {groups}
+                    {workspaces}
                 />
             {/if}
         </div>

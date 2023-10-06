@@ -3,38 +3,50 @@
     import GroupColors from "./GroupColors.svelte";
     import Suggestion from "./Suggestion.svelte";
     import { fade } from "svelte/transition";
-  import { colorMap } from "../utilities/colors";
+    import { colorMap } from "../utilities/colors";
+    import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
+    import ModalContainer from "../components/ModalContainer.svelte";
+
+    export let groups;
+    export let workspaces;
+    export let view;
+
 
     let group = {
         title: '',
         color: 'grey',
     };
 
+    let searchText = '';
+
     onMount(() => {
         getFolders();
     });
 
     let suggestions = [];
-
-    let workspaces = [];
+    let folders = [];
     let recentFolders = [];
+    let visibleFolders = [];
+    let visibleSpaces = [];
    
     const getFolders = async () => {
-        let folders = (await chrome.bookmarks.search({ url: null }));
+        let workspaceFolderIds = workspaces.map((s) => s.folderId);
+        let workspaceFoldderTitles = workspaces.map((s) => s.title);
+        folders = (await chrome.bookmarks.search({ url: null }))
+            .filter((folder) => {
+                return (!folder.url 
+                    && !workspaceFolderIds.includes(folder.id)
+                    && !workspaceFoldderTitles.includes(folder.title)
+                );
+            });
         folders.sort((a, b) => b.dateGroupModified - a.dateGroupModified);
-        const now = Date.now();
-        const aMonthAgo = now - (1000 * 60 * 60 * 24 * 7 * 4);
-        
-        workspaces = folders.filter((f) => f.title.includes('[space'));
-        recentFolders = folders.filter((f) => f.dateGroupModified > aMonthAgo && !f.title.includes('[space'));
-        resetSuggestions();
-        //console.log(suggestions);
-
+        updateSearchResults();
+        // if (workspaces.length < 5) {
+        //     visibleFolders = folders.slice(0, 10);
+        // }
     };
 
-    const resetSuggestions = () => {
-        suggestions = [...workspaces, ...recentFolders];
-    };
+
 
     const onTitleInputBlur = () => {
 
@@ -53,7 +65,30 @@
             const groupId = await chrome.tabs.group({tabIds: tab.id});
             await chrome.tabGroups.update(groupId, {title: group.title});
             dispatch('exitModal');
-        } 
+        } else {
+            updateSearchResults();
+        }
+        
+        // search contexts and bookmark folders
+       
+    };
+
+    let showFolders;
+    let showSpaces;
+
+    const updateSearchResults = () => {
+        const text = searchText.toLowerCase();
+        visibleFolders = folders.filter((f) => {
+            return f.title?.toLowerCase().includes(text);
+        });
+
+        visibleSpaces = workspaces.filter((s) => {
+            return s.title?.toLowerCase().includes(text);
+        });
+
+        showFolders = visibleFolders.length > 0;
+        showSpaces = visibleSpaces.length > 0
+
     };
 
     // $: {
@@ -85,21 +120,20 @@
     const setColor = (color) => {
         group.color = color;
     };
-
+    //style={'background-color: ' + colorMap[group.color]}
 </script>
 
-<div class="modal" in:fade>
-    <div class="background" on:mousedown={exitModal}></div>
-    <div class="container" style={'background-color: ' + colorMap[group.color]}>
 
-        <div class="title" >
+    <div class="main-container" >
+
+        <div class="search" >
             <input
                 type="text"
-                class="title-input"
-                bind:value={group.title}
+                class="search-input"
+                bind:value={searchText}
                 on:blur={onTitleInputBlur}
                 on:keydown={onInput}
-                placeholder="Add Group"
+                placeholder="Create a new a space"
                 autofocus="true"
             />
             <!--
@@ -109,70 +143,82 @@
                 </div>
             {/if}
             -->
-            
         </div>
     
-        <div class="colors">
-            {#each Object.entries(colorMap) as [name, hex]}
-                <div class="color-container">
-                    <div
-                        class="color {group.color == name ? ' selected' : ''}"
-                        style="background-color: {hex}"
-                        on:mousedown={() => setColor(name)}
-                    />
-                </div>
-            {/each}
-        </div>
         <!--
-        <div class="suggestions">
-            {#each suggestions as folder (folder.id)}
-                <Suggestion {folder} />
-            {/each}
-        </div>
+            <div class="colors">
+                {#each Object.entries(colorMap) as [name, hex]}
+                    <div class="color-container">
+                        <div
+                            class="color {group.color == name ? ' selected' : ''}"
+                            style="background-color: {hex}; border-color: {hex}"
+                            on:mousedown={() => setColor(name)}
+                        />
+                    </div>
+                {/each}
+            </div>
 
         -->
         
+
+        
+  
+            <div class="results">
+                {#if showSpaces}
+                    <div class="spaces section"> 
+                        <div class="header">
+                            <div class="title">Spaces</div>
+                            {#if searchText != ''}
+                            <div class="count">
+                                Found {visibleSpaces.length}
+                            </div>
+                            {/if}
+                        </div>
+                        <div class="container">
+                            {#each visibleSpaces as workspace}
+                                <WorkspaceListItem {workspace}/>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+                {#if showFolders}
+                    <div class="folders section"> 
+                        <div class="header">
+                            <div class="title">Folders</div>
+                            {#if searchText != ''}
+                            <div class="count">
+                                Found {visibleFolders.length}
+                            </div>
+                            {/if}
+                        </div>
+                        <div class="container">
+                            {#each visibleFolders as workspace}
+                                <WorkspaceListItem {workspace}/>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+            </div>
+
+        
     </div>
-    
-</div>
 
 <style>
-    .modal {
-        position: fixed;
-        height: 100%;
-        width: 100%;
-        top: 0;
-        left: 0;
+
+    .main-container {
+        width: cacl(100% - 20px);
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .background {
-        position: fixed;
-        height: 100%;
-        width: 100%;
-        top: 0;
-        left: 0;
-        background-color: black;
-        opacity: 0.4;
-    }
-
-    .container {
-        width: 80%;
-        background-color: #444444;
-        border-radius: 5px;
-        border: 1px solid #666666;
-        z-index: 1;
         overflow: hidden;
+        height: 400px;
+        padding: 10px 10px 0px 10px;
     }
 
-    .title {
+    .search {
         position: relative;
-        height: 30px;
+        min-height: 30px;
         padding: 0px 5px;
-        background-color: #999999;
+        background-color: black;
         border-radius: 5px;
         margin: 5px;
         display: flex;
@@ -180,7 +226,7 @@
         align-items: center;
     }
 
-    .title > input {
+    .search > input {
         position: absolute;
         width: calc(100% - 10px);
         text-decoration: none;
@@ -188,22 +234,40 @@
         border: none;
         outline: none;
         background-color: transparent;
-        color: black;
+        color: white;
         font-size: 16px;
-    }
-
-    .title > .auto-complete {
-        position: absolute;
-        width: calc(100% - 10px);
-        font-size: 16px;
-        opacity: 0.5;
-        color: black;
     }
 
     .suggestions {
         margin-top: 10px;
         flex-grow: 1;
         overflow: scroll;
+    }
+
+    .results {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: scroll;
+    }
+
+    .section .header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin: 8px 5px;
+    }
+
+    .section .header .title {
+        font-size: 14px;
+        font-weight: 400;
+    }
+
+    .section .container {
+        background-color: #333333;
+        border-radius: 8px;
+        overflow: hidden;
     }
 
     .colors {
@@ -233,7 +297,7 @@
     .color.selected {
         width: 20px;
         height: 20px;
-        border: 2px solid white;
+        border: 2px solid;
     }
 
     .color:hover {

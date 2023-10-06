@@ -1,8 +1,15 @@
 <script>
+  import { createEventDispatcher } from "svelte";
+
     export let title;
+
+    let dispatch = createEventDispatcher();
+    const onMouseDown = () => {
+        dispatch('click');
+    }
 </script>
 
-<div class="menu-item" on:mouseup>
+<div class="menu-item" on:mousedown={onMouseDown}>
     <div class="title">{title}</div>
 </div>
 

@@ -18,14 +18,17 @@
     import checkedBoxIcon from "../icons/checked-box.png";
     import webIcon from "../icons/web.png";
     import { createEventDispatcher, onMount } from "svelte";
-    import Menu from "./Menu.svelte";
+    import TabMenu from "./TabMenu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
-    import { getFavIconUrl, saveTabAsBookmark, tryToSaveBookmark } from "../utilities/chrome";
+    import { getFavIconUrl, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark } from "../utilities/chrome";
 
+    import soundIcon from "../icons/volume-up.png";
     import starIcon from "../icons/star.png";
     import starIconFilled from "../icons/star-filled.png";
-    import BookmarkMenu from "./BookmarkMenu.svelte";
+  
+    import ModalContainer from "../components/ModalContainer.svelte";
+    import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
 
 
     export let db;
@@ -33,6 +36,7 @@
     export let tab;
     export let group = null;
     export let workspace = null;
+    export let workspaces = null;
     export let selectedTabs = [];
     export let lastSelectionUpdate = null;
     export let dragoverItem = null;
@@ -107,7 +111,6 @@
 
     const onMouseLeave = () => {
         isInFocus = false;
-        showMore = false;
         favIconInFocus = false;
     };
 
@@ -174,6 +177,7 @@
     };
 
     const onTitleClicked = async () => {
+        console.log(tab);
         if (isOpen) {
             if (isSelected) return;
 
@@ -200,9 +204,40 @@
     let showBookmarkMenu;
     const toggleSave = async () => {
 
-        console.log(group);
-        dispatch('saveIconClicked', tab);
-        
+        if (tab.bookmarks) {
+            if (tab.bookmarks.length > 1) {
+                showBookmarkMenu = true;
+            } else {
+                await chrome.bookmarks.remove(tab.bookmarks[0].id)
+                delete tab.bookmarks;
+            }
+        } else if (tab.resource) {
+            
+        } else if (workspace) {
+            if (user) {
+
+            } else {
+                let folder = await tryToGetBookmark(workspace.folderId);
+                if (!folder) {
+                    //const settings = await getSettings();
+
+                    folder = await chrome.bookmarks.create({
+                        title: workspace.title, 
+                        index: 0,
+                        //parentId: settings.defaultFolderLocation 
+                    });
+                }
+
+                
+            }
+
+        } else if (group) {
+
+        } else {
+            showMore = true;
+            showBookmarkMenu = true;
+        }
+    
         // if (tab.bookmarks) {
         //     if (tab.bookmarks.length > 1) {
         //         showBookmarkMenu = true;
@@ -219,7 +254,18 @@
         // }
     };
 </script>
+
+{#if showMore}
+    <ModalContainer on:exit={() => showMore = false}>
+        {#if showBookmarkMenu}
+            <BookmarkDetails resource={tab} />
+        {:else}
+            <TabMenu {user} {tab} {workspace} {isOpen} {workspaces} on:pinTab/>
+        {/if}
+    </ModalContainer>
+{/if}
 {#if loaded}
+
 <div
     bind:this={el}
     class="tab{isSelected ? ' selected' : ''}{isInFocus
@@ -283,12 +329,12 @@
                 {/if}
 
                 {#if isInFocus}
-                <img
-                    class="icon"
-                    src={tab.bookmarks ? starIconFilled : starIcon}
-                    alt="Save"
-                    on:mousedown={toggleSave}
-                />
+                    <img
+                        class="icon"
+                        src={tab.bookmarks || tab.resource ? starIconFilled : starIcon}
+                        alt="Save"
+                        on:mousedown={toggleSave}
+                    />
                 {/if}
 
 
@@ -307,15 +353,20 @@
                         on:mouseup={onCloseTab}
                     />
                 {/if}
+
+                {#if tab.audible}
+                    <img
+                        src={soundIcon}
+                        class="icon"
+                        alt="Sound"
+                        
+                    />
+                {/if}
             </div>
         {/if}
     </div>
 
-    {#if showMore}
-        <Menu {user} {tab} {workspace} on:pinTab/>
-    {:else if showBookmarkMenu}
-        <BookmarkMenu {tab} />
-    {/if}
+    
 </div>
 {/if}
 

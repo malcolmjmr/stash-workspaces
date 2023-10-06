@@ -11,11 +11,13 @@
 
     let settings;
     let tabs = [];
-    let groups = [];
+    let groups = {};
     let windows = [];
     let workspaces = [];
-    let resources = [];
+    let resources = {};
+    let recentTabs = [];
     let activeTab;
+
     let folder;
 
     let user;
@@ -32,11 +34,12 @@
     let lastWorkspaceCreated;
 
     let currentWindowId;
-    let view = Views.windows; 
+    let view = Views.home; 
 
     let authLoaded;
     let windowsLoaded;
     let workspacesLoaded;
+    let resourcesLoaded;
 
     
     const saveGroup = () => {
@@ -60,12 +63,6 @@
         loaded = true;
     };
 
-    
-
-   
-
-
-
 </script>
 {#if loaded}
 <Auth 
@@ -78,6 +75,7 @@
 />
 <WindowManager 
     {db}
+    {user}
     bind:lastRefresh
     bind:windowsLoaded
     bind:activeTab
@@ -92,6 +90,7 @@
     bind:view
     bind:hasBookmarkPermission
     bind:resources
+    bind:recentTabs
 />
 
 {#if authLoaded && windowsLoaded}
@@ -101,6 +100,7 @@
         {authLoaded} 
         {activeTab}
         {lastUpdatedGroup}
+        bind:tabs
         bind:resources
         bind:user 
         bind:workspaces 
@@ -125,6 +125,7 @@
             {lastUpdatedGroup}
             {lastUpdatedWindow}
             {currentWindowId}
+            {recentTabs}
             bind:hasBookmarkPermission
             on:tabMoved={() => lastRefresh = Date.now()}
             on:mergedWindows={() => lastRefresh = Date.now()}

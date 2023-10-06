@@ -18,7 +18,7 @@
         {#if colors.length == 0 || colors.includes(name)}
         <div class="color-container">
             <div
-                class="color {group.color == name ? ' selected' : ''}"
+                class="color {group?.color == name ? ' selected' : ''}"
                 style="background-color: {hex}"
                 on:mousedown={() => {
                     setColor(name);

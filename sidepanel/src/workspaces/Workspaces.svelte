@@ -25,6 +25,7 @@
     import { deleteDoc, doc, setDoc, updateDoc} from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import Workspace from "../workspace/Workspace.svelte";
+  import ModalContainer from "../components/ModalContainer.svelte";
 
     
 
@@ -182,16 +183,15 @@
 
     
     {#if expandedWorkspace}
-        <div class="workspace-preview-container">
+        <ModalContainer on:exit={() => expandedWorkspace = null}>
             <Workspace 
                 workspace={expandedWorkspace}
-
                 {user} 
                 {db}  
                 on:goBack={() => expandedWorkspace = null}
                 
             />
-        </div>
+        </ModalContainer>
     {/if}
     <div class="workspaces">
         <div class="container">

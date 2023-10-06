@@ -8,6 +8,7 @@
         saveContext,
         getContextData,
         saveContextData,
+        getOpenGroups,
     } from "./utilities/chrome";
 
     import {
@@ -23,12 +24,14 @@
 
     import { StorePaths } from "./utilities/storepaths.js";
     import { onMount } from "svelte";
+    import { getWorkspaceData } from "./workspace/workspaceData";
 
 
     export let db;
     export let user;
     export let userRef;
 
+    export let tabs;
     export let activeTab;
     export let workspaces;
     export let authLoaded;
@@ -36,6 +39,7 @@
     export let workspacesLoaded;
     export let lastUpdatedGroup;
     export let resources;
+    //export let resourcesLoaded;
 
     let currentUser;
 
@@ -45,7 +49,7 @@
 
     $: {
         authLoaded;
-        getUserContexts();
+        getUserWorkspaces();
     };
 
     $: {
@@ -60,9 +64,7 @@
         
         Update the tabs that have those resources?
 
-        Need to fetch 
 
-        
 
     */
     
@@ -73,30 +75,51 @@
         const workspaceId = openGroups[lastUpdatedGroup];
         const index = workspaces.findIndex((w) => w.id == workspaceId);
         if (index > -1) {
-            console.log('found workspace');
+            console.log('updating workspace');
             const workspace = await getContext(workspaceId);
+            console.log(workspace);
             workspaces[index] = workspace;
         } else {
-            getUserContexts();
+            getUserWorkspaces();
         }
     };
 
-    const getUserContexts = async () => {
+    const getUserWorkspaces = async () => {
 
         let tempWorkspaces = [];
         if (user?.cloudSync) {
-            tempWorkspaces = await getSyncedContexts();
+            tempWorkspaces = await getSyncedWorkspaces();
         } else {
             tempWorkspaces = await getContexts();
         }
 
-        workspaces = tempWorkspaces.filter((w) => (w.isIncognito ?? false) == activeTab.incognito);
+        getResourcesForOpenWorkspaces();
+
+        const currentWindow = await chrome.windows.get(await chrome.windows.WINDOW_ID_CURRENT);
+        workspaces = tempWorkspaces.filter((w) => (w.isIncognito ?? false) == currentWindow.incognito);
+
         
-        workspacesLoaded = Date.now();
+        //workspacesLoaded = Date.now();
 
     };
 
-    const getSyncedContexts = async () => {
+    const getResourcesForOpenWorkspaces = async () => {
+        const openGroups = await getOpenGroups();
+        for (const workspaceId of Object.values(openGroups)) {
+            for (const resource of await getWorkspaceResources(workspaceId)) {
+                resources[resource.url] = resource;
+            }
+        }
+        
+        for (let i = 0; i < tabs.length; i++) {
+            const resource = resources[tabs[i].url];
+            if (resource) {
+                tabs[i].resource = resource;
+            }
+        }
+    } 
+
+    const getSyncedWorkspaces = async () => {
 
         //let config = await get('config');
         
@@ -112,11 +135,6 @@
         for (const context of localContexts) {
             contextsToUpdate[context.id] = { context };
             contexts[context.id] = context;
-
-            if (context.title == 'Edvo') {
-                console.log('local edvo context');
-                console.log(context);
-            } 
         }  
 
         const serverContexts = (await getDocs(
@@ -126,12 +144,8 @@
         //contexts = serverContexts;
 
         for (const context of serverContexts) {
+            
             const localContextExists = contextsToUpdate[context.id];
-            if (context.title == 'Edvo') {
-                console.log('remote edvo context');
-                console.log(context);
-            } 
-        
             if (localContextExists) {
                 const localContext = contextsToUpdate[context.id].context;
                 const localUpdateTime = localContext.updated ?? localContext.created;
@@ -169,14 +183,12 @@
         const openWorkspaceIds = Object.values(openGroups);
         const openContextsToUpdate = localContextsToUpdate.filter((c) => openWorkspaceIds.includes(c.id));
 
-        updateOpenContexts(openContextsToUpdate, openGroups);
+        updateOpenWorkspaces(openContextsToUpdate, openGroups);
 
 
         const serverContextsToUpdate = Object.values(contextsToUpdate)
                 .filter((d) => !d.local)
                 .map((d) => d.context);
-        console.log('server contexts to update');
-        console.log(serverContextsToUpdate);
         updateServerContexts(serverContextsToUpdate);
 
         
@@ -199,7 +211,7 @@
         }
     };
 
-    const updateOpenContexts = async (contextsToUpdate, openGroups) => {
+    const updateOpenWorkspaces = async (contextsToUpdate, openGroups) => {
 
         let contextToGroups = {};
 
@@ -250,15 +262,16 @@
         }
     }
 
-    const getLastUpdatedResourceForContext = async (context) => {
-        let results = (await getDocs(
-            query(collection(db, StorePaths.userResources(user.id)), 
-                where('context', 'array-contains', context.id), 
-                orderBy('updated', 'desc'),
-                limit(1)
-            )
-        )).docs.map((doc) => doc.data());
-        return results.length == 1 ? results[0] : null;
+    const getWorkspaceResources = async (workspaceId) => {
+        return user 
+            ? (await getDocs(
+                query(collection(db, StorePaths.userResources(user.id)), 
+                    where('contexts', 'array-contains', workspaceId), 
+                    //where('updated', '>', context.resourcesUpdated),
+                    //orderBy('updated', 'desc'),
+                )
+            )).docs.map((doc) => doc.data()) 
+            : [];
     }
 
 

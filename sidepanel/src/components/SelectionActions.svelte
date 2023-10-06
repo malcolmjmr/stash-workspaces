@@ -1,6 +1,7 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
     import { Views } from "../view";
+  import ModalContainer from "./ModalContainer.svelte";
 
     /*
         group
@@ -11,6 +12,8 @@
         
     */
 
+    export let groups;
+    export let workspaces;
     export let lastSelectionUpdate;
     export let selectedTabs;
     export let view;
@@ -46,7 +49,10 @@
         selectedTabs = [];
     };
 
+    let showMoveModal;
+
     const moveTabsToNewWindow = async () => {
+
         const firstTab = selectedTabs.shift();
         const window = await chrome.windows.create({
             tabId: firstTab.id,
@@ -78,6 +84,11 @@
     };
 </script>
 
+
+{#if showMoveModal}
+    <MoveModal {selectedTabs} {workspaces} {groups}/>
+{/if}
+
 <div class="actions">
     {#if groupCount != 1}
         <div class="action" on:mousedown={groupTabs}>Group</div>
@@ -92,9 +103,10 @@
         </div>
     {:else}
         <div class="action" on:mousedown={moveTabsToNewWindow}>
-            Move to New Window
+            Move
         </div>
     {/if}
+    
 
     <div class="action" on:mousedown={closeTabs}>Close</div>
 </div>

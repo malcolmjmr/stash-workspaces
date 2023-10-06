@@ -2,7 +2,7 @@
     import searchIcon from "../icons/search.png";
     import windowsIcon from "../icons/windows.png";
     import tabsIcon from "../icons/vertical-tabs.png";
-    import bookmarksIcon from "../icons/folders.png";
+    import homeIcon from "../icons/home.png";
     //import workspaceIcon from "../icons/star.png";
     import moreIcon from "../icons/more-vert.png";
     import { Views } from "../view";
@@ -28,25 +28,29 @@
 
 <div class="header">
     <div class="container">
-        <SearchBox bind:searchText placeholderText={view == Views.saved ? 'Search' : 'Search Tabs'}/>
-            <div
-                class="action{view == Views.windows ? ' selected' : ''}"
-                on:mousedown={() => (view = Views.windows)}
-            >
-                <img src={windowsIcon} alt="Windows" />
-            </div>
-            <div
-                class="action{view == Views.tabs ? ' selected' : ''}"
-                on:mousedown={() => (view = Views.tabs)}
-            >
-                <img src={tabsIcon} alt="Tabs" />
-            </div>
-            <div
-                class="action{view == Views.saved ? ' selected' : ''}"
-                on:mousedown={() => (view = Views.saved)}
-            >
-                <img src={bookmarksIcon} alt="Saved" />
-            </div>
+        <div class="search-box-margin">
+            <SearchBox bind:searchText placeholderText={[Views.windows, Views.tabs].includes(view) ? 'Search tabs...' : 'Search'}/>
+        </div>
+        
+        <div
+            class="action{view == Views.home ? ' selected' : ''}"
+            on:mousedown={() => (view = Views.home)}
+        >
+            <img src={homeIcon} alt="Home" />
+        </div>
+        <div
+            class="action{view == Views.windows ? ' selected' : ''}"
+            on:mousedown={() => (view = Views.windows)}
+        >
+            <img src={windowsIcon} alt="Windows" />
+        </div>
+        <div
+            class="action{view == Views.tabs ? ' selected' : ''}"
+            on:mousedown={() => (view = Views.tabs)}
+        >
+            <img src={tabsIcon} alt="Tabs" />
+        </div>
+        
         
         <div
             class="action more{showMenu ? ' selected' : ''}"
@@ -72,6 +76,11 @@
         display: flex;
         flex-direction: row;
         align-items: center;
+    }
+
+
+    .search-box-margin {
+        margin: 0px 5px;
     }
 
     .action {

@@ -5,18 +5,37 @@
             - Move to bottom
     */
 
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import { actions } from "./actions";
     import MenuItem from "./MenuItem.svelte";
     import { slide } from "svelte/transition";
     import copyIcon from "../icons/copy.png";
+
+    import MoveResource from "./MoveResource.svelte";
+    import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
 
     let dispatch = createEventDispatcher();
 
     export let user;
     export let tab;
     export let workspace;
-   
+    export let workspaces;
+    export let isOpen = true;
+
+    const TabMenuView = {
+        bookmark: 'bookmark',
+        move: 'move',
+    }
+
+    let view = null;
+
+    let isSaved;
+
+    onMount(() => {
+  
+    });
+
+    
     const moveTabToNewWindow = async () => {
         await chrome.windows.create({ tabId: tab.id, focused: true });
     };
@@ -39,7 +58,7 @@
 
     const moveGroupToNewWindow = async () => {
         const window = await chrome.windows.create();
-        await chrome.tabGroups.move({ windowId: window.id });
+        await chrome.tabGroups.move(tab.groupId, { windowId: window.id });
         // remove new tab
         const newTab = await chrome.tabs.query({
             windowId: window,
@@ -75,9 +94,18 @@
     const duplicateTab = () => {
         chrome.tabs.create({ url: tab.url, index: tab.index + 1 });
     };
+    
+    
+    const openMoveModal = () => {
+        view = TabMenuView.move;
+    }
+
+    const onEditTabBookmarkClicked = () => {
+        dispatch('editBookmark', tab);
+    }
 </script>
 
-<div class="context-menu" in:slide out:slide>
+<div class="context-menu">
     <!--
     {#if tab.groupId > -1}
         <MenuItem title="Save Tab to Group" />
@@ -85,6 +113,7 @@
         <MenuItem title="Save Tab to Window" />
     {/if}
     -->
+    {#if view == null}
     <div class="url-field">
         <img src={copyIcon} style='opacity: {linkCopied ? '1' : '.8'}' alt="Copy Link" on:mousedown={copyLink} />
         <input
@@ -94,24 +123,36 @@
         />
     </div>
     <div class="divider" />
-
-    <MenuItem title={tab.pinned ? 'Unpin Tab' : 'Pin Tab'} on:mouseup={pinTab} />
-    <MenuItem title="Reload" on:mouseup={reloadTab} />
-    <MenuItem title="Duplicate" on:mouseup={duplicateTab} />
-
-    <div class="divider" />
-    <MenuItem title="Move Tab to Pop Up Window" on:mouseup={moveTabToPopup} />
-    <MenuItem title="Move Tab to New Window" on:mouseup={moveTabToNewWindow} />
-    {#if tab.groupId > -1}
-        <MenuItem
-            title="Move Group to New Window"
-            on:mousedown={moveGroupToNewWindow}
+    {#if isOpen}
+        <MenuItem title={tab.pinned ? 'Unpin' : 'Pin'} on:click={pinTab} />
+        <MenuItem title="Reload" on:click={reloadTab} />
+        <MenuItem title="Duplicate" on:click={duplicateTab} />
+        <MenuItem 
+            title={tab.bookmarks || tab.resource ? 'Edit Bookmark': 'Save'} 
+            on:click={onEditTabBookmarkClicked} 
         />
+
+        <div class="divider" />
+        
+        <MenuItem title="Move to Pop Up Window" on:click={moveTabToPopup} />
+        <MenuItem title="Move to New Window" on:click={moveTabToNewWindow} />
+        {#if tab.groupId > -1}
+            <MenuItem
+                title="Move Group to New Window"
+                on:click={moveGroupToNewWindow}
+            />
+        {/if}
+        <MenuItem title="Move to Space" on:click={openMoveModal} />
+        <div class="divider" />
+        <MenuItem title="Close" on:click={closeTab} />
+        {#if tab.groupId > -1}
+            <MenuItem title="Close Group" on:click={closeTabGroup} />
+        {/if}
     {/if}
-    <div class="divider" />
-    <MenuItem title="Close Tab" on:mousedown={closeTab} />
-    {#if tab.groupId > -1}
-        <MenuItem title="Close Group" on:mousedown={closeTabGroup} />
+    {:else if view == TabMenuView.bookmark}
+        <BookmarkDetails resource={tab} {workspace} {workspaces} isOpen={true} />
+    {:else if view == TabMenuView.move} 
+        <MoveResource resource={tab} {workspace} {workspaces} isOpen={true} />
     {/if}
 </div>
 
@@ -120,6 +161,7 @@
         display: flex;
         flex-direction: column;
         width: 100%;
+
     }
 
     .divider {

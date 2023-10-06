@@ -14,6 +14,10 @@ export const set = async (record) => {
     await chrome.storage.local.set(record);
 }
 
+export const getOpenGroups = async () => {
+    return await get('openGroups');
+}
+
 export const getFavIconUrl = async (u) => {
     const url = new URL(await chrome.runtime.getURL("/_favicon/"));
     url.searchParams.set("pageUrl", u);
@@ -36,7 +40,6 @@ export const tryToSaveBookmark = async (tab, group) => {
         if (granted) {
             return await saveTabAsBookmark(tab, group);
         }
-
     }
 
     return { tab, group };
@@ -89,6 +92,69 @@ async function getContextFromTab(tab) {
     if (tab.groupId > -1) return await getContextFromGroupId(tab.groupId);
     return null;
 }
+
+export async function closeTabGroup(groupId) {
+
+    if (!groupId || groupId == -1) return;
+
+    const tabs = await chrome.tabs.query({ groupId: groupId });
+    const tabIds = tabs.map((t) => t.id);
+
+    let context = await getContextFromGroupId(groupId);
+
+    if (!context) return;
+
+    await closeContext(context);
+    setTimeout(() => {
+        chrome.tabs.remove(tabIds);
+    }, 200)
+
+
+
+}
+
+export const openWorkspace = async (workspace, {openInNewWindow}) => {
+    await set({
+        workspaceToOpen: {
+            workspace,
+            time: Date.now(),
+        }
+    });
+
+    let openedTabs = [];
+    let window;
+    let newTab; 
+    if (openInNewWindow) {
+        window = await chrome.windows.create({incognito: workspace.isIncognito ?? false, focused:true});
+        newTab = (await chrome.tabs.query({windowId: window.id}))[0];
+    }
+    
+    if (workspace.tabs.length == 0)  {
+        workspace.tabs.push({
+            url: ''
+        });
+    }
+
+    for (const tab of workspace.tabs) {
+        openedTabs.push(await chrome.tabs.create({url: tab.url, windowId: window?.id}));
+    }
+    const groupId = await chrome.tabs.group({
+        tabIds: openedTabs.map((t) => t.id),
+        createProperties: {
+            windowId: window?.id
+        },
+    });
+    await chrome.tabGroups.update(groupId, {
+        title: workspace.title, 
+        color: workspace.color 
+    });
+
+    if (newTab) {
+        await chrome.tabs.remove(newTab.id);
+    }
+    
+
+};
 
 export async function closeContext(context) {
 
@@ -250,6 +316,18 @@ export async function tryToGetBookmarkChildren(bookmarkId) {
     return bookmarks;
 }
 
+export async function tryToGetBookmarkTree(bookmarkId) {
+    let tree;
+    try {
+        tree = (await chrome.bookmarks.getSubTree(bookmarkId));
+    } catch (error) {
+
+    }
+
+    return tree;
+}
+
+
 export function createId() {
     let string = '';
     for (let i = 0; i < 8; i++) string += S4();
@@ -270,4 +348,9 @@ export function getTabInfo(tab) {
     };
 
     return tabInfo;
+}
+
+export async function getFavoriteSpaces() {
+    const data = (await chrome.storage.sync.get(['favoriteSpaces'])) ?? {};
+    return data['favoriteSpaces'];
 }

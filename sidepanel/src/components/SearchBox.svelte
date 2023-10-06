@@ -30,9 +30,8 @@
 <style>
     .search-box {
         padding: 2px;
-        margin: 5px;
-        background-color: #444444;
-        border-radius: 5px;
+        background-color: #333333;
+        border-radius: 8px;
         flex-grow: 1;
         display: flex;
         flex-direction: row;

@@ -12,6 +12,8 @@
     import starIcon from "../icons/star.png";
     import starFilledIcon from "../icons/star-filled.png";
     import Workspace from "../workspace/Workspace.svelte";
+    import ModalContainer from "../components/ModalContainer.svelte";
+    import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
 
 
     export let group;
@@ -47,7 +49,6 @@
 
     const onMouseLeave = () => {
         isInfocus = false;
-        showMore = false;
     };
 
     const onCloseClicked = () => {
@@ -155,12 +156,14 @@
             tabId = parseInt(tabId);
             const tab = await chrome.tabs.get(tabId);
             let index;
+            let ungroup;
             if (tab.groupId == group.id) {
                 // if (tab.index > startIndex) {
 
                 // } else (tab.index == startIndex) {
                      
                 // }
+                ungroup = true;
                 index = startIndex;
             } else if (tab.index > startIndex) {
                 if (group.collapsed) {
@@ -175,11 +178,14 @@
                     index = endIndex;
                 } else {
                     await chrome.tabs.group({tabIds: tab.id, groupId: group.id});
-                    index = startIndex;
+                    index = startIndex -1;
                 }
             }
-
-            chrome.tabs.move(parseInt(tabId), { index: index });
+            
+            await chrome.tabs.move(parseInt(tabId), { index: index });
+            if (ungroup) {
+                await chrome.tabs.ungroup(tab.id);
+            }
         } else if (groupId) {
             chrome.tabGroups.move(parseInt(groupId), { index: startIndex });
         }
@@ -204,7 +210,15 @@
         }
     };
 
+
+
 </script>
+
+{#if showMore}
+    <ModalContainer on:exit={() => showMore = false}>
+        <WorkspaceMenu {group}/>
+    </ModalContainer>
+{/if}
 
 
 <div
@@ -264,38 +278,13 @@
                 <img
                     src={moreIcon}
                     alt="More"
-                    on:mousedown={() => (showMore = !showMore)}
+                    on:mousedown={() => showMore = true}
                 />
 
                 <img src={closeIcon} alt="close" on:mouseup={onCloseClicked} />
             </div>
         {/if}
     </div>
-    {#if showMore}
-        <div
-            class="more-actions"
-            style="border-color: #555555;"
-            in:slide
-            out:slide
-        >
-            <GroupColors {group} on:colorSelected={onColorSelected}/>
-            <div class="action" on:mousedown={onEditTitleClicked}>
-                Edit title
-            </div>
-            <div class="divider"/>
-            <div class="action" on:mousedown={moveGroup}>
-                Move Group to New Window
-            </div>
-            {#if user}
-            <div class="action" on:mousedown={openWorkspace}>Open Workspace</div>
-            <div class="divider"/>
-            <div class="action" on:mousedown={saveGroup}>Save Group</div>
-            {/if}
-            <div class="divider"/>
-            <div class="action" on:mousedown={ungroupTabs}>Ungroup Tabs</div>
-            <div class="action" on:mousedown={closeGroup}>Close Group</div>
-        </div>
-    {/if}
 </div>
 
 <style>
@@ -315,7 +304,7 @@
 
     .container {
         padding: 3px;
-        min-height: 25px;
+        min-height: 20px;
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -332,7 +321,7 @@
         color: black;
         font-weight: 400;
         flex-grow: 1;
-        font-size: 16px;
+        font-size: 14px;
         margin-left: 5px;
         display: flex;
         flex-direction: row;
@@ -347,6 +336,7 @@
     }
 
     .title .count {
+        margin: 0px 3px;
     }
 
     .title-input {

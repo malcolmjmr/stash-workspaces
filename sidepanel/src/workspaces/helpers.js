@@ -1,5 +1,5 @@
-export const getTimeSinceString = (date, minimized) => {
-
+export const getTimeSinceString = (date) => {
+    let minimized = true;
     if (!date) return '';
     let timeString = '';
     const now = Date.now();

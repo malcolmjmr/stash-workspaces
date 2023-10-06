@@ -271,7 +271,7 @@ async function onTabGroupCreated(group) {
                 
                 await saveRemoteContext(context);
             }
-            delete context.deleted;
+            context.deleted = null;
             context.groupId = group.id;
             let openGroups = await get('openGroups');
             openGroups[group.id] = context.id;
@@ -296,7 +296,7 @@ async function onTabGroupCreated(group) {
                 ?? await createContextFromGroup(group)
             );
 
-            delete context.deleted;
+            context.deleted = null;
             context.opened = Date.now();
             await saveContext(context);
             

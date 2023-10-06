@@ -11,6 +11,7 @@
 
     let dispatch = createEventDispatcher();
     
+    export let isOpen;
     export let group;
     export let workspace;
     export let tabs;
@@ -111,6 +112,7 @@
         {#each tabs as tab (tab)}
             <Tab 
                 {tab} 
+                {isOpen}
                 {selectedTabs} 
                 {lastUpdatedTab} 
                 {lastSelectionUpdate} 

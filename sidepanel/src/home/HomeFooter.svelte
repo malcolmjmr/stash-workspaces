@@ -1,24 +1,18 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
-    import CircleDivider from "../components/CircleDivider.svelte";
-    import FooterContainer from "../components/FooterContainer.svelte";
-    import SelectionFooter from "../components/SelectionActions.svelte";
-
-    import checkboxIcon from "../icons/empty-box.png";
     import newTabIcon from "../icons/add-box.png";
     import createGroupIcon from "../icons/create-folder.png";
     
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
 
-    let dispatch = createEventDispatcher();
 
     export let view;
     export let tabs;
     export let selectedTabs;
     export let lastSelectionUpdate;
-    export let groups;
     export let workspaces;
+    export let groups;
 
     onMount(() => {
         getGroupCount();
@@ -49,15 +43,10 @@
         return  
     };
 
-    const selectAll = async () => {
-        const activeTab = (
-            await chrome.tabs.query({ active: true, currentWindow: true })
-        )[0];
-        selectedTabs = tabs.filter((t) => t.windowId == activeTab.windowId);
-    };
 
     let showCreateGroupModal;
     const createNewGroup = async () => {
+        // if in home view create space?
         const windowTabs = await chrome.tabs.query({currentWindow: true});
         const windowHasGroup = windowTabs.filter((t) => t.groupId > -1).length > 0;
         
@@ -74,36 +63,18 @@
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {groups} {workspaces}/>
+    <CreateGroup {workspaces} {groups}/>
 </ModalContainer>
 {/if}
 {#key lastSelectionUpdate}
 
     <div class="main-container">
         <div class="action" on:mousedown={createNewGroup}>
-            <img src={createGroupIcon} alt="Select All" />
+            <img src={createGroupIcon} alt="Create New Group" />
         </div>
-        <div class="counts">
-            <div class="container">
-                {#if groupCount > 0}
-                    <div class="count">
-                        {groupCount}
-                        <span>
-                            Group{groupCount > 1 ? "s" : ""}
-                        </span>
-                    </div>
-                    <CircleDivider />
-                {/if}
-                <div class="count">
-                    {tabs.length}
-                    <span>
-                        Tab{tabs.length > 1 ? "s" : ""}
-                    </span>
-                </div>
-            </div>
-        </div>
+        
         <div class="action" on:mousedown={createNewTab}>
-            <img src={newTabIcon} alt="Create new tab" />
+            <img src={newTabIcon} alt="Create New Tab" />
         </div>
     </div>
 {/key}
@@ -118,22 +89,6 @@
         z-index: 100;
         color: white;
         justify-content: space-between;
-    }
-
-    .counts {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-around;
-        width: 100%;
-        font-size: 14px;
-        opacity: 0.8;
-    }
-
-    .counts .container {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
     }
 
     .action img {
