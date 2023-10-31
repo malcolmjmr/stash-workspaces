@@ -140,6 +140,7 @@
             <WorkspaceFolder size={28} color={workspace.color} />
             <span>{workspace.title}</span>
         </div>
+        <div class="spacer"></div>
 
         <img class="icon-button" src={openIcon} alt="Open in New Window" 
             on:mousedown={() => openWorkspace(workspace, {openInNewWindow: true})}
@@ -201,6 +202,10 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
+    }
+
+    .spacer {
+        flex-grow: 1;
     }
 
     .header .title {

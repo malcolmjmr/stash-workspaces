@@ -51,6 +51,7 @@
   import SearchBox from "../components/SearchBox.svelte";
   import WorkspaceFooter from "./WorkspaceFooter.svelte";
   import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
+  import ResourceListItem from "./ResourceListItem.svelte";
 
     
 
@@ -279,7 +280,6 @@
         const text = searchText.toLowerCase();
         let tempResults = [];
         for (const resource of resources) {
-            
             if (!resourceView) {
                 tempResults.push(resource);
             } else if (resourceView == ResourceViews.favorites) {
@@ -318,20 +318,30 @@
     };
 
     const openWorkspaceMenu = () => {
-
-        
         showMenu = true;
         console.log('opening menu');
         console.log(showMenu)
-    }
+    };
 
+    const onResourceOpened = ({detail}) => {
+        const resource = detail;
+        const index = resources.findIndex((r) => r.id == resource.id);
+        if (index > -1) {
+            resources[index] = resource;
+            updateVisibleResources();
+        }
+    };
 
-    
+    const onResourceSaved = ({detail}) => {
+        const resource = detail;
+        allResources[resource.url] = resource;
+    };
 </script>
 
 {#if previewWorkspace}
     <ModalContainer on:exit={() => previewWorkspace = null}>
-        <WorkspacePreview workspace={previewWorkspace} />
+        <WorkspacePreview workspace={previewWorkspace} {db} {user}/>
+
     </ModalContainer>
 
 {/if}
@@ -388,7 +398,7 @@
                         on:mousedown={() => foldersCollapsed = !foldersCollapsed}
                     />
                 </div>
-                {#if !foldersCollapsed}
+                {#if false}
                     <div class="items">
                         <div class="container">
                             {#each folders as workspace}
@@ -421,8 +431,13 @@
                 {#if !tabsCollapsed}
                     <div class="items">
                         <div class="container">
-                            {#each tabs as tab (tab.id)}
-                                <Tab {tab} {isOpen}/>
+                            {#each tabs as tab, i (tab.id)}
+                                <Tab 
+                                    bind:tab={tabs[i]} 
+                                    {isOpen} 
+                                    on:resourceSaved={onResourceSaved}
+                                    
+                                />
                             {/each}
                         </div>
                     </div>
@@ -471,7 +486,14 @@
                 <div class="items">
                     <div class="container">
                         {#each visibleResources as resource (resource.id)}
-                            <Tab tab={resource} isOpen={false} />
+                            <ResourceListItem 
+                                {resource} 
+                                {workspace} 
+                                {group} 
+                                {user} 
+                                {db}
+                                on:resourceOpened={onResourceOpened}
+                            />
                         {/each}
                     </div>
                 </div>

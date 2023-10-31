@@ -19,7 +19,8 @@
     import ModalContainer from "./ModalContainer.svelte";
     import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
     import { getTimeSinceString } from "../workspaces/helpers";
-  import WorkspaceFolder from "./WorkspaceFolder.svelte";
+    import WorkspaceFolder from "./WorkspaceFolder.svelte";
+  import { openWorkspace } from "../utilities/chrome";
     
     let showPreview;
     let showSubFolders;
@@ -59,54 +60,10 @@
 
 
 
-    const openWorkspace = async ({openInNewWindow}) => {
-        await set({
-            workspaceToOpen: {
-                workspace,
-                time: Date.now(),
-            }
-        });
-
-        let openedTabs = [];
-        let window;
-        let newTab; 
-        if (openInNewWindow) {
-            window = await chrome.windows.create({incognito: workspace.isIncognito ?? false, focused:true});
-            newTab = (await chrome.tabs.query({windowId: window.id}))[0];
-        }
-        
-        if (workspace.tabs.length == 0)  {
-            workspace.tabs.push({
-                url: ''
-            });
-        }
-
-        for (const tab of workspace.tabs) {
-            openedTabs.push(await chrome.tabs.create({url: tab.url, windowId: window?.id}));
-        }
-        const groupId = await chrome.tabs.group({
-            tabIds: openedTabs.map((t) => t.id),
-            createProperties: {
-                windowId: window?.id
-            },
-        });
-        await chrome.tabGroups.update(groupId, {
-            title: workspace.title, 
-            color: workspace.color 
-        });
-
-        if (newTab) {
-            await chrome.tabs.remove(newTab.id);
-        }
-        
-
-    };
-
-
     const onOpenClicked = async () => {
 
         if (!isOpen) {
-            openWorkspace({openInNewWindow: true});
+            openWorkspace(workspace, {openInNewWindow: true});
         } else if ((workspace.groupId ?? 0) > 0) {
             navigateToWorkspace();
         }

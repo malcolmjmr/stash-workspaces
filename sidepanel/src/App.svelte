@@ -1,15 +1,15 @@
 <script>
 
     import { onMount } from "svelte";
-    import { get, getContexts, getPermissions } from "./utilities/chrome.js";
+    import { get, getContexts, getPermissions, getSettings } from "./utilities/chrome.js";
     import { Views } from "./view.js";
     import SidePanel from "./SidePanel.svelte";
     import Auth from "./Auth.svelte";
     import SignIn from "./signin/SignIn.svelte";
     import WorkspaceManager from "./WorkspaceManager.svelte";
     import WindowManager from "./WindowManager.svelte";
+    import { settings } from "./stores.js";
 
-    let settings;
     let tabs = [];
     let groups = {};
     let windows = [];
@@ -60,7 +60,33 @@
     let hasBookmarkPermission;
     const init = async () => {
         hasBookmarkPermission = await getPermissions();
+        settings.set(await getSettings());
         loaded = true;
+    };
+
+    const onDataUpdated = async ({detail}) => {
+        const data = detail;
+        if (data.resource) {
+            const resource = data.resource;
+            resources[resource.url] = resource.url;
+            const tabIndex = tabs.findIndex((t) => t.url == resource.url);
+            if (tabIndex > -1) {
+                tabs[tabIndex].resource = resource;
+            }
+
+        }
+
+        if (data.tab) {
+            const tab = data.tab;
+            const tabIndex = tabs.findIndex((t) => t.id == tab.id);
+            if (tabIndex > -1) {
+                tabs[tabIndex] = tab;
+            }
+        }
+
+        if (data.workspace) {
+           
+        }
     };
 
 </script>
@@ -73,6 +99,7 @@
     bind:authLoaded 
     bind:view
 />
+
 <WindowManager 
     {db}
     {user}
@@ -126,10 +153,12 @@
             {lastUpdatedWindow}
             {currentWindowId}
             {recentTabs}
+            bind:resources
             bind:hasBookmarkPermission
             on:tabMoved={() => lastRefresh = Date.now()}
             on:mergedWindows={() => lastRefresh = Date.now()}
             on:foundDuplicates={() => lastRefresh = Date.now()}
+            on:dataUpdated={onDataUpdated}
         />
     {/if}
 

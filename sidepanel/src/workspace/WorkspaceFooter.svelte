@@ -49,7 +49,7 @@
 </ModalContainer>
 {/if}
 
-    <div class="main-container">
+    <div class="footer">
         <div class="action" on:mousedown={createNewGroup}>
             <img src={createGroupIcon} alt="Select All" />
         </div>
@@ -79,7 +79,7 @@
 
 
 <style>
-    .main-container {
+    .footer {
         position: fixed;
         bottom: 0;
         display: flex;

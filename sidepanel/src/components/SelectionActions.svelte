@@ -2,6 +2,7 @@
     import { createEventDispatcher, onMount } from "svelte";
     import { Views } from "../view";
   import ModalContainer from "./ModalContainer.svelte";
+  import MoveModal from "../tab/MoveModal.svelte";
 
     /*
         group
@@ -86,7 +87,10 @@
 
 
 {#if showMoveModal}
-    <MoveModal {selectedTabs} {workspaces} {groups}/>
+    <ModalContainer on:exit={() => showMoveModal = false}>
+        <MoveModal {selectedTabs} {workspaces} {groups} />
+    </ModalContainer>
+    
 {/if}
 
 <div class="actions">
@@ -102,7 +106,7 @@
             Stash
         </div>
     {:else}
-        <div class="action" on:mousedown={moveTabsToNewWindow}>
+        <div class="action" on:mousedown={() => showMoveModal = true}>
             Move
         </div>
     {/if}

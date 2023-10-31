@@ -1,14 +1,31 @@
 <script>
-  import { createEventDispatcher, onMount } from "svelte";
-  import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
-  import LocationSelection from "./LocationSelection.svelte";
+    import { createEventDispatcher, onMount } from "svelte";
+    import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
+    import LocationSelection from "./LocationSelection.svelte";
 
-  import addIcon from "../icons/add.png";
+    import addIcon from "../icons/add.png";
+    import linkIcon from "../icons/link.png";
+    import removeIcon from "../icons/remove.png";
+    import { tryToGetBookmark } from "../utilities/chrome";
+    import { allWorkspaces, userData } from "../stores";
+    import { doc, setDoc } from "firebase/firestore";
+    import { StorePaths } from "../utilities/storepaths";
+  import { createResource } from "../utilities/firebase";
 
-    export let workspaces;
-    export let workspace;
+    export let db;
+    export let user = null;
+    export let tab;
     export let resource;
     export let isNativeBookmark = true;
+
+    /*
+        Todo: determine type of account
+    */
+
+    // used if user cancels actions 
+    let locationsAdded = [];
+    let locationsRemoved = [];
+
     
     let dispatch = createEventDispatcher();
 
@@ -19,64 +36,213 @@
         load();
     });
 
+    let title;
+    let url;
     let locations = [];
-    const load = () => {
-        if (isNativeBookmark) {
-            
+    const load = async () => {
+
+        title = (tab ?? resource).title;
+        url = (tab ?? resource).url;
+
+        if (tab) {
+            if (tab.resource) {
+                locations = tab.resource.contexts
+                    .map((id) => $allWorkspaces.find((w) => w.id == id))
+                    .filter((w) => w != null);
+            } else if (tab.bookmarks) {
+                for (const bookmark of resource.bookmarks) {
+                    const folder = await tryToGetBookmark(bookmark.parentId);
+                    if (folder) {
+                        locations.push(folder);
+                    }
+                }
+                
+            }
+        } else if (resource) {
+
         }
+        
+        loaded = true;
     };
 
     let showLocationSelection;
 
     const saveBookmark = () => {
-        dispatch('saveBookmark', resource);
+
+
+        /* 
+
+            check if saving to local or remote storage
+            check if tab or 
+        */
+
+
+        if (resource) {
+            resource.title = title;
+            resource.url = url;
+            if (user) {
+                const ref = doc(db, StorePaths.userResource(user.id, resource.id));
+                setDoc(ref, resource, { merge: true });
+            }   
+        }
+
+        if (tab) {
+            tab.resource = resource;
+        } 
+        
+
+        dispatch('updateData', {tab, resource});
+        dispatch('exit');
+    };
+
+
+    const addLocation = async ({detail}) => {
+        showLocationSelection = false;
+        const location = detail;
+        if (!canSave) canSave = true;
+
+        let parentFolderId;
+        if (location.folder) {
+            parentFolderId = location.folder.id;
+            if (tab && !tab.bookmarks) {
+                tab.bookmarks = []
+            }
+            locations.push(location.folder);
+            locationsAdded.push(location.folder);
+
+        } else if (location.workspace) {
+            if (userData) { // if (settings.cloudStorage)
+                resource = tab?.resource ?? resource ?? createResource(tab);
+                if (!resource.contexts) resource.contexts = [];
+                const index = resource.contexts.findIndex((id) => location.workspace.id == id);
+                if (index == -1) {
+                    resource.contexts.push(location.workspace.id);
+                }
+               
+            } else {
+                parentFolderId = location.workspace.folderId;
+            }
+
+            locations.push(location.workspace);
+            locationsAdded.push(location.workspace);
+        }
+
+        if (tab && parentFolderId) {
+            const bookmark = await chrome.bookmarks.create({ 
+                url: resource.url, 
+                title: resource.title,
+                parentId: parentFolderId,
+            });
+            tab.bookmarks.push(bookmark);
+        }
+
+        dispatch('dataUpdated', {tab});
+    };
+
+    const removeLocation = (location) => {
+        if (tab && tab.resource) {
+            const index = resource.workspaces.findIndex((w) => w.id == location.id);
+            if (index > -1) {
+                resource.workspaces.splice(index, 1);
+                if (resource.resource.parentId) {
+                     
+                } else {
+
+
+                }
+            }
+        }
+
+        if (tab.bookmarks) {
+            const index = resource.bookmarks.findIndex((b) => b.parentId == location.id);
+            if (index > -1) {
+                resource.splice(index, 1);
+
+            }
+        }
+        
+        if (location.parentId) {
+            resource
+        } else {
+            
+        }
     }
 
 </script>
 
 <div class="bookmark-details" >
-    <div class="header">
-        <div class="icon button">
-            Cancel
-        </div>
-        <div class="title">
-            Edit Bookmark
-        </div>
-        <div 
-            class="icon button{canSave ? '': ' disabled'}"
-            on:mousedown={saveBookmark}
-        >
-            Save
-        </div>
-    </div>
+    
+    {#if loaded}
     {#if showLocationSelection}
-        <LocationSelection {workspaces}/>
+        <LocationSelection 
+            on:back={() => showLocationSelection = false}
+            on:locationSelected={addLocation}
+        />
     {:else}
-        <div class="resource-title">
-            <img src={resource.favIconUrl} alt="" />
-            <div class="container">
-                <input
-                    bind:value={resource.title}
-                /> 
+        <div class="header">
+            <div class="icon button" on:mousedown={() => dispatch('exit')}>
+                Cancel
+            </div>
+            <div class="title">
+                Edit Bookmark
+            </div>
+            <div 
+                class="icon button{canSave ? '': ' disabled'}"
+                on:mousedown={saveBookmark}
+            >
+                {#if user} Save {/if}
             </div>
         </div>
-        <div class="resource-url">
-            {resource.url}
-        </div>
-        <div class="locations">
-            <div class="label">
-                Folders
-            </div>
-            <div class="location-list">
-                {#each locations as location}
-                    <WorkspaceListItem workspace={location} isOpen={false}/>
-                {/each}
-                <div class="add" on:mousedown={() => showLocationSelection = true}>
-                    <img src={addIcon} alt="add"/>
-                    <span>Add Location</span>
+        <div class="resource-details">
+            <div class="resource-title">
+                <img src={(tab ?? resource).favIconUrl} alt="" />
+                <div class="container">
+                    <input
+                        bind:value={title}
+                    /> 
                 </div>
             </div>
+            <div class="divider"/>
+            <div class="resource-url">
+                <img src={linkIcon} alt="" />
+                <span class="url">
+                    {url}
+                </span>
+            </div>
         </div>
+        <div class="location">
+            {#if locations.length > 0}
+                <div class="heading">
+                    <div class="label">
+                        {#if (tab?.resource ?? resource)?.contexts}
+                            Workspace
+                        {:else if tab?.bookmarks}
+                            Folders
+                        {/if}
+                    </div>
+                    <div class="add">
+                        <img src={addIcon} alt="add" on:mousedown={() => showLocationSelection = true}>
+                    </div>
+                </div>
+                
+                <div class="location-list">
+                    {#each locations as workspace}
+                        <div class="list-item">
+                            <WorkspaceListItem {workspace} onClick={() => null}/>
+                            <div class="remove" on:mousedown={() => removeLocation(workspace)}>
+                                <img src={removeIcon} alt="remove">
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+            {:else}
+                <div class="add-location" on:mousedown={() => showLocationSelection = true}>
+                    <img src={addIcon} alt="add"/>
+                    <span>Add to Folder</span>
+                </div>
+            {/if}
+        </div>
+    {/if}
     {/if}
 
 </div>
@@ -85,7 +251,12 @@
     .bookmark-details {
         display: flex;
         flex-direction: column;
-
+        background-color: #111111;
+        border-radius: 8px;
+        padding: 0px 8px;
+        max-height: 300px;
+        min-height: 300px;
+        overflow: hidden;
     }
 
     .header {
@@ -93,11 +264,12 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        margin: 10px 5px;
+        margin: 10px 0px;
     }
 
     .header .title {
         font-size: 16px;
+        font-weight: 400;
     }
 
     .header .icon.button {
@@ -106,6 +278,10 @@
 
     .header .icon.button.disabled {
         color: #666666;
+    }
+
+    .icon.button:hover {
+        cursor: pointer;
     }
 
     input {
@@ -120,6 +296,7 @@
         font-weight: 100;
         letter-spacing: 1px;
         color: white;
+        margin-left: 5px;
     }
 
     input::placeholder {
@@ -130,9 +307,22 @@
         letter-spacing: 1px;
     }
 
+    .resource-details {
+        display: flex;
+        flex-direction: column;
+        padding: 5px;
+        border-radius: 8px;
+        background-color: #333333;
+
+    }
+
     .resource-title {
         font-size: 16px;
         font-weight: 800;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 2px 0px;
     }
 
     .resource-title img {
@@ -141,21 +331,126 @@
     }
 
     .resource-title .container {
-        background-color: black;
-        padding: 5px;
         overflow: scroll;
         border-radius: 8px;
     }
 
-    .locations
+    .divider {
+        background-color: #555555;
+        height: 2px;
+        width: 100%;
+        margin: 5px 0px;
+    }
+
+    .resource-url {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        overflow-x: scroll;
+    }
+
+    .resource-url img {
+        filter: invert(1);
+        height: 20px;
+        width: 20px;
+        margin-right: 5px;
+    }
+
+    .resource-url span {
+        white-space: nowrap;
+        max-lines: 1;
+        overflow-y: scroll;
+    }
+
+    .location {
+        margin: 15px 0px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .location .heading {
+        font-size: 14px;
+        font-weight: 400;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        margin: 0px 0px 5px 5px;
+    }
+
+    .location .heading .add {
+        border-radius: 5px;
+        background-color: #333333;
+        margin-left: 5px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .location .heading .add img {
+        height: 17px;
+        width: 17px;
+        filter: invert(1);
+    }
+
+    .location .heading .add img:hover {
+        cursor: pointer;
+    }
 
     .location-list {
         background-color: #333333;
         display: flex;
         flex-direction: column;
-        padding: 5px 8px;
         border-radius: 8px;
     }
+
+    .add-location {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 5px;
+        border-radius: 8px;
+        background-color: #333333;
+        
+        font-size: 14px;
+        font-weight: 400;
+    }
+
+    .add-location:hover {
+        cursor: pointer;
+    }
+
+    .add-location img {
+        height: 20px;
+        width: 20px;
+        filter: invert(1);
+        margin-right: 5px;
+    }
+
+    .location-list .list-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .location-list .list-item .remove {
+        margin-right: 10px;
+        border-radius: 100%;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .location-list .list-item .remove:hover {
+        background-color: #555555;
+        cursor: pointer;
+    }
+
+    .location-list .list-item img {
+        filter: invert(1);
+        height: 15px;
+        width: 15px;
+    }
+
 </style>
 
 

@@ -1,7 +1,10 @@
 <script>
     import { onMount } from "svelte";
-    import { get, getPermissions, set } from "./utilities/chrome.js";
+    import { get, getPermissions, getTabInfo, set } from "./utilities/chrome.js";
     import { Views } from "./view.js";
+    import { allResources, openGroups } from "./stores.js";
+    import { openTabs } from "./stores.js";
+
 
     let settings;
     export let user = null;
@@ -10,7 +13,7 @@
     export let groups = {};
     export let windows = [];
     export let activeTab;
-    export let resources = [];
+    
 
 
 
@@ -30,6 +33,11 @@
     $: {
         lastRefresh;
         loadTabsGroupsAndWindows();
+    }
+
+    $: {
+        $allResources;
+        updateTabsWithinGroup()
     }
 
 
@@ -67,13 +75,13 @@
         windows = await chrome.windows.getAll();
         const groupsArray = await chrome.tabGroups.query({});
 
-        let openGroups = await get('openGroups');
+        let groupMap = await get('openGroups');
         let needToUpdateOpenGroups = false;
         let tempGroups = {};
         for (let group of groupsArray) {
             if (!tempGroups[group.id]) {
      
-                group.workspaceId = openGroups[group.id];
+                group.workspaceId = groupMap[group.id];
                 
                 tempGroups[group.id] = group;
             } 
@@ -83,15 +91,16 @@
             }
         }
         groups = tempGroups;
+        openGroups.set(groups); 
         let tempWindows = [];
         for (let window of windows) {
             window = updateWindowData(window);
             tempWindows.push(window);
         }
 
-        for (const groupId of Object.keys(openGroups)) {
+        for (const groupId of Object.keys((groupMap))) {
             if (!groups[groupId]) {
-                delete openGroups[groupId];
+                delete groupMap[groupId];
                 if (!needToUpdateOpenGroups) {
                     needToUpdateOpenGroups = true;
                 } 
@@ -99,7 +108,7 @@
         }
 
         if (needToUpdateOpenGroups) {
-            await set({ openGroups });
+            await set({ openGroups: groupMap });
         }
 
     };
@@ -328,16 +337,16 @@
     const onBookmarkRemoved = async () => {};
 
     const getTabsBookmarks = async (tab) => {
-      
+        const url = getTabInfo(tab).url;
         if (user) {
-            const savedResource = resources[tab.url];
+            const savedResource = resources[url];
             if (savedResource) {
                 tab.resource = savedResource;
             }
         } else {
             if (hasBookmarkPermission) {
                 const bookmarkResults = await chrome.bookmarks.search({
-                    url: tab.url,
+                    url: url,
                 });
 
                 // check that bookmark parent matches 

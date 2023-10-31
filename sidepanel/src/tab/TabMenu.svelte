@@ -16,6 +16,7 @@
 
     let dispatch = createEventDispatcher();
 
+    export let db;
     export let user;
     export let tab;
     export let workspace;
@@ -150,7 +151,7 @@
         {/if}
     {/if}
     {:else if view == TabMenuView.bookmark}
-        <BookmarkDetails resource={tab} {workspace} {workspaces} isOpen={true} />
+        <BookmarkDetails {db} bind:tab {workspace} {workspaces} isOpen={true} />
     {:else if view == TabMenuView.move} 
         <MoveResource resource={tab} {workspace} {workspaces} isOpen={true} />
     {/if}

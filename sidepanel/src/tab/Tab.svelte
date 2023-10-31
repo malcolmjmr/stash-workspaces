@@ -29,6 +29,10 @@
   
     import ModalContainer from "../components/ModalContainer.svelte";
     import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
+    import { doc, setDoc } from "firebase/firestore";
+    import { StorePaths } from "../utilities/storepaths";
+    import { createResource } from "../utilities/firebase";
+  import { allWorkspaces } from "../stores";
 
 
     export let db;
@@ -48,6 +52,8 @@
 
     let el;
     let isSelected;
+    let isSaved;
+
     $: {
         lastSelectionUpdate;
         isSelected = selectedTabs.find((t) => t.id == tab.id) != null;
@@ -68,9 +74,18 @@
         init();
     });
 
+    const updateSavedState = () => {
+        isSaved = (tab.bookmarks != null) || (tab.resource != null);
+        if (group?.workspaceId && !workspace) {
+            workspace = $allWorkspaces.find((w) => w.id == group?.workspaceId);
+        }
+        
+    };
+
     let isBookmark;
     const init = async () => {
         updateFavIconUrl();
+        updateSavedState();
         isBookmark = tab.parentId;
         loaded = true;
     };
@@ -177,7 +192,6 @@
     };
 
     const onTitleClicked = async () => {
-        console.log(tab);
         if (isOpen) {
             if (isSelected) return;
 
@@ -201,21 +215,36 @@
         chrome.tabs.reload(tab.id);
     };
 
-    let showBookmarkMenu;
-    const toggleSave = async () => {
+    let showBookmarkDetails;
 
+    const saveTab = async () => {
+        console.log('clicked star icon');
         if (tab.bookmarks) {
+            console.log('tab has bookmark');
             if (tab.bookmarks.length > 1) {
-                showBookmarkMenu = true;
+                showMore = true;
+                showBookmarkDetails = true;
             } else {
-                await chrome.bookmarks.remove(tab.bookmarks[0].id)
+                const bookmark = tab.bookmarks[0];
+                await chrome.bookmarks.remove(bookmark.id);
                 delete tab.bookmarks;
+                dispatch('updateData', {tab});
             }
         } else if (tab.resource) {
-            
-        } else if (workspace) {
-            if (user) {
 
+            showMore = true;
+            showBookmarkDetails = true;
+        } else if (workspace) {
+            console.log('tab has workspace')
+            if (user) {
+                let resource = createResource(tab);
+                resource.contexts = [workspace.id];
+                // const ref = doc(db, StorePaths.userResource(user.id, resource.id));
+                // setDoc(ref, resource);
+                console.log('saving to cloud');
+                tab.resource = resource;
+                isSaved = true;
+                dispatch('dataUpdated', {resource});
             } else {
                 let folder = await tryToGetBookmark(workspace.folderId);
                 if (!folder) {
@@ -228,19 +257,31 @@
                     });
                 }
 
+                const bookmark = await chrome.bookmarks.create({
+                    title: tab.title,
+                    url: tab.url,
+                    parentId: folder.id
+                });
+
+                if (!tab.bookmarks) tab.bookmars = [];
+                tab.bookmarks.push(bookmark);
+
+                dispatch('dataUpdated', {tab});
+
                 
             }
 
         } else if (group) {
-
+            // create workspace? 
+            console.log('tab has group');
         } else {
             showMore = true;
-            showBookmarkMenu = true;
+            showBookmarkDetails = true;
         }
     
         // if (tab.bookmarks) {
         //     if (tab.bookmarks.length > 1) {
-        //         showBookmarkMenu = true;
+        //         showBookmarkDetails = true;
         //     } else {
         //         delete tab.bookmarks;
         //         dispatch("tabBookmarkRemoved", tab);
@@ -253,14 +294,25 @@
         //     }
         // }
     };
+
+    const onStarIconClicked = () => {
+        showMore = true;
+        showBookmarkDetails = true;
+    };
+
+    const exitModal = () => {
+        showMore = false;
+    }
+
+    
 </script>
 
 {#if showMore}
-    <ModalContainer on:exit={() => showMore = false}>
-        {#if showBookmarkMenu}
-            <BookmarkDetails resource={tab} />
+    <ModalContainer on:exit={exitModal}>
+        {#if showBookmarkDetails}
+            <BookmarkDetails bind:tab on:exit={exitModal} {db} {user}/>
         {:else}
-            <TabMenu {user} {tab} {workspace} {isOpen} {workspaces} on:pinTab/>
+            <TabMenu {db} {user} {tab} {workspace} {isOpen} {workspaces} on:pinTab/>
         {/if}
     </ModalContainer>
 {/if}
@@ -319,6 +371,7 @@
 
         {#if !isSelected && !isDragged && isOpen}
             <div class="actions">
+
                 {#if tab.pinned}
                     <img
                         src={pinnedIcon}
@@ -328,12 +381,20 @@
                     />
                 {/if}
 
-                {#if isInFocus}
+
+                {#if isSaved}
                     <img
                         class="icon"
-                        src={tab.bookmarks || tab.resource ? starIconFilled : starIcon}
+                        src={starIconFilled}
                         alt="Save"
-                        on:mousedown={toggleSave}
+                        on:mousedown={onStarIconClicked}
+                    />
+                {:else if isInFocus}
+                    <img
+                        class="icon"
+                        src={starIcon}
+                        alt="Save"
+                        on:mousedown={saveTab}
                     />
                 {/if}
 

@@ -25,6 +25,7 @@
     import { StorePaths } from "./utilities/storepaths.js";
     import { onMount } from "svelte";
     import { getWorkspaceData } from "./workspace/workspaceData";
+    import { allWorkspaces } from "./stores";
 
 
     export let db;
@@ -79,6 +80,7 @@
             const workspace = await getContext(workspaceId);
             console.log(workspace);
             workspaces[index] = workspace;
+            allWorkspaces.set(workspaces);
         } else {
             getUserWorkspaces();
         }
@@ -97,7 +99,7 @@
 
         const currentWindow = await chrome.windows.get(await chrome.windows.WINDOW_ID_CURRENT);
         workspaces = tempWorkspaces.filter((w) => (w.isIncognito ?? false) == currentWindow.incognito);
-
+        allWorkspaces.set(workspaces);
         
         //workspacesLoaded = Date.now();
 
@@ -144,7 +146,7 @@
         //contexts = serverContexts;
 
         for (const context of serverContexts) {
-            
+
             const localContextExists = contextsToUpdate[context.id];
             if (localContextExists) {
                 const localContext = contextsToUpdate[context.id].context;
@@ -187,11 +189,9 @@
 
 
         const serverContextsToUpdate = Object.values(contextsToUpdate)
-                .filter((d) => !d.local)
-                .map((d) => d.context);
+            .filter((d) => !d.local)
+            .map((d) => d.context);
         updateServerContexts(serverContextsToUpdate);
-
-        
 
         return Object.values(contexts);
 

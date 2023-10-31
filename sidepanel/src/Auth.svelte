@@ -74,7 +74,6 @@
   
   
     const fbAuthChange = async (newUser) => {
-        console.log("auth change");
         fbUser = newUser;
         if (fbUser) await loadUser();
         else {

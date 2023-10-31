@@ -25,11 +25,26 @@
     const load = async () => {
         favIconUrl = await getFavIconUrl(bookmark.url);
         loaded = true;
-    }
+    };
 
     let dispatch = createEventDispatcher();
     const onClicked = () => {
         dispatch('bookmarkClicked', bookmark);
+    };
+
+    const onDrag = () => {
+
+    };
+
+    const onDrop = () => {
+        let destination; 
+        if (false) {
+            dispatch('bookmarkMoved', {bookmark, destination});
+        }
+    };
+
+    const onDragOver = () => {
+
     };
 </script>
 
@@ -38,6 +53,10 @@
         class="bookmark"
         on:mouseenter={() => (isInFocus = true)}
         on:mouseleave={() => (isInFocus = false)}
+        on:drag={onDrag}
+        on:drop={onDrop}
+        on:dragover={onDragOver}
+        draggable="true"
     >
         <div class="head">
             <img

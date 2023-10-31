@@ -8,15 +8,20 @@ export const getPermissions = async () => {
 export const get = async (key) => {
     const data = (await chrome.storage.local.get([key])) ?? {};
     return data[key];
-}
+};
+
+export const getSettings = async () => {
+    const data = (await chrome.storage.sync.get(['settings'])) ?? {};
+    return data['settings'] ?? {};
+};
 
 export const set = async (record) => {
     await chrome.storage.local.set(record);
-}
+};
 
 export const getOpenGroups = async () => {
     return await get('openGroups');
-}
+};
 
 export const getFavIconUrl = async (u) => {
     const url = new URL(await chrome.runtime.getURL("/_favicon/"));
@@ -326,6 +331,22 @@ export async function tryToGetBookmarkTree(bookmarkId) {
 
     return tree;
 }
+
+export async function tryToGetTabGroup(groupId) {
+    if (!groupId) return;
+
+    if (typeof groupId == 'string') groupId = parseInt(groupId);
+
+    let group;
+    try {
+        group = await chrome.tabGroups.get(groupId);
+    } catch (error) {
+
+    }
+    return group;
+}
+
+
 
 
 export function createId() {

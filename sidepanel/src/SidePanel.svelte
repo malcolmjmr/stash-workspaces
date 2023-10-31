@@ -38,6 +38,7 @@
     export let lastUpdatedGroup;
     export let lastUpdatedWindow;
     export let hasBookmarkPermission;
+    export let resources;
 
     let activeWorkspace;
     let activeGroup;
@@ -277,7 +278,7 @@
                 on:foundDuplicates
                 on:groupSaved
                 on:showWorkspaceView={showWorkspaceView}
-                
+                on:dataUpdated
             />
         {:else if view == Views.saved}
             <Workspaces 
@@ -301,8 +302,10 @@
                 {user}
                 {lastUpdate} 
                 {lastUpdatedTab}
-                {lastSelectionUpdate} 
+                {lastSelectionUpdate}
+                bind:allResources={resources}
                 on:goBack={() => view = Views.tabs}
+                on:dataUpdated
             />
         {:else if view == Views.trash}
             <Trash

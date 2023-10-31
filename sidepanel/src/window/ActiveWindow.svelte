@@ -162,7 +162,7 @@
 {#if loaded}
     {#key lastUpdate}
         <div class="padding"></div>
-        {#each tabs as tab (tab.id + '' + tab.index + '' + tab.updated)}
+        {#each tabs as tab, i (tab.id + '' + tab.index + '' + tab.updated)}
             {#if tab.groupId > -1 && groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
                 <GroupLabel
                     group={groups[tab.groupId]}
@@ -181,18 +181,17 @@
             {#if !groups[tab.groupId]?.collapsed}
                 <Tab
                     {db}
-                    {tab}
+                    bind:tab={tabs[i]}
                     {user}
                     group={groups[tab.groupId]}
                     {selectedTabs}
                     {lastUpdatedTab}
                     {lastSelectionUpdate}
                     {dragoverItem}
-                    {workspaces}
                     isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
                     isEndingTab={tab.groupId > -1 && groupEnds[tab.groupId] == tab.index}
                     on:updateSelection
-                    on:saveIconClicked={onSaveIconClicked}
+                    on:updateData
                 />
             {/if}
         {/each}

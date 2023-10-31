@@ -26,7 +26,7 @@
     
 
     onMount(() => {
-
+        
         refreshSpaces();
 
     });
@@ -41,9 +41,7 @@
     const refreshSpaces = async () => {
         if (workspaces.length == 0) return;
         openSpaces = Object.values(groups).map((g) => workspaces.find((w) => g.workspaceId == w.id)).filter((s) => s);
-        
         let spaces = [...workspaces.filter((w) => !w.deleted && !openSpaces.find((openSpace) => w.id == openSpace.id))];
-
         spaces.sort((a,b) => b.updated - a.updated);
         recentSpaces = spaces.slice(0, 10);
         favoriteSpaces = ((await get('favoriteSpaces')) ?? []).map((favoriteSpaceId) => spaces.find((s) => s.id == favoriteSpaceId));
