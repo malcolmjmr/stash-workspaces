@@ -26,6 +26,7 @@
         font-size: 12px;
         opacity: 0.5;
         width: 50px;
+        color: #ffbf00;
     }
 
     .cancel:hover {
