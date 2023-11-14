@@ -23,11 +23,17 @@ export const getOpenGroups = async () => {
     return await get('openGroups');
 };
 
-export const getFavIconUrl = async (u) => {
-    const url = new URL(await chrome.runtime.getURL("/_favicon/"));
-    url.searchParams.set("pageUrl", u);
-    url.searchParams.set("size", "32");
-    return url.toString();
+export const getTabFavIconUrl = ({url, favIconUrl}) => {
+    if (favIconUrl && favIconUrl != '' && !favIconUrl.includes('chrome:')) {
+        return favIconUrl;
+    }
+
+    let favIconUrlFromChrome = new URL(chrome.runtime.getURL("/_favicon/"));
+    favIconUrlFromChrome.searchParams.set("pageUrl", url);
+    favIconUrlFromChrome.searchParams.set("size", "32");
+    // url += '?pageUrl=' + u;
+    // url += '&size=32';
+    return favIconUrlFromChrome.toString();
 };
 
 export const requestBookmarkPermssion = async () => {
@@ -41,7 +47,9 @@ export const tryToSaveBookmark = async (tab, group) => {
     try {
         return await saveTabAsBookmark(tab, group);
     } catch (e) {
-        await requestBookmarkPermssion();
+        const granted = await chrome.permissions.request({
+            permissions: ['bookmarks']
+        });
         if (granted) {
             return await saveTabAsBookmark(tab, group);
         }
@@ -99,17 +107,18 @@ async function getContextFromTab(tab) {
 }
 
 export async function closeTabGroup(groupId) {
-
+    
     if (!groupId || groupId == -1) return;
 
     const tabs = await chrome.tabs.query({ groupId: groupId });
     const tabIds = tabs.map((t) => t.id);
+    console.log('closing tab group');
+    console.log(tabIds);
 
     let context = await getContextFromGroupId(groupId);
 
-    if (!context) return;
+    if (context) await closeContext(context);
 
-    await closeContext(context);
     setTimeout(() => {
         chrome.tabs.remove(tabIds);
     }, 200)
@@ -119,6 +128,20 @@ export async function closeTabGroup(groupId) {
 }
 
 export const openWorkspace = async (workspace, {openInNewWindow}) => {
+
+    const groupWorkspaceMap = await getOpenGroups();
+
+    workspace = await getContext(workspace.id);
+    const openGroup = await tryToGetTabGroup(workspace?.groupId);
+
+    if (openGroup) {
+        // navigate to last open tab
+        
+        return;
+    }
+
+    
+
     await set({
         workspaceToOpen: {
             workspace,
@@ -263,6 +286,9 @@ export async function removeContext(context) {
 export async function removeContexts(contexts) {
     const contextKeysToRemove = contexts.map((c) => getContextKey(c));
     const contextKeys = (await get('contextKeys') ?? []).filter((k) => !contextKeysToRemove.includes(k));
+    for (const context of contexts) {
+        await removeContext(context);
+    }
     
 }
 
@@ -332,6 +358,19 @@ export async function tryToGetBookmarkTree(bookmarkId) {
     return tree;
 }
 
+export async function tryToGetTab(tabId) {
+    if (!tabId) return;
+
+    let tab;
+    try {
+        tab = await chrome.tabGroups.get(tabId);
+    } catch (error) {
+
+    }
+
+    return tab;
+}
+
 export async function tryToGetTabGroup(groupId) {
     if (!groupId) return;
 
@@ -344,6 +383,33 @@ export async function tryToGetTabGroup(groupId) {
 
     }
     return group;
+}
+
+export async function tryToGetWorkspaceFolder(workspace, parentId) {
+    let folder = await tryToGetBookmark(workspace.folderId);
+    if (!folder) {
+        // search for folders with the same name 
+        const searchResults = await chrome.bookmarks.search({title: workspace.title});
+        if (searchResults.length == 1) {
+            folder = searchResults[0];
+            
+        } 
+    }
+
+    if (!folder) {
+        // creat folder
+        folder = await chrome.bookmarks.create({
+            title: workspace.title,
+            parentId,
+        });
+    }
+
+    if (folder.id != workspace.folderId) {
+        await saveContext(workspace);
+        // need to make sure that the context data is updated in sidepanel
+    }
+
+    return folder;
 }
 
 
@@ -359,7 +425,12 @@ function S4() {
     return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
 }
 
-export function getTabInfo(tab) {
+export function getTabInfo(tab, showAdditionalData = false) {
+
+    let additionalData = {
+        groupId: tab.groupId,
+        index: tab.index,
+    };
 
     let tabInfo = {
         id: tab.id,
@@ -368,7 +439,7 @@ export function getTabInfo(tab) {
         favIconUrl: tab.favIconUrl,
     };
 
-    return tabInfo;
+    return showAdditionalData ? {...tabInfo, ...additionalData} : tabInfo;
 }
 
 export async function getFavoriteSpaces() {

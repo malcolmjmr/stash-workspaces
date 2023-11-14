@@ -1,8 +1,8 @@
 <script>
     import { onMount } from "svelte";
-    import { get, getPermissions, getTabInfo, set } from "./utilities/chrome.js";
+    import { get, getPermissions, getTabInfo, set, tryToGetBookmark, tryToGetTab } from "./utilities/chrome.js";
     import { Views } from "./view.js";
-    import { allResources, openGroups } from "./stores.js";
+    import { allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
 
 
@@ -54,7 +54,6 @@
 
     export let hasBookmarkPermission;
 
-
     const setView = async () => {
 
         const allTabsInGroup = !tabs.find((t) => activeTab.groupId == -1 || t.windowId == activeTab.windowId && t.groupId != activeTab.groupId);
@@ -66,6 +65,7 @@
     };
 
     const loadTabsGroupsAndWindows = async () => {
+        console.log('loading tabs and windows');
         tabs = await chrome.tabs.query({});
 
         for (let i = 0; i < tabs.length; i++) {
@@ -76,6 +76,7 @@
         const groupsArray = await chrome.tabGroups.query({});
 
         let groupMap = await get('openGroups');
+        console.log(groupMap);
         let needToUpdateOpenGroups = false;
         let tempGroups = {};
         for (let group of groupsArray) {
@@ -86,8 +87,11 @@
                 tempGroups[group.id] = group;
             } 
 
-            if (!openGroups[group.id]) {
+            if (!$openGroups[group.id]) {
                 // need to get or create context
+
+                console.log('couldnt find context for group' );
+                console.log(group);
             }
         }
         groups = tempGroups;
@@ -152,6 +156,7 @@
         if (hasBookmarkPermission) {
             chrome.bookmarks.onCreated.addListener(onBookmarkCreated);
             chrome.bookmarks.onRemoved.addListener(onBookmarkRemoved);
+            chrome.bookmarks.onMoved.addListener(onBookmarkMoved);
         }
     };
 
@@ -186,16 +191,22 @@
         updateTabsWithinWindow(tab.windowId, tab.id);
     };
 
-    const onTabUpdated = (tabId, updated) => {
-        let tabIndex = tabs.findIndex((t) => t.id == tabId);
+    const onTabUpdated = async (tabId, updates, tab) => {
+        let tabIndex = tabs.findIndex((t) => t.id == tab.id);
+
+        if (!tab){
+            console.log('tab couldnt be found');
+            console.log(tabId);
+        } 
+
         if (tabIndex > -1) {
-            let tab = { ...tabs[tabIndex], ...updated };
+            tab = { ...tabs[tabIndex], ...getTabInfo(tab, true) };
             tab.updated = Date.now();
+            tab = await getTabsBookmarks(tab);
             tabs[tabIndex] = tab;
             tabs = tabs;
             lastUpdatedTab = tab;
             //lastUpdatedWindow = tab.windowId;
-            
         }
     };
 
@@ -234,9 +245,11 @@
     };
 
     const onTabRemoved = (tabId) => {
+        console.log('tab removed');
         const index = tabs.findIndex((t) => t.id == tabId);
         if (index > -1) {
             const tab = { ...tabs[index] };
+            console.log(tab);
             tabs.splice(index, 1);
             if (tab) updateTabsWithinWindow(tab.windowId, tabId);
         }
@@ -291,7 +304,7 @@
         }
         tabs.sort((a, b) => a.index - b.index);
         tabs = tabs;
-        lastUpdatedGroup = groupId;
+        lastUpdatedGroup = groups[groupId];
         if (updatedTabs.length > 0 && updatedTabs[0].windowId) {
             lastUpdatedWindow = updatedTabs[0].windowId;
         }
@@ -317,48 +330,91 @@
         //group.workspace = workspaces[group]
         groups[group.id] = group;
         updateTabsWithinGroup(group.windowId);
-        lastUpdatedGroup = group.id;
+        group.created = true;
+        lastUpdatedGroup = group;
         lastUpdate = Date.now();
+        
     };
 
     const onTabGroupUpdated = (group) => {
         groups[group.id] = {...groups[group.id], ...group};
         delete groups[group.id].new;
-        lastUpdatedGroup = group.id;
+        lastUpdatedGroup = group;
     };
 
     const onTabGroupRemoved = (groupId) => {
+        
+        const deletedGroup = {...groups[groupId], deleted: true};
         delete groups[groupId];
-        lastUpdatedGroup = groupId;
+        lastUpdatedGroup = deletedGroup;
     };
 
-    const onBookmarkCreated = async () => {};
+    const onBookmarkCreated = async (id, bookmark) => {
+    
+        
+        //updateTabsWithBookmark({bookmark});
+    };
 
-    const onBookmarkRemoved = async () => {};
+    const onBookmarkMoved = async (id, moveInfo) => {
+        const bookmark = await tryToGetBookmark(id);
+        //updateTabsWithBookmark({bookmark});
+    };
+
+    const onBookmarkRemoved = async (id, removeInfo) => {
+        //updateTabsWithBookmark({id, remove: true});
+    };
+
+    const updateTabsWithBookmark = async ({ id, bookmark, remove }) => {
+        console.log('updating tabs with bookmark');
+        console.log(bookmark);
+        console.log('id: ' + id);
+        for (let i = 0; i < tabs.length; i++) {
+            let tab = tabs[i];
+            if (!remove && !bookmark?.url != tab.url) {
+                continue;
+            } 
+            
+            if (!tab.bookmarks) tabs[i].bookmarks = [];
+            let index = tabs[i].bookmarks.findIndex((b) => {
+                return bookmark ? b.id == bookmark.id : id == b.id;
+            });
+
+            if (!remove && index == -1) {
+                console.log('adding bookmark to tab');
+                console.log(tab);
+                tabs[i].bookmarks.push(bookmark);
+            } else if (remove && index > -1) {
+                tabs[i].bookmarks.splice(index, 1);
+            }
+            
+        }
+        lastUpdate = Date.now();
+    }
+
+
 
     const getTabsBookmarks = async (tab) => {
         const url = getTabInfo(tab).url;
         if (user) {
-            const savedResource = resources[url];
+            const savedResource = $allResources[url];
             if (savedResource) {
                 tab.resource = savedResource;
+            } else {
+                tab.resource = null;
             }
-        } else {
-            if (hasBookmarkPermission) {
-                const bookmarkResults = await chrome.bookmarks.search({
-                    url: url,
-                });
+        } 
+        if (hasBookmarkPermission) {
+            const bookmarkResults = await chrome.bookmarks.search({
+                url: url,
+            });
 
-                // check that bookmark parent matches 
-                if (bookmarkResults.length > 0) {
-                    tab.bookmarks = bookmarkResults;
-                } 
+            // check that bookmark parent matches 
+            if (bookmarkResults.length > 0) {
+                tab.bookmarks = bookmarkResults;
+            } else {
+                tab.bookmarks = null;
             }
         }
-
-    
-
-
         return tab;
     };
 

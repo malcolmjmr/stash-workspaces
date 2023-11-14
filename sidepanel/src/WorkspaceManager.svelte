@@ -40,6 +40,7 @@
     export let workspacesLoaded;
     export let lastUpdatedGroup;
     export let resources;
+
     //export let resourcesLoaded;
 
     let currentUser;
@@ -72,14 +73,31 @@
     const updateWorkspaces = async () => {
         if (!lastUpdatedGroup) return;
         
-        const openGroups = await get('openGroups');
-        const workspaceId = openGroups[lastUpdatedGroup];
-        const index = workspaces.findIndex((w) => w.id == workspaceId);
+        let openGroups = await get('openGroups');
+        let workspaceId = openGroups[lastUpdatedGroup.id];
+        console.log('updating workspace');
+        const index = workspaces.findIndex((w) => workspaceId ? w.id == workspaceId : w.groupId == lastUpdatedGroup.id);
         if (index > -1) {
-            console.log('updating workspace');
+            
             const workspace = await getContext(workspaceId);
             console.log(workspace);
-            workspaces[index] = workspace;
+            if (lastUpdatedGroup.removed) {
+                console.log('deleted space');
+                delete workspaces[index];
+            } else {
+                console.log('groups');
+                console.log(groups);
+                workspaces[index] = workspace;
+                workspaces = [...workspaces];
+            }
+
+            allWorkspaces.set(workspaces);
+            
+        } else if (lastUpdatedGroup.created) {
+            console.log('created space');
+            const workspace = await getContext(workspaceId);
+            console.log(workspace);
+            workspaces.push(workspace);
             allWorkspaces.set(workspaces);
         } else {
             getUserWorkspaces();
@@ -95,13 +113,19 @@
             tempWorkspaces = await getContexts();
         }
 
-        getResourcesForOpenWorkspaces();
+        const data = await chrome.storage.local.get(null);
+        console.log('data');
+        console.log(data);
+
+        await getResourcesForOpenWorkspaces();
 
         const currentWindow = await chrome.windows.get(await chrome.windows.WINDOW_ID_CURRENT);
         workspaces = tempWorkspaces.filter((w) => (w.isIncognito ?? false) == currentWindow.incognito);
         allWorkspaces.set(workspaces);
         
-        //workspacesLoaded = Date.now();
+        workspacesLoaded = Date.now();
+        console.log('loaded workspaces');
+        console.log(workspaces);
 
     };
 

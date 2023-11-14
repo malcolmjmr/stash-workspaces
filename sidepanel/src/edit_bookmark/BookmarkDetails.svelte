@@ -6,17 +6,22 @@
     import addIcon from "../icons/add.png";
     import linkIcon from "../icons/link.png";
     import removeIcon from "../icons/remove.png";
-    import { tryToGetBookmark } from "../utilities/chrome";
+    import folderIcon from "../icons/folder-filled.svg";
+    import trashIcon from "../icons/delete.png";
+    import { getTabFavIconUrl, tryToGetBookmark } from "../utilities/chrome";
     import { allWorkspaces, userData } from "../stores";
-    import { doc, setDoc } from "firebase/firestore";
+    import { deleteDoc, doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
-  import { createResource } from "../utilities/firebase";
+    import { createResource } from "../utilities/firebase";
+    import ModalContainer from "../components/ModalContainer.svelte";
+    import DeleteDialogue from "./DeleteDialogue.svelte";
 
-    export let db;
+
+    export let db = null;
     export let user = null;
     export let tab;
     export let resource;
-    export let isNativeBookmark = true;
+    export let isNativeBookmark = false;
 
     /*
         Todo: determine type of account
@@ -25,6 +30,7 @@
     // used if user cancels actions 
     let locationsAdded = [];
     let locationsRemoved = [];
+    let isFolder;
 
     
     let dispatch = createEventDispatcher();
@@ -38,36 +44,57 @@
 
     let title;
     let url;
+    let favIconUrl; 
     let locations = [];
     const load = async () => {
 
         title = (tab ?? resource).title;
         url = (tab ?? resource).url;
-
+        favIconUrl = getTabFavIconUrl({url});
         if (tab) {
             if (tab.resource) {
                 locations = tab.resource.contexts
                     .map((id) => $allWorkspaces.find((w) => w.id == id))
                     .filter((w) => w != null);
             } else if (tab.bookmarks) {
-                for (const bookmark of resource.bookmarks) {
-                    const folder = await tryToGetBookmark(bookmark.parentId);
-                    if (folder) {
-                        locations.push(folder);
-                    }
+                for (const bookmark of tab.bookmarks) {
+                    await addParentFolder(bookmark);
                 }
                 
             }
         } else if (resource) {
+            if (isNativeBookmark) {
 
+                if (resource.url) {
+                    const searchResults = await chrome.bookmarks.search({url: resource.url});
+                    for (const bookmark of searchResults) {
+                        await addParentFolder(bookmark);
+                    }
+                } else { // is folder
+                    isFolder = true;
+                    await addParentFolder(resource);
+                }
+                
+            } else {
+                locations = resource.contexts
+                    .map((id) => $allWorkspaces.find((w) => w.id == id))
+                    .filter((w) => w != null);
+            }
         }
         
         loaded = true;
     };
 
+    const addParentFolder = async (bookmark) => {
+        const folder = await tryToGetBookmark(bookmark.parentId);
+        if (folder) {
+            locations.push(folder);
+        }
+    }
+
     let showLocationSelection;
 
-    const saveBookmark = () => {
+    const saveBookmark = async () => {
 
 
         /* 
@@ -78,23 +105,84 @@
 
 
         if (resource) {
-            resource.title = title;
-            resource.url = url;
-            if (user) {
-                const ref = doc(db, StorePaths.userResource(user.id, resource.id));
-                setDoc(ref, resource, { merge: true });
-            }   
+            let titleChanged;
+            let urlChanged;
+            if (resource.title != title) {
+                resource.title = title;
+                titleChanged = true;
+            }
+            if (resource.url != url) {
+                resource.url = url;
+                urlChanged = true;
+            }
+           
+            if (isNativeBookmark) {
+                if (titleChanged || urlChanged) {
+                    await chrome.bookmarks.update(resource.id, {title, url});
+                }
+            } else {
+
+                if (user) {
+                    console.log('saving to firebase');
+                    const ref = doc(db, StorePaths.userResource(user.id, resource.id));
+                    setDoc(ref, resource, { merge: true });
+                }  
+            }
+             
         }
 
         if (tab) {
             tab.resource = resource;
-        } 
+        }
+
+
+        for (const bookmarkToRemove of bookmarksToRemove) {
+            await chrome.bookmarks.remove(bookmarkToRemove.id);
+            const index = tab?.bookmarks.findIndex((b) => b.id == bookmarkToRemove.id);
+            if (index > -1) {
+                tab.bookmarks.splice(index, 1);
+            }
+        }
+    
         
 
-        dispatch('updateData', {tab, resource});
+        dispatch('dataUpdated', {tab, resource});
         dispatch('exit');
     };
 
+    const deleteBookmark = async ({ detail }) => {
+        console.log('is native bookmark: ' + isNativeBookmark);
+        console.log(resource);
+        if (tab?.resource || (!isNativeBookmark && resource)) {
+            if (!resource) resource = tab.resource;
+            let ref = doc(db, StorePaths.userResource(user.id, resource.id)) ;
+            deleteDoc(ref);
+            resource.deleted = true;
+            if (tab) tab.resource = null;
+            dispatch('dataUpdated', { tab, resource })
+        } else if (isNativeBookmark && resource) {
+            console.log('deleting bookmark');
+            await chrome.bookmarks.remove(resource.id);
+            resource.deleted = true;
+            if (tab.bookmarks) {
+                
+            }
+            dispatch('dataUpdated', { resource} );
+            
+        }
+        
+        if (tab?.bookmarks) {
+            for (const bookmark of tab.bookmarks) {
+                await chrome.bookmarks.remove(bookmark.id);
+            }
+
+            dispatch('dataUpdated',{tab});
+            dispatch('bookmarkMoved');
+
+        }
+        
+        dispatch('exit');
+    };
 
     const addLocation = async ({detail}) => {
         showLocationSelection = false;
@@ -107,11 +195,13 @@
             if (tab && !tab.bookmarks) {
                 tab.bookmarks = []
             }
+            console.log('adding folder');
+            console.log(location.folder);
             locations.push(location.folder);
             locationsAdded.push(location.folder);
 
         } else if (location.workspace) {
-            if (userData) { // if (settings.cloudStorage)
+            if (userData.saveToCloud) { // if (settings.cloudStorage)
                 resource = tab?.resource ?? resource ?? createResource(tab);
                 if (!resource.contexts) resource.contexts = [];
                 const index = resource.contexts.findIndex((id) => location.workspace.id == id);
@@ -120,7 +210,11 @@
                 }
                
             } else {
+                console.log('saving tab to workspace');
+                console.log(tab);
+                console.log(location.workspace)
                 parentFolderId = location.workspace.folderId;
+                console.log(parentFolderId);
             }
 
             locations.push(location.workspace);
@@ -129,46 +223,79 @@
 
         if (tab && parentFolderId) {
             const bookmark = await chrome.bookmarks.create({ 
-                url: resource.url, 
-                title: resource.title,
+                url: tab.url, 
+                title: tab.title,
                 parentId: parentFolderId,
             });
+            if (!tab.bookmarks) tab.bookmarks = [];
             tab.bookmarks.push(bookmark);
         }
 
         dispatch('dataUpdated', {tab});
     };
 
-    const removeLocation = (location) => {
+    let bookmarksToRemove = [];
+    const removeLocation = async (location) => {
+
+        const locationIndex = locations.findIndex((l) => l.id == location.id);
+        console.log('removing location ');
+        console.log(location);
+        console.log('location index: ' + locationIndex);
+        if (locationIndex > -1) {
+            canSave = true;
+            locations = locations.filter((l) => l.id != location.id);
+        }
+
         if (tab && tab.resource) {
-            const index = resource.workspaces.findIndex((w) => w.id == location.id);
+            const index = tab.resource.contexts.findIndex((id) => id == location.id);
             if (index > -1) {
-                resource.workspaces.splice(index, 1);
-                if (resource.resource.parentId) {
-                     
-                } else {
+                tab.resource.contexts.splice(index, 1);
+                resource = tab.resource;
+            }
+        }
 
+        if (tab?.bookmarks) {
+            const index = tab.bookmarks.findIndex((b) => b.parentId == location.id);
+            if (index > -1) {
+                bookmarksToRemove.push({...tab.bookmarks[index]});
+            }
+        }
 
+        if (!tab && resource) {
+            if (resource.parentId) bookmarksToRemove.push(resource);
+            else {
+                const index = resource.contexts.findIndex((id) => id == location.id);
+                if (index > -1) {
+                    resource.contexts.splice(index, 1);
                 }
             }
-        }
-
-        if (tab.bookmarks) {
-            const index = resource.bookmarks.findIndex((b) => b.parentId == location.id);
-            if (index > -1) {
-                resource.splice(index, 1);
-
-            }
-        }
-        
-        if (location.parentId) {
-            resource
-        } else {
             
         }
+        
+        // if (location.parentId) {
+        //     resource
+        // } else {
+            
+        // }
+    };
+
+    let showDeleteDialog;
+
+    const onTitleChanged = () => {
+        if (!canSave) canSave = true;
     }
 
 </script>
+
+{#if showDeleteDialog}
+    <ModalContainer on:exit={() => showDeleteDialog = false}>
+        <DeleteDialogue {isFolder}
+            bookmark={tab?.bookmark}
+            on:no={() => showDeleteDialog = false} 
+            on:yes={deleteBookmark}
+        />
+    </ModalContainer>
+{/if}
 
 <div class="bookmark-details" >
     
@@ -180,35 +307,43 @@
         />
     {:else}
         <div class="header">
-            <div class="icon button" on:mousedown={() => dispatch('exit')}>
+            <div class="icon button end" on:mousedown={() => dispatch('exit')}>
                 Cancel
             </div>
             <div class="title">
                 Edit Bookmark
             </div>
             <div 
-                class="icon button{canSave ? '': ' disabled'}"
+                class="icon button end{canSave ? '': ' disabled'} save"
                 on:mousedown={saveBookmark}
             >
-                {#if user} Save {/if}
+                {#if canSave} Save {/if}
             </div>
         </div>
         <div class="resource-details">
             <div class="resource-title">
-                <img src={(tab ?? resource).favIconUrl} alt="" />
+                {#if favIconUrl}
+                    <img src={favIconUrl} alt="" />
+                {:else}
+                    <img src={folderIcon} alt=""/> 
+                {/if}
                 <div class="container">
                     <input
                         bind:value={title}
+                        on:change={onTitleChanged}
                     /> 
                 </div>
             </div>
+            {#if url}
             <div class="divider"/>
+
             <div class="resource-url">
                 <img src={linkIcon} alt="" />
                 <span class="url">
                     {url}
                 </span>
             </div>
+            {/if}
         </div>
         <div class="location">
             {#if locations.length > 0}
@@ -216,7 +351,7 @@
                     <div class="label">
                         {#if (tab?.resource ?? resource)?.contexts}
                             Workspace
-                        {:else if tab?.bookmarks}
+                        {:else if tab?.bookmarks ?? resource?.parentId}
                             Folders
                         {/if}
                     </div>
@@ -226,7 +361,7 @@
                 </div>
                 
                 <div class="location-list">
-                    {#each locations as workspace}
+                    {#each locations as workspace (workspace.id)}
                         <div class="list-item">
                             <WorkspaceListItem {workspace} onClick={() => null}/>
                             <div class="remove" on:mousedown={() => removeLocation(workspace)}>
@@ -238,9 +373,13 @@
             {:else}
                 <div class="add-location" on:mousedown={() => showLocationSelection = true}>
                     <img src={addIcon} alt="add"/>
-                    <span>Add to Folder</span>
+                    <span>Add Location</span>
                 </div>
             {/if}
+        </div>
+        <div class="spacer"/>
+        <div class="delete button" on:mousedown={() => showDeleteDialog = true}>
+            <img src={trashIcon} alt='Delete'/>
         </div>
     {/if}
     {/if}
@@ -270,6 +409,14 @@
     .header .title {
         font-size: 16px;
         font-weight: 400;
+    }
+
+    .header .end {
+        width: 70px;
+    }
+
+    .header .save {
+        text-align: right;
     }
 
     .header .icon.button {
@@ -333,6 +480,7 @@
     .resource-title .container {
         overflow: scroll;
         border-radius: 8px;
+        width: 100%;
     }
 
     .divider {
@@ -449,6 +597,31 @@
         filter: invert(1);
         height: 15px;
         width: 15px;
+    }
+
+    .spacer {
+        flex-grow: 1;
+    }
+
+    .delete.button {
+
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        opacity: 0.4;
+        margin-bottom: 15px;
+    }
+
+    .delete.button:hover {
+        cursor: pointer;
+        opacity: 1;
+    }
+
+    .delete.button img {
+        height: 20px;
+        width: 20px;
+        filter: invert(1);
+        margin-right: 8px;
     }
 
 </style>

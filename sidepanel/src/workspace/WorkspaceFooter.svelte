@@ -10,14 +10,17 @@
     
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
+  import { Views } from "../view";
 
     let dispatch = createEventDispatcher();
 
+ 
     export let groups;
     export let workspaces;
     export let tabCount;
     export let resourceCount;
     export let folderCount;
+    export let otherCountString;
 
     onMount(() => {
         
@@ -45,7 +48,7 @@
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {groups} {workspaces}/>
+    <CreateGroup {groups} {workspaces} view={Views.workspace} on:locationSelected/>
 </ModalContainer>
 {/if}
 
@@ -62,14 +65,14 @@
                             Tab{tabCount > 1 ? "s" : ""}
                         </span>
                     </div>
-                    <CircleDivider />
+                    
                 {/if}
-                <div class="count">
-                    {resourceCount}
-                    <span>
-                        Resource{resourceCount > 1 ? "s" : ""}
-                    </span>
-                </div>
+                {#if otherCountString}
+                    <CircleDivider />
+                    <div class="count">
+                        {otherCountString}
+                    </div>
+                {/if}
             </div>
         </div>
         <div class="action" on:mousedown={createNewTab}>

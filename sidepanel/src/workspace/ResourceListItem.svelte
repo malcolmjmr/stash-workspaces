@@ -13,7 +13,7 @@
     import checkedBoxIcon from "../icons/checked-box.png";
     import { createEventDispatcher, onMount } from "svelte";
 
-    import { getFavIconUrl } from "../utilities/chrome";
+    import { getTabFavIconUrl, tryToGetTabGroup } from "../utilities/chrome";
   
     import ModalContainer from "../components/ModalContainer.svelte";
     import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
@@ -49,13 +49,14 @@
 
     let isBookmark;
     const init = async () => {
+        group = await tryToGetTabGroup(workspace?.groupId);
         updateFavIconUrl();
         isBookmark = resource.parentId;
         loaded = true;
     };
 
     const updateFavIconUrl = async () => {
-        favIconUrl = resource.favIconUrl && !resource.favIconUrl.includes('chrome:') ? resource.favIconUrl : await getFavIconUrl();
+        favIconUrl =  getTabFavIconUrl(resource);
     }
 
 
@@ -125,8 +126,6 @@
 
     const onTitleClicked = async () => {
         const tab = await chrome.tabs.create({url: resource.url});
-        console.log('opening rsource');
-        console.log(tab);
         
         if (group) {
             console.log('grouping tab');
@@ -153,7 +152,7 @@
 
 {#if showMore}
     <ModalContainer on:exit={() => showMore = false}>
-        <BookmarkDetails {db} {workspace} {workspaces} {resource} isNativeBookmark={!user}/>
+        <BookmarkDetails {db} {workspace} {resource} isNativeBookmark={!user}/>
     </ModalContainer>
 {/if}
 {#if loaded}

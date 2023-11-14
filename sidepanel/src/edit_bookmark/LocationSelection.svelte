@@ -6,6 +6,8 @@
     import { allWorkspaces, settings, userData } from "../stores";
 
     import backIcon from "../icons/back.png";
+    import toolbarIcon from "../icons/toolbar.png";
+    import { tryToGetBookmark } from "../utilities/chrome";
 
     
     let dispatch = createEventDispatcher();
@@ -46,6 +48,11 @@
         dispatch('locationSelected', {folder});
     };
 
+    const onBookmarkBarSelected = async () => {
+        const folder = await tryToGetBookmark('1');
+        dispatch('locationSelected', { folder });
+    };
+
 </script>
 
 <div class="location-selection">
@@ -62,9 +69,17 @@
         </div>
     </div>
     <div class="container">
+        
         <div class="search-container">
             <SearchBox bind:searchText placeholderText="Search"/>
         </div>
+
+        {#if searchText.length == 0}
+        <div class="bookmarkbar list-item" on:mousedown={onBookmarkBarSelected}>
+            <img src={toolbarIcon} alt=""/>
+            <span>Bookmark Bar</span>
+        </div>
+        {/if}
         
         {#if false}
             <div class="create">
@@ -175,6 +190,31 @@
     .section .list {
         background-color: #333333;
         border-radius: 8px;
+    }
+
+    .bookmarkbar.list-item {
+        padding: 5px;
+        border-radius: 8px;
+        height: 20px;
+        margin-top: 10px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        background-color: #333333;
+        opacity: 0.6;
+    }
+
+    .bookmarkbar.list-item img {
+        margin-right: 5px;
+        width: 15px;
+        height: 15px;
+        filter: invert(1);
+        
+    }
+
+    .bookmarkbar:hover {
+        cursor: pointer;
+        opacity: 1;
     }
 
     

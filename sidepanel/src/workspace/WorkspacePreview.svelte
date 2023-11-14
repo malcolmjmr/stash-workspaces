@@ -13,13 +13,19 @@
     export let workspace;
     export let isOpen = false;
 
+    
+
     import { getWorkspaceData } from "./workspaceData";
-    import { onMount } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import WorkspaceFolder from "../components/WorkspaceFolder.svelte";
-  import { openWorkspace } from "../utilities/chrome";
+  import { openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
   import ModalContainer from "../components/ModalContainer.svelte";
   import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
     import WorkspacePreview from "./WorkspacePreview.svelte";
+  import BasicBookmarks from "./BasicBookmarks.svelte";
+  import BookmarkTree from "./BookmarkTree.svelte";
+
+  let dispatch = createEventDispatcher();
 
 
     /*
@@ -36,8 +42,9 @@
     const SectionNames = {
         folders: 'Folders',
         tabs: 'Tabs',
-        saved: 'Saved',
+        saved: 'Recent',
         temporary: 'Temporary',
+        bookmarks: 'Bookmarks',
     };
 
     let resources = [];
@@ -56,9 +63,53 @@
 
     const load = async () => {
         
+        if (user) {
+            await loadDataFromCloud();
+        } else {
+            await loadLocalData();
+        }
+        
+        loaded = true;
+    };
+
+    const loadLocalData = async () => {
+        console.log('loading local workspace');
+        console.log(workspace);
+        if(workspace.tabs && workspace.tabs.length > 0) {
+            sections.push({
+                name: SectionNames.tabs,
+                //icon: tabsIcon, 
+            });
+            if (!visibleSection) visibleSection = SectionNames.tabs;
+        }
+
+        const folder = await tryToGetWorkspaceFolder(workspace);
+        if (folder) {
+            let bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
+            let bookmarkCount = 0;
+            const incrementBookmarkCount = (node) => {
+                bookmarkCount += 1;
+                for (const child of node.children ?? []) {
+                    incrementBookmarkCount(child);
+                }
+            };
+            for (const node of bookmarkTree) {
+                incrementBookmarkCount(node);
+            }
+            if (bookmarkCount > 0) {
+                sections.push({
+                    name: SectionNames.bookmarks,
+                });
+            }
+        }
+
+        updateVisibleItems(visibleSection);
+    };
+
+    const loadDataFromCloud = async () => {
         let data = await getWorkspaceData({db, user, workspace});
-        resources = data.resources.filter((r) => !r.title.startsWith('* ') && !r.isQueued);
-        queue = data.resources.filter((r) => r.title.startsWith('* ') || r.isQueued);
+        resources = data.resources.filter((r) => !r.title?.startsWith('* ') && !r.isQueued);
+        queue = data.resources.filter((r) => r.title?.startsWith('* ') || r.isQueued);
         folders = data.workspaces;
         if(workspace.tabs && workspace.tabs.length > 0) {
             sections.push({
@@ -89,13 +140,11 @@
             if (!visibleSection) visibleSection = SectionNames.temporary;
         }
         updateVisibleItems(visibleSection);
-        loaded = true;
-    };
+    }
 
     let visibleItems = [];
 
     const updateVisibleItems = (sectionName) => {
-        console.log(sectionName);
         visibleSection = sectionName;
         if (sectionName == SectionNames.folders) {
             visibleItems = folders;
@@ -114,6 +163,12 @@
         openedSubWorkspace = workspace;
     };
 
+
+
+    const onOpenWorkspaceClicked = () => {
+        dispatch('exit');
+        openWorkspace(workspace, {openInNewWindow: false})
+    }
 
 
 
@@ -143,7 +198,7 @@
         <div class="spacer"></div>
 
         <img class="icon-button" src={openIcon} alt="Open in New Window" 
-            on:mousedown={() => openWorkspace(workspace, {openInNewWindow: true})}
+            on:mousedown={onOpenWorkspaceClicked}
         />
         <img class="icon-button" src={moreIcon} alt="Workspace Menu"
             on:mousedown={() => showMenu = true} 
@@ -164,11 +219,14 @@
             
         </div>
     {/if}
+
+    
     <div class="section-items">
         <div class="container">
+            {#if user} 
             {#each visibleItems as item (item.id)}
                 {#if visibleSection != SectionNames.folders}
-                    <Tab tab={item} isOpen={false}/>
+                    <Tab tab={item} isOpen={false} />
                 {:else}
                     <WorkspaceListItem 
                         {user}
@@ -179,8 +237,19 @@
                     />
                 {/if}
             {/each}
+            {:else}
+                {#if visibleSection == SectionNames.tabs}
+                {#each visibleItems as tab (tab.id)}
+                    <Tab {tab} isOpen={false} />
+                {/each}
+                {:else if visibleSection == SectionNames.bookmarks}
+                    <BookmarkTree {workspace}/>
+                {/if}
+            {/if}
         </div>
     </div>
+   
+
 
 </div>
 
@@ -216,12 +285,13 @@
         font-size: 18px;
         font-weight: 400;
         white-space: nowrap;
-        text-overflow: ellipsis;
+        overflow: hidden;
         margin-bottom: 5px;
     }
 
     .header .title span {
         margin-left: 5px;
+        overflow: scroll;
     }
 
     .icon-button {

@@ -7,6 +7,7 @@
     import { Views } from "../view";
 
     import trashIcon from "../icons/delete.png";
+    import GroupedWorkspaceSections from "../components/GroupedWorkspaceSections.svelte";
 
     export let db = null;
     export let user = null;
@@ -38,13 +39,15 @@
     }
 
     let loaded;
+    let closedSpaces = [];
+    const now = Date.now();
     const refreshSpaces = async () => {
         if (workspaces.length == 0) return;
-        openSpaces = Object.values(groups).map((g) => workspaces.find((w) => g.workspaceId == w.id)).filter((s) => s);
-        let spaces = [...workspaces.filter((w) => !w.deleted && !openSpaces.find((openSpace) => w.id == openSpace.id))];
-        spaces.sort((a,b) => b.updated - a.updated);
-        recentSpaces = spaces.slice(0, 10);
-        favoriteSpaces = ((await get('favoriteSpaces')) ?? []).map((favoriteSpaceId) => spaces.find((s) => s.id == favoriteSpaceId));
+        openSpaces = Object.values(groups).map((g) => workspaces.find((w) => g.workspaceId == w?.id)).filter((s) => s);
+        closedSpaces = [...workspaces.filter((w) => !w.deleted && !openSpaces.find((openSpace) => w.id == openSpace.id))];
+        closedSpaces.sort((a,b) => b.updated - a.updated);
+        recentSpaces = closedSpaces.slice(0, 10);
+        favoriteSpaces = ((await get('favoriteSpaces')) ?? []).map((favoriteSpaceId) => workspaces.find((s) => s.id == favoriteSpaceId));
         deletedSpaces = workspaces.filter((w) => w.deleted);
         loaded = true;
     };
@@ -58,6 +61,13 @@
             await closeTabGroup(space.groupId);
         }
     };
+
+    $: {
+        recentSpaces = closedSpaces.filter((s) =>  (s.updated ?? s.created) > now - (1000 * 60 * 60 * 24 * 7));
+        if (recentSpaces.length == 0) {
+            recentSpaces = closedSpaces.slice(0, 20);
+        }
+    }
 
 
 </script>
@@ -73,9 +83,11 @@
                 <div class="section-title">
                     Open
                 </div>
+                {#if openSpaces.length > 1}
                 <div class="action button" on:mousedown={closeAllOpenSpaces}>
                     Close All
                 </div>
+                {/if}
 
             </div>
             
@@ -89,27 +101,7 @@
             </div>
         </div>
         {/if}
-        {#if recentSpaces.length > 0}
-        <div class="recent spaces section">
-            <div class="section-heading">
-                <div class="section-title">
-                    Recent
-                </div>
-                <div class="action button" on:mousedown={() => view = Views.history}>
-                    Show More
-                </div>
-            </div>
-            
-            <div class="section-items">
-                {#each recentSpaces as workspace, i}
-                    <WorkspaceListItem {db} {user} {workspace} isOpen={false}/>
-                    {#if i < recentSpaces.length - 1}
-                        <div class="divider"/>
-                    {/if}
-                {/each}
-            </div>
-        </div>
-        {/if}
+
 
         {#if favoriteSpaces.length > 0}
         <div class="favorite spaces section">
@@ -126,6 +118,13 @@
             </div>
         </div>
         {/if}
+
+        <GroupedWorkspaceSections 
+            workspaces={recentSpaces} 
+            {user} 
+            {db}
+            onShowMore={ () => view = Views.history}
+        />
     
         {#if deletedSpaces.length > 0}
             <div class="trash button" on:mousedown={() => view = Views.trash}>
@@ -145,12 +144,12 @@
 <style>
 
     .container {
-        margin: 5px 10px;
+        margin: 10px;
 
     }
     
     .spaces.section {
-       margin: 10px 0px;
+       margin: 5px 0px;
     }
 
     .section-items {
@@ -170,7 +169,7 @@
     }
 
     .section-title {
-        font-size: large;
+        font-size: 16px;
         font-weight: 400;
         
     }

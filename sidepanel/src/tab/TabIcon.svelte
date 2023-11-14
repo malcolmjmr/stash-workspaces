@@ -4,7 +4,7 @@
     import webIcon from "../icons/web.png";
     import { createEventDispatcher } from "svelte";
     import { colorMap } from "../utilities/colors";
-    import { getFavIconUrl } from "../utilities/chrome";
+    import { getTabFavIconUrl } from "../utilities/chrome";
     import { onMount } from "svelte";
 
     export let tab;
@@ -24,7 +24,7 @@
     });
 
     const init = async () => {
-        favIconUrl = await getFavIconUrl(tab.url);
+        favIconUrl = getTabFavIconUrl(tab);
         loaded = true;
     };
 
@@ -68,8 +68,7 @@
     draggable="true"
 >
     <img
-        src={validIcon ? tab.favIconUrl : webIcon}
-        style={!validIcon ? "filter: invert(1);" : ""}
+        src={favIconUrl}
         alt={tab.title}
         draggable="false"
     />

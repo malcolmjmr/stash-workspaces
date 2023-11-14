@@ -6,10 +6,20 @@
     import { colorMap } from "../utilities/colors";
     import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
     import ModalContainer from "../components/ModalContainer.svelte";
+    import WorkspaceFolder from "../components/WorkspaceFolder.svelte";
+    import createFolderIcon from "../icons/new-folder.png";
+  import { Views } from "../view";
+  import { userData } from "../stores";
+  import Bookmark from "../components/Bookmark.svelte";
+  import FolderListItem from "../components/FolderListItem.svelte";
 
+
+    export let selectedTabs = [];
+    export let workspace = null;
     export let groups;
     export let workspaces;
     export let view;
+    
 
 
     let group = {
@@ -18,6 +28,10 @@
     };
 
     let searchText = '';
+    $: {
+        searchText;
+        updateSearchResults();
+    }
 
     onMount(() => {
         getFolders();
@@ -59,22 +73,35 @@
         return await chrome.tabs.create({ index: activeTab.index + 1 });
     }
 
-    const onInput = async (e) => {
+    const onKeyDown = async (e) => {
         if (e.key == 'Enter') {
-            const tab = await createNewTab();
-            const groupId = await chrome.tabs.group({tabIds: tab.id});
-            await chrome.tabGroups.update(groupId, {title: group.title});
+            if (view == Views.workspace) {
+                if ($userData) {
+
+                } else {
+
+                    const bookmark = await chrome.bookmarks.create({
+                        title: searchText,
+                        parentId: workspace.folderId
+                    });
+                    dispatch('locationCreated', bookmark);
+                }
+            } else if (view == Views.tabs) {
+                let tabIds = selectedTabs.map((t) => t.id);
+                if (tabIds.length == 0) tabIds[(await createNewTab()).id];
+                const groupId = await chrome.tabs.group({tabIds: tabIds});
+                await chrome.tabGroups.update(groupId, {title: searchText});
+            }
+            
+
             dispatch('exitModal');
-        } else {
-            updateSearchResults();
         }
-        
         // search contexts and bookmark folders
        
     };
 
     let showFolders;
-    let showSpaces;
+    let showSpaces = true;
 
     const updateSearchResults = () => {
         const text = searchText.toLowerCase();
@@ -87,7 +114,7 @@
         });
 
         showFolders = visibleFolders.length > 0;
-        showSpaces = visibleSpaces.length > 0
+        //showSpaces = visibleSpaces.length > 0
 
     };
 
@@ -120,7 +147,21 @@
     const setColor = (color) => {
         group.color = color;
     };
+
+
+    const onCreateSpace = () => {
+        if (view == Views.workspace) {
+
+        } else { 
+
+        }
+    }
     //style={'background-color: ' + colorMap[group.color]}
+
+
+    const openFolderAsWorkspace = () => {
+
+    };
 </script>
 
 
@@ -132,8 +173,8 @@
                 class="search-input"
                 bind:value={searchText}
                 on:blur={onTitleInputBlur}
-                on:keydown={onInput}
-                placeholder="Create a new a space"
+                on:keydown={onKeyDown}
+                placeholder='Search or create space'
                 autofocus="true"
             />
             <!--
@@ -160,11 +201,14 @@
 
         -->
         
-
-        
-  
             <div class="results">
-                {#if showSpaces}
+                {#if searchText.length > 1}
+                <div class="create-space" on:mousedown={onCreateSpace}> 
+                    <img src={createFolderIcon} alt="Create Space"/>
+                    <span>Create {searchText.length > 0 ? '"'+searchText+'"' : ''}</span>
+                </div>
+                {/if}
+                {#if visibleSpaces.length > 0}
                     <div class="spaces section"> 
                         <div class="header">
                             <div class="title">Spaces</div>
@@ -174,9 +218,14 @@
                             </div>
                             {/if}
                         </div>
+                        
                         <div class="container">
                             {#each visibleSpaces as workspace}
-                                <WorkspaceListItem {workspace}/>
+                                <WorkspaceListItem 
+                                    {workspace}
+
+                                    onClick={() => dispatch('locationSelected', { workspace })}
+                                />
                             {/each}
                         </div>
                     </div>
@@ -192,12 +241,16 @@
                             {/if}
                         </div>
                         <div class="container">
-                            {#each visibleFolders as workspace}
-                                <WorkspaceListItem {workspace}/>
+                            {#each visibleFolders as folder}
+                                <WorkspaceListItem 
+                                    workspace={{folderId: folder.id, title: folder.title}} 
+                                    onClick={openFolderAsWorkspace}
+                                />
                             {/each}
                         </div>
                     </div>
                 {/if}
+                
             </div>
 
         
@@ -210,7 +263,7 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        height: 400px;
+        height: 300px;
         padding: 10px 10px 0px 10px;
     }
 
@@ -245,7 +298,6 @@
     }
 
     .results {
-        margin-top: 10px;
         display: flex;
         flex-direction: column;
         overflow-y: scroll;
@@ -270,6 +322,28 @@
         overflow: hidden;
     }
 
+    .create-space {
+        padding: 5px;
+        height: 25px;
+        border-radius: 8px;
+        background-color: #333333;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        font-size: 14px;
+        margin-bottom: 5px;
+    }
+
+    .create-space img {
+        filter: invert(1);
+        height: 20px;
+        width: 20px;
+        padding: 0px 5px;
+    }
+
+    .create-space:hover {
+        cursor: pointer;
+    }
     .colors {
         display: flex;
         flex-direction: row;

@@ -9,9 +9,6 @@
         selectedTabs = [];
     };
 
-    $: {
-        console.log(selectedTabs);
-    }
 </script>
 
 <div class="selected">

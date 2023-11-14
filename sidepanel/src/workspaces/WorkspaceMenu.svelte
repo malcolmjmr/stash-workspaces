@@ -49,6 +49,7 @@
 
 
     const openWorkspaceInNewWindow = () => {
+        dispatch('exit');
         openWorkspace(workspace, {openInNewWindow: true});
     };
 

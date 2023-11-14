@@ -16,6 +16,8 @@
     import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
 
 
+    export let groups;
+    export let groupId;
     export let group;
     export let isCollapsed = null;
     export let tabs = [];
@@ -39,9 +41,18 @@
                 behavior: "smooth",
             });
         }
+        group = groups[groupId];
 
         
     });
+
+    $: {
+        if (group != groups[groupId]) {
+            console.log('updating group data');
+            group = groups[groupId];
+            console.log(group);
+        }
+    }
 
     const onMouseEnter = () => {
         isInfocus = true;
@@ -216,7 +227,7 @@
 
 {#if showMore}
     <ModalContainer on:exit={() => showMore = false}>
-        <WorkspaceMenu {group}/>
+        <WorkspaceMenu {group} />
     </ModalContainer>
 {/if}
 

@@ -39,10 +39,11 @@
     }
 
     img {
-        height: 22px;
-        width: 22px;
-        margin-right: 5px;
+        height: 20px;
+        width: 20px;
         filter: invert(1);
+        opacity: 0.7;
+        margin-left: 2px;
     }
 
     input {

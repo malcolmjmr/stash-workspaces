@@ -1,6 +1,6 @@
 <script>
   import Bookmark from "../components/Bookmark.svelte";
-import { getFavIconUrl } from "../utilities/chrome";
+import { getTabFavIconUrl } from "../utilities/chrome";
 
 
 

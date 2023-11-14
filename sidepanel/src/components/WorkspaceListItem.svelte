@@ -20,7 +20,7 @@
     import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
     import { getTimeSinceString } from "../workspaces/helpers";
     import WorkspaceFolder from "./WorkspaceFolder.svelte";
-  import { openWorkspace } from "../utilities/chrome";
+  import { closeTabGroup, openWorkspace } from "../utilities/chrome";
     
     let showPreview;
     let showSubFolders;
@@ -63,7 +63,7 @@
     const onOpenClicked = async () => {
 
         if (!isOpen) {
-            openWorkspace(workspace, {openInNewWindow: true});
+            openWorkspace(workspace, {openInNewWindow: false});
         } else if ((workspace.groupId ?? 0) > 0) {
             navigateToWorkspace();
         }
@@ -77,8 +77,6 @@
             chrome.windows.update(tabs[0].windowId, { focused: true });
             // Todo: navigate to last active tab (check if current active tab in window is in group) 
             chrome.tabs.update(tabs[0].id, { active: true });
-            
-            
         }
     }
 
@@ -95,6 +93,8 @@
     }
 
     const onCloseClicked = async () => {
+        console.log('close clicked');
+        console.log(workspace);
         await closeTabGroup(workspace.groupId);
     }
 
@@ -104,7 +104,7 @@
 
 {#if showPreview}
     <ModalContainer on:exit={() => showPreview = false}>
-        <WorkspacePreview {db} {workspace} {user} />
+        <WorkspacePreview {db} {workspace} {user} on:exit={() => showPreview = false} />
     </ModalContainer>
 {/if}
 

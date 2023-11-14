@@ -24,7 +24,7 @@
 
     .menu-item:hover {
         cursor: pointer;
-        background-color: #999999;
+        background-color: #444444;
     }
 
     .title {

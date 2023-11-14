@@ -52,12 +52,14 @@
   import WorkspaceFooter from "./WorkspaceFooter.svelte";
   import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
   import ResourceListItem from "./ResourceListItem.svelte";
+  import BasicBookmarks from "./BasicBookmarks.svelte";
+  import PremiumBookmarks from "./PremiumBookmarks.svelte";
 
     
 
     let dispatch = createEventDispatcher();
 
-    export let tabs = null;
+    export let tabs = [];
     export let group = null;
     export let lastUpdate = null;
     export let activeTab = null;
@@ -71,6 +73,8 @@
     export let allResources = null;
 
     export let workspace = null;
+
+    export let lastBookmarkUpdate;
 
     let folders = [];
 
@@ -98,8 +102,36 @@
 
     let showPreview;
 
+
+    $: {
+        lastUpdatedTab;
+        lastUpdate;
+
+        checkIndexes();
+        //getTabGroupStarts();
+    }
+
+    const checkIndexes = () => {
+        // Check for tabs that have been duplicated and get tab group start and end index values
+
+        tabs.sort((a, b) => a.index - b.index);
+        let indexes = [];
+        let duplicateIndexes = [];
+
+        for (const tab of tabs) {
+            if (!indexes.includes(tab.index)) {
+                indexes.push(tab.index);
+            } else {
+                duplicateIndexes.push(tab.index);
+                dispatch('foundDuplicates');
+            }
+        }
+    }; 
+
     
     const init = async () => {
+
+        //tabs = tabs.filter((t) => t.groupId == group.id);
         
         if (!group) isOpen = false;
         if (workspace) {
@@ -121,11 +153,11 @@
         loaded = true;
     }
 
-    $: {
-        if (group?.workspaceId) {
-            init();
-        }
-    }
+    // $: {
+    //     if (group?.workspaceId) {
+    //         init();
+    //     }
+    // }
 
 
     const loadWorkspace = async () => {
@@ -138,29 +170,18 @@
     let resources = [];
     const loadResources = async () => {
 
-        if (allResources) {
-            resources = Object.values(allResources).filter((r) => r.contexts.includes(workspace.id));
-        } else if (user) {
+        if (user) {
             const path = StorePaths.userResources(user.id);
             const q = query(
                 collection(db, path),
                 where("contexts", "array-contains", workspace.id)
             );
+            if (resources.length == 0)
             resources = (await getDocs(q)).docs.map((d) => d.data());
-            for (const resource of resources) {
-                if (!resource.url) continue;
-                if (!hasQueue && (resource.title.startsWith('* ') || resource.isQueued)) hasQueue = true;
-                if (!hasFavorites && resource.isFavorite) hasFavorites = true;
-                if (!hasHighlights && resource.highlights && resource.highlights.length > 0) hasHighlights = true;
-                if (!hasImages && resource.images && resource.images.length > 0) hasImages = true;
-            }
-
-        } else {
-
-  
         }
+        otherCountString = `${resources.length} Resource${resources.length > 1 ? 's' :''}`;
 
-        updateVisibleResources();
+        updateVisibleTabs();
         if (!tabs) tabs = workspace.tabs;
     };
 
@@ -214,23 +235,7 @@
         dispatch('goBack');
     };
 
-    let relatedWorkspaces = [];
 
-    const onBookmarkClicked = async ({detail}) => {
-        const bookmark = detail;
-        const tab = await chrome.tabs.create({url: bookmark.url});
-        await chrome.tabs.group({tabIds: tab.id, groupId: group.id});
-    };
-
-    /*
-        Todo
-        - Pull in bookmark folder if one exists
-        - Let user save tab
-        - Let user stash tab
-        - Let user select multiple tabs
-            - Update header actions when multiple tabs selected (create or save to sub folder, pin)
-
-    */
 
     const onToggleTabSaved = async ({detail}) => {
         const tab = detail;
@@ -256,53 +261,22 @@
 
     let previewWorkspace;
 
-    const ResourceViews = {
-        favorites: 'Favorites',
-        images: 'Images',
-        highlights: 'Highlights',
-        queue: 'Queue',
-    };
 
-    let resourceView;
-
-    const updateResourceView = (view) => {
-        if (resourceView == view) {
-            resourceView = null;
-        } else {
-            resourceView = view;
-        }
-        updateVisibleResources();
+    let visibleTabs = [];
+    $: {
+        searchText;
+        updateVisibleTabs();
     }
 
-    let visibleResources = [];
+    $: {
+        lastUpdatedTab;
+        tabs;
+        updateVisibleTabs();
+    }
 
-    const updateVisibleResources = () => {
+    const updateVisibleTabs = () => {
         const text = searchText.toLowerCase();
-        let tempResults = [];
-        for (const resource of resources) {
-            if (!resourceView) {
-                tempResults.push(resource);
-            } else if (resourceView == ResourceViews.favorites) {
-                if (resource.isFavorite) {
-                    tempResults.push(resource);
-                }
-            } else if (resourceView == ResourceViews.queue) {
-                if (resource.isQueued || resource.title?.startsWith('* ')) {
-                    tempResults.push(resource)
-                }
-            } else if (resourceView == ResourceViews.highlights) {
-                if (resource.highlights && resource.highlights.length > 0) {
-                    tempResults.push(resource);
-                }
-            } else if (resourceView == ResourceViews.images) {
-                if (resource.images && resource.images.length > 0) {
-                    tempResults.push(resource);
-                }
-            }
-        }
-
-        tempResults.sort((a, b) => (b.updated ?? 0) - (a.updated ?? 0));
-        visibleResources = tempResults;
+        visibleTabs = tabs.filter((t) => t.title?.toLowerCase().includes(text));
     };
 
     let window;
@@ -328,7 +302,7 @@
         const index = resources.findIndex((r) => r.id == resource.id);
         if (index > -1) {
             resources[index] = resource;
-            updateVisibleResources();
+            //updateVisibleResources();
         }
     };
 
@@ -336,6 +310,35 @@
         const resource = detail;
         allResources[resource.url] = resource;
     };
+
+
+    const onTabDataUpdated = ({detail}) => {
+        const data = detail;
+        if (data.resource) {
+            allResources[data.resource.url] = data.resource;
+            updateVisibleTabs();
+        }
+        lastBookmarkUpdate = Date.now();
+        dispatch('dataUpdated', data);
+    };
+
+    const onTabSelected = ({ detail }) => {
+
+    };
+
+    const onTabClicked = ({ detail }) => {
+        const tab = detail;
+        if (visibleTabs.length < tabs.length) {
+            visibleTabs = tabs;
+        }
+    };
+
+    let otherCountString;
+    const onReceiveBookmarkCount = ({ detail }) => {
+        const count = detail;
+        
+        otherCountString = count > 0 ? `${count} Bookmark${count > 1 ? 's' : ''}` : '';
+    }
 </script>
 
 {#if previewWorkspace}
@@ -363,11 +366,10 @@
                             src={moreIcon} 
                             class="action icon menu" 
                             alt="" 
-                            
                         />
                     </div>
 
-                    {#if !windowIsFullscreen}
+                    {#if false}
                         <img 
                             src={fullscreenIcon} 
                             class="action icon" 
@@ -380,14 +382,14 @@
                 </div>
             </div>
 
-            <div class="title" style='color: {colorMap[workspace.color]}'>{workspace?.title} </div>
+            <div class="title" style='color: {colorMap[workspace?.color]}'>{workspace?.title && workspace.title != '' ? workspace.title : workspace.color} </div>
             <div class="search-container">
                 <SearchBox bind:searchText/>
             </div>
         </div>
 
         <div class="main-container">
-            {#if folders.length > 0}
+            {#if false}
             <div class="folders section">
                 <div class="heading">
                     <div class="title">Folders</div>
@@ -398,7 +400,6 @@
                         on:mousedown={() => foldersCollapsed = !foldersCollapsed}
                     />
                 </div>
-                {#if false}
                     <div class="items">
                         <div class="container">
                             {#each folders as workspace}
@@ -409,7 +410,6 @@
                             {/each}
                         </div>
                     </div>
-                {/if}
             </div>
             {/if}
             {#if tabs.length > 0}
@@ -431,12 +431,19 @@
                 {#if !tabsCollapsed}
                     <div class="items">
                         <div class="container">
-                            {#each tabs as tab, i (tab.id)}
+                            {#each (searchText.length > 0 ? visibleTabs : tabs) as tab (tab.id)}
                                 <Tab 
-                                    bind:tab={tabs[i]} 
+                                    {db}
+                                    {user}
+                                    {tab}
                                     {isOpen} 
-                                    on:resourceSaved={onResourceSaved}
-                                    
+                                    {workspace}
+                                    {lastUpdatedTab}
+                                    {groups}
+                                    on:dataUpdated={onTabDataUpdated}
+                                    canDrag={visibleTabs.length == tabs.length}
+                                    on:updateSelection={onTabSelected}
+                                    on:clicked={onTabClicked}
                                 />
                             {/each}
                         </div>
@@ -444,66 +451,34 @@
                 {/if}
             </div>
             {/if}
-            {#if resources.length > 0}
-            <div class="resources section">
-                <div class="heading">
-                    <div class="title">Resources</div>
-                    <div class="actions">
-                        {#if hasFavorites}
-                            <img 
-                                src={favoriteIcon} 
-                                class="action icon{resourceView == ResourceViews.favorites ? ' selected' : ''}" 
-                                alt=""
-                                on:mousedown={() => updateResourceView(ResourceViews.favorites)}
-                            />
-                        {/if}
-                        {#if hasQueue}
-                            <img 
-                                src={queueIcon} 
-                                class="action icon{resourceView == ResourceViews.queue ? ' selected' : ''}" 
-                                alt="Queue" 
-                                on:mousedown={() => updateResourceView(ResourceViews.queue)}
-                            />
-                        {/if}
-                        {#if hasHighlights}
-                            <img 
-                                src={highlightIcon} 
-                                class="action icon{resourceView == ResourceViews.highlights ? ' selected' : ''}" 
-                                alt="Highlights"
-                                on:mousedown={() => updateResourceView(ResourceViews.highlights)}
-                            />
-                        {/if}
-                        {#if hasImages}
-                            <img 
-                                src={imageIcon} 
-                                class="aciton icon{resourceView == ResourceViews.images ? ' selected' : ''}" 
-                                alt="Images"
-                                on:mousedown={() => updateResourceView(ResourceViews.images)}
-                            />
-                        {/if}
-                    </div>
-                </div>
-                <div class="items">
-                    <div class="container">
-                        {#each visibleResources as resource (resource.id)}
-                            <ResourceListItem 
-                                {resource} 
-                                {workspace} 
-                                {group} 
-                                {user} 
-                                {db}
-                                on:resourceOpened={onResourceOpened}
-                            />
-                        {/each}
-                    </div>
-                </div>
-            </div>
+
+            {#if false} 
+                <PremiumBookmarks 
+                    {user} 
+                    {db} 
+                    {workspace} 
+                    {searchText} 
+                    {resources} 
+                    workspaces={folders}
+                    
+                />
+            {:else}
+                <BasicBookmarks 
+                    {searchText} 
+                    {workspace}
+                    {lastBookmarkUpdate}
+                    on:bookmarkCount={onReceiveBookmarkCount}
+                    on:dataUpdated
+                    
+                />
             {/if}
+
         </div>
 
         <WorkspaceFooter 
             {workspaces} 
             {groups} 
+            {otherCountString}
             resourceCount={resources.length} 
             tabCount={tabs.length} 
             folderCount={folders.length}
@@ -540,6 +515,7 @@
         align-items: center;
         width: 100%;
         justify-content: space-between;
+        margin-top: 10px;
     }
 
     .header .title {
@@ -549,12 +525,6 @@
         white-space: nowrap;
         text-overflow: ellipsis;
         
-    }
-
-    .header img.action {
-        height: 15px;
-        width: 15px;
-        padding: 5px;
     }
     
     .header img.action:hover {
@@ -576,20 +546,21 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 15px;
-        width: 15px;
+
         margin-right: 5px;
     }
 
     .more-button img {
-        height: 100%;
-        width: 100%;
+        height: 12px;
+        width: 12px;
+        padding: 2px;
     }
 
     .main-container {
         flex-grow: 1;
         display: flex;
         flex-direction: column;
+        margin-bottom: 50px;
     }
 
     .section .heading {
@@ -604,7 +575,7 @@
     }
 
     .section {
-        margin-bottom: 15px;
+        
     }
 
     .section .heading .title {

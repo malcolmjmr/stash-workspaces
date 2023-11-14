@@ -63,7 +63,7 @@
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {workspaces} {groups}/>
+    <CreateGroup {workspaces} {groups} {view}/>
 </ModalContainer>
 {/if}
 {#key lastSelectionUpdate}

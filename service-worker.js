@@ -189,7 +189,7 @@ async function onTabDetached(tabId, detachInfo) {
             index: detachInfo.oldPosition, 
             windowId: detachInfo.oldWindowId
         }))[0];
-        const previousContext = await getContextFromGroupId(tabInPreviousIndex.groupId);
+        const previousContext = await getContextFromGroupId(tabInPreviousIndex?.groupId);
         if (previousContext) {
             updateContextTabs(previousContext);
         }
@@ -245,6 +245,10 @@ async function onResourceLoaded(tabId) {
 async function onTabsGroupUpdated(tabId, groupId) {
 
     const context = await getContextFromGroupId(groupId);
+    console.log('found context of updated tab');
+    console.log(await chrome.tabs.get(tabId));
+    console.log(context);
+
 
     if (context) {
         if (!context.groupId) context.groupId = groupId;
@@ -453,6 +457,7 @@ async function getContextIdFromGroupId(groupId) {
 
 
 async function getContextFromGroupId(groupId) {
+    if (!groupId) return null;
     const contextId = await getContextIdFromGroupId(groupId);
     return contextId ? await getContext(contextId) : null;
 }

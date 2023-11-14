@@ -22,7 +22,6 @@
             <span>Back</span>
         </div>
         <div class="title">
-            <img src={trashIcon} alt=""/>
             <span>Trash</span>
         </div>
         <div class="empty action end" on:mousedown={emptyTrash}> 
@@ -46,6 +45,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 5px 10px;
+        margin: 8px 0px;
         
     }
 
@@ -76,7 +76,7 @@
         display: flex;
         flex-direction: row;
         justify-content: center;
-        margin: 8px 15px 0px 10px;
+        
         opacity: 0.6;
 
     }

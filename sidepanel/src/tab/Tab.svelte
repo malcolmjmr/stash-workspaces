@@ -21,7 +21,7 @@
     import TabMenu from "./TabMenu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
-    import { getFavIconUrl, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark } from "../utilities/chrome";
+    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext } from "../utilities/chrome";
 
     import soundIcon from "../icons/volume-up.png";
     import starIcon from "../icons/star.png";
@@ -32,12 +32,14 @@
     import { doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import { createResource } from "../utilities/firebase";
-  import { allWorkspaces } from "../stores";
+  import { allWorkspaces, openGroups } from "../stores";
+  import { getWorkspaceData } from "../workspace/workspaceData";
 
 
     export let db;
     export let user;
     export let tab;
+    export let groups = {};
     export let group = null;
     export let workspace = null;
     export let workspaces = null;
@@ -48,6 +50,8 @@
     export let lastUpdatedTab;
     export let isStartingTab = false;
     export let isEndingTab = false;
+    export let canDrag = true;
+    export let canSelect = true;
 
 
     let el;
@@ -60,13 +64,29 @@
     }
 
     $: {
+
         if (lastUpdatedTab && lastUpdatedTab.id == tab.id) {
-            updateFavIconUrl();
+            console.log('tab updated');
+            console.log(tab);
+            tab = lastUpdatedTab;
+            console.log(tab);
+            init();
             if (tab.id && tab.active) {
                 scrollToTabIfActive();
             }
         }
+
+        if ((!tab.bookmarks && isSaved) || (tab.bookmarks && !isSaved)) {
+            updateSavedState();
+        }
     }
+
+    $: {
+        if (group != groups[tab.groupId]) {
+            console.log('updating tabs group data');
+            group = groups[tab.groupId];
+        }
+    } 
 
     let loaded;
     let favIconUrl;
@@ -75,7 +95,7 @@
     });
 
     const updateSavedState = () => {
-        isSaved = (tab.bookmarks != null) || (tab.resource != null);
+        isSaved = (tab.bookmarks != null && tab.bookmarks.length > 0) || (tab.resource != null);
         if (group?.workspaceId && !workspace) {
             workspace = $allWorkspaces.find((w) => w.id == group?.workspaceId);
         }
@@ -84,6 +104,7 @@
 
     let isBookmark;
     const init = async () => {
+        group = groups[tab.groupId];
         updateFavIconUrl();
         updateSavedState();
         isBookmark = tab.parentId;
@@ -91,7 +112,7 @@
     };
 
     const updateFavIconUrl = async () => {
-        favIconUrl = tab.favIconUrl && !tab.favIconUrl.includes('chrome:') ? tab.favIconUrl : await getFavIconUrl();
+        favIconUrl = getTabFavIconUrl(tab);
     }
 
     const scrollToTabIfActive = () => {
@@ -130,6 +151,7 @@
     };
 
     const onMouseEnterFavIcon = (e) => {
+        if (!canSelect) return;
         favIconInFocus = true;
     };
 
@@ -192,6 +214,7 @@
     };
 
     const onTitleClicked = async () => {
+        dispatch('clicked', tab);
         if (isOpen) {
             if (isSelected) return;
 
@@ -218,30 +241,46 @@
     let showBookmarkDetails;
 
     const saveTab = async () => {
-        console.log('clicked star icon');
-        if (tab.bookmarks) {
+
+        const hasBookmarkPermission = await getPermissions();
+
+        if (!hasBookmarkPermission) {
+            const granted = await chrome.permissions.request({
+                permissions: ['bookmarks']
+            });
+
+            if (!granted) return;
+        }
+
+
+        if (group && !workspace) {
+            workspace = await getContext(groups[tab.groupId].workspaceId);
+        }
+        
+        
+        if (tab.bookmarks && tab.bookmarks.length > 0) {
             console.log('tab has bookmark');
-            if (tab.bookmarks.length > 1) {
-                showMore = true;
-                showBookmarkDetails = true;
-            } else {
-                const bookmark = tab.bookmarks[0];
-                await chrome.bookmarks.remove(bookmark.id);
-                delete tab.bookmarks;
-                dispatch('updateData', {tab});
-            }
+            
+            showMore = true;
+            showBookmarkDetails = true;
+        
+            // else {
+            //     const bookmark = tab.bookmarks[0];
+            //     await chrome.bookmarks.remove(bookmark.id);
+            //     delete tab.bookmarks;
+            //     dispatch('updateData', {tab});
+            // }
         } else if (tab.resource) {
 
             showMore = true;
             showBookmarkDetails = true;
         } else if (workspace) {
-            console.log('tab has workspace')
+            
             if (user) {
                 let resource = createResource(tab);
                 resource.contexts = [workspace.id];
-                // const ref = doc(db, StorePaths.userResource(user.id, resource.id));
-                // setDoc(ref, resource);
-                console.log('saving to cloud');
+                const ref = doc(db, StorePaths.userResource(user.id, resource.id));
+                await setDoc(ref, resource, {merge: true});
                 tab.resource = resource;
                 isSaved = true;
                 dispatch('dataUpdated', {resource});
@@ -255,6 +294,11 @@
                         index: 0,
                         //parentId: settings.defaultFolderLocation 
                     });
+
+                    workspace.folderId = folder.id;
+                    dispatch('dataUpdated', { workspace });
+
+                    await saveContext(workspace);
                 }
 
                 const bookmark = await chrome.bookmarks.create({
@@ -263,7 +307,7 @@
                     parentId: folder.id
                 });
 
-                if (!tab.bookmarks) tab.bookmars = [];
+                if (!tab.bookmarks) tab.bookmarks = [];
                 tab.bookmarks.push(bookmark);
 
                 dispatch('dataUpdated', {tab});
@@ -271,9 +315,6 @@
                 
             }
 
-        } else if (group) {
-            // create workspace? 
-            console.log('tab has group');
         } else {
             showMore = true;
             showBookmarkDetails = true;
@@ -301,8 +342,9 @@
     };
 
     const exitModal = () => {
+        showBookmarkDetails = false;
         showMore = false;
-    }
+    };
 
     
 </script>
@@ -310,9 +352,21 @@
 {#if showMore}
     <ModalContainer on:exit={exitModal}>
         {#if showBookmarkDetails}
-            <BookmarkDetails bind:tab on:exit={exitModal} {db} {user}/>
+            <BookmarkDetails bind:tab on:exit={exitModal} {db} {user} on:dataUpdated on:exit={exitModal}/>
         {:else}
-            <TabMenu {db} {user} {tab} {workspace} {isOpen} {workspaces} on:pinTab/>
+            <TabMenu 
+                {db} 
+                {user} 
+                {tab}
+                workspaceId={group?.workspaceId}
+                {workspace} 
+                {isOpen} 
+                {workspaces} 
+                on:pinTab 
+                on:exit={exitModal}
+                on:editBookmark={saveTab}
+                on:dataUpdated
+            />
         {/if}
     </ModalContainer>
 {/if}
@@ -334,7 +388,7 @@
     on:dragleave={onDragLeave}
     on:dragend={onDragEnd}
     on:drop={onDrop}
-    draggable={showMore ? "false" : "true"}
+    draggable={showMore || !canDrag ? "false" : "true"}
 >
     <div class="main-container">
         <div
@@ -453,7 +507,6 @@
 
     .tab.grouped {
         background-color: #333333;
-        margin: 0px 5px;
     }
 
     .tab.focused {

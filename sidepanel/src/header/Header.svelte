@@ -15,6 +15,7 @@
     export let tabCount;
     export let showSearch;
     export let searchText;
+    export let workspaces;
     
 
     let showMenu;
@@ -29,26 +30,37 @@
 <div class="header">
     <div class="container">
         <div class="search-box-margin">
-            <SearchBox bind:searchText placeholderText={[Views.windows, Views.tabs].includes(view) ? 'Search tabs...' : 'Search'}/>
+            <SearchBox bind:searchText placeholderText='Search'/>
         </div>
-        
+        {#if workspaces.length > 0}
         <div
             class="action{view == Views.home ? ' selected' : ''}"
             on:mousedown={() => (view = Views.home)}
         >
             <img src={homeIcon} alt="Home" />
         </div>
+        {/if}
         <div
             class="action{view == Views.windows ? ' selected' : ''}"
             on:mousedown={() => (view = Views.windows)}
         >
             <img src={windowsIcon} alt="Windows" />
+            {#if view != Views.windows}
+            <div class="count">
+                <span>{windowCount}</span>
+            </div>
+            {/if}
         </div>
         <div
             class="action{view == Views.tabs ? ' selected' : ''}"
             on:mousedown={() => (view = Views.tabs)}
         >
             <img src={tabsIcon} alt="Tabs" />
+            {#if view != Views.tabs}
+            <div class="count">
+                <span>{tabCount}</span>
+            </div>
+            {/if}
         </div>
         
         
@@ -80,7 +92,8 @@
 
 
     .search-box-margin {
-        margin: 0px 5px;
+        margin: 0px 5px 0px 10px;
+        flex-grow: 1;
     }
 
     .action {
@@ -88,12 +101,11 @@
         flex-direction: row;
         align-items: center;
         margin: 0px 3px;
-        opacity: 0.7;
+        
+        position: relative;
     }
 
-    .action.selected {
-        opacity: 1;
-    }
+
 
     .action:hover {
         opacity: 1;
@@ -104,9 +116,32 @@
         filter: invert(1);
         height: 22px;
         width: 22px;
+        opacity: 0.5;
     }
+
+    .action.selected  > img {
+        opacity: 1;
+    }
+
 
     .action.more {
         margin-left: -3px;
+    }
+
+    .count {
+        position: absolute;
+        background-color: black;
+        color: yellow;
+        border-radius: 100%;
+        bottom: -5px;
+        right: -3px;
+        height: 16px;
+        width: 16px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+
     }
 </style>

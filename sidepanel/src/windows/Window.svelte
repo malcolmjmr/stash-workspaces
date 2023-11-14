@@ -9,6 +9,7 @@
     import TabIcon from "../tab/TabIcon.svelte";
     import { fade } from "svelte/transition";
     import { Views } from "../view";
+  import { getTabFavIconUrl } from "../utilities/chrome";
 
     let dispatch = createEventDispatcher();
 
@@ -169,7 +170,7 @@
                         </div>
                     {:else}
                         <img
-                            src={showFavIcon ? activeTab.favIconUrl : webIcon}
+                            src={getTabFavIconUrl(activeTab)}
                             alt={activeTab.url}
                             style={showFavIcon ? "" : "filter: invert(1);"}
                         />

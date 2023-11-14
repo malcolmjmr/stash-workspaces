@@ -9,6 +9,8 @@
     import WorkspaceManager from "./WorkspaceManager.svelte";
     import WindowManager from "./WindowManager.svelte";
     import { settings } from "./stores.js";
+    import { getTabInfo } from "./utilities/chrome.js";
+    import { getTabsBookmarks } from "./utilities/helpers.js";
 
     let tabs = [];
     let groups = {};
@@ -34,7 +36,7 @@
     let lastWorkspaceCreated;
 
     let currentWindowId;
-    let view = Views.home; 
+    let view = Views.tabs; 
 
     let authLoaded;
     let windowsLoaded;
@@ -69,25 +71,51 @@
         if (data.resource) {
             const resource = data.resource;
             resources[resource.url] = resource.url;
-            const tabIndex = tabs.findIndex((t) => t.url == resource.url);
-            if (tabIndex > -1) {
-                tabs[tabIndex].resource = resource;
-            }
+            updateTabsThatIncludeUrl(resource.url);
 
         }
 
         if (data.tab) {
+            print('updatng tab data');
             const tab = data.tab;
-            const tabIndex = tabs.findIndex((t) => t.id == tab.id);
-            if (tabIndex > -1) {
-                tabs[tabIndex] = tab;
-            }
+            updateTabsThatIncludeUrl(tab.url);
+
         }
 
         if (data.workspace) {
            
         }
+
+        
     };
+
+    const updateTabsThatIncludeUrl = async (url) => {
+        const matchingTabs = tabs.filter((t) => t.url == url);
+        print('found matching tabs');
+        print(matchingTabs);
+        for (let matchingTab of matchingTabs) {
+            const index = tabs.findIndex((t) => t.id == matchingTab.id);
+            matchingTab = { ...tabs[index], ...getTabInfo(await chrome.tabs.get(matchingTab.id), true) };
+            matchingTab.updated = Date.now();
+            matchingTab = await getTabsBookmarks(matchingTab);
+            tabs[index] = matchingTab;
+            lastUpdatedTab = matchingTab;
+            // if (tab.id == matchingTab.id) {
+
+            // }
+
+        }
+
+        //lastUpdate = Date.now();
+        
+    }
+
+    /*
+
+
+
+    */
+
 
 </script>
 {#if loaded}
@@ -176,6 +204,5 @@
         font-weight: 300;
         overflow: hidden;
         letter-spacing: 1px;
-        font-weight: 200;
     }
 </style>

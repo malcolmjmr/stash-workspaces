@@ -20,6 +20,7 @@
   import HomeFooter from "./home/HomeFooter.svelte";
   import History from "./history/History.svelte";
   import Trash from "./trash/Trash.svelte";
+  import { allWorkspaces } from "./stores";
 
 
     export let user;
@@ -39,6 +40,15 @@
     export let lastUpdatedWindow;
     export let hasBookmarkPermission;
     export let resources;
+
+
+    /*
+
+
+        Todo: 
+        - when active tab changed switch to workspace or tab view as appropriate 
+
+    */
 
     let activeWorkspace;
     let activeGroup;
@@ -70,10 +80,12 @@
         removeListeners();
     });
 
+
+
     const setActiveGroup = () => {
         activeGroup = groups[activeTab.groupId];
         if (!activeGroup) return;
-        activeWorkspace = workspaces.find((w) => w.groupId == activeTab.groupId);
+        activeWorkspace = $allWorkspaces.find((w) => w.id == activeGroup.workspaceId);
         if (!activeWorkspace) return;
         if (activeTab.windowId == currentWindowId) {
             view = Views.workspace;
@@ -141,24 +153,6 @@
     let searchResults = [];
     let showSearch;
 
-    $: {
-        lastUpdate;
-        if (searchText != "") updateResults();
-    }
-
-    const updateResults = async () => {
-        const text = searchText.toLowerCase();
-        searchResults = tabs.filter((t) =>
-            (t.title + " " + t.url).toLowerCase().includes(text)
-        );
-
-        if (searchResults.length > 0 || !hasBookmarkPermission) return;
-        
-        if (hasBookmarkPermission) {
-            searchResults = await chrome.bookmarks.search({query: text});
-        }
-        
-    };
 
     const showWorkspaceView = async ({detail}) => {
         selectedGroup = detail;
@@ -204,6 +198,7 @@
                     {user}
                     bind:view
                     {windows}
+                    {workspaces}
                     windowCount={windows?.length ?? 0}
                     tabCount={tabs?.filter((t) => t.windowId == currentWindowId)
                         ?.length ?? 0}
@@ -216,13 +211,13 @@
     <div class="body" bind:this={body}>
         {#if searchText.length > 0 && view != Views.saved}
             <SearchResults
+                {tabs}
                 {searchText}
-                {searchResults}
+                {lastUpdate}
                 on:updateSelection
                 {lastSelectionUpdate}
                 {selectedTabs}
                 {hasBookmarkPermission}
-                on:searchBookmarks={onSearchBookmarks}
             />
         {:else if view == Views.home}
             <Home 
@@ -306,6 +301,7 @@
                 bind:allResources={resources}
                 on:goBack={() => view = Views.tabs}
                 on:dataUpdated
+                on:foundDuplicates
             />
         {:else if view == Views.trash}
             <Trash
@@ -313,6 +309,7 @@
                 {user}
                 on:goBack={() => view = Views.home}
                 {workspaces}
+                on:refreshSpaces
             />
         {/if}
     </div>

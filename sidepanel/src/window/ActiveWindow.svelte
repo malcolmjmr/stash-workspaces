@@ -19,6 +19,7 @@
     export let tabs;
     export let groups;
     export let workspaces;
+    export let workspacesLoaded = false;
     export let lastUpdatedTab;
     export let lastUpdate;
     export let lastSelectionUpdate;
@@ -38,6 +39,8 @@
     $: {
         lastUpdatedTab;
         lastUpdate;
+        workspacesLoaded;
+        groups;
 
         checkIndexes();
         getTabGroupStarts();
@@ -46,9 +49,12 @@
     let groupStarts = {};
     let groupEnds = {};
     const getTabGroupStarts = () => {
+
+        console.log('getting tab order');
         groupStarts = {};
         groupEnds = {};
         tabs.sort((a, b) => a.index - b.index);
+
         for (const tab of tabs) {
             if (tab.groupId > -1) {
                 if (groupStarts[tab.groupId] == null) {
@@ -56,9 +62,6 @@
                 }
                 groupEnds[tab.groupId] = tab.index;
             }
-
-
-            
         }
     };
 
@@ -162,10 +165,11 @@
 {#if loaded}
     {#key lastUpdate}
         <div class="padding"></div>
-        {#each tabs as tab, i (tab.id + '' + tab.index + '' + tab.updated)}
+        {#each tabs as tab, i (tab)}
             {#if tab.groupId > -1 && groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
                 <GroupLabel
-                    group={groups[tab.groupId]}
+                    groupId={tab.groupId}
+                    {groups}
                     {lastGroupUpdate}
                     {lastSelectionUpdate}
                     {lastUpdate}
@@ -179,20 +183,23 @@
                 />
             {/if}
             {#if !groups[tab.groupId]?.collapsed}
-                <Tab
-                    {db}
-                    bind:tab={tabs[i]}
-                    {user}
-                    group={groups[tab.groupId]}
-                    {selectedTabs}
-                    {lastUpdatedTab}
-                    {lastSelectionUpdate}
-                    {dragoverItem}
-                    isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
-                    isEndingTab={tab.groupId > -1 && groupEnds[tab.groupId] == tab.index}
-                    on:updateSelection
-                    on:updateData
-                />
+                <div class="tab-container{groups[tab.groupId] ? ' grouped' : ''}">
+                    <Tab
+                        {db}
+                        {tab}
+                        {groups}
+                        {user}
+                        {selectedTabs}
+                        {lastUpdatedTab}
+                        {lastSelectionUpdate}
+                        {dragoverItem}
+                        isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
+                        isEndingTab={tab.groupId > -1 && groupEnds[tab.groupId] == tab.index}
+                        on:updateSelection
+                        on:dataUpdated
+                    />
+                </div>
+                
             {/if}
         {/each}
     {/key}
@@ -202,5 +209,9 @@
 <style>
     .padding {
         height: 5px;
+    }
+
+    .tab-container.grouped {
+        margin: 0px 5px;
     }
 </style>

@@ -83,12 +83,17 @@
         //closeTabs();
         dispatch('stashSelectedTabs');
     };
+
+    const onTabsMoved = async () => {
+        showMoveModal = false;
+        selectedTabs = [];
+    };
 </script>
 
 
 {#if showMoveModal}
     <ModalContainer on:exit={() => showMoveModal = false}>
-        <MoveModal {selectedTabs} {workspaces} {groups} />
+        <MoveModal {selectedTabs} {workspaces} {groups} on:tabsMoved={onTabsMoved}/>
     </ModalContainer>
     
 {/if}

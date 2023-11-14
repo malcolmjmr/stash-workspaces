@@ -13,6 +13,8 @@
 
     import MoveResource from "./MoveResource.svelte";
     import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import MoveModal from "./MoveModal.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -99,11 +101,12 @@
     
     const openMoveModal = () => {
         view = TabMenuView.move;
-    }
+    };
 
     const onEditTabBookmarkClicked = () => {
         dispatch('editBookmark', tab);
-    }
+    };
+    
 </script>
 
 <div class="context-menu">
@@ -151,9 +154,11 @@
         {/if}
     {/if}
     {:else if view == TabMenuView.bookmark}
-        <BookmarkDetails {db} bind:tab {workspace} {workspaces} isOpen={true} />
+        <BookmarkDetails {db} bind:tab {workspace} {workspaces} isOpen={true} on:dataUpdated on:exit={() => view = null}/>
     {:else if view == TabMenuView.move} 
-        <MoveResource resource={tab} {workspace} {workspaces} isOpen={true} />
+        <ModalContainer on:exit={() => view = null}>
+            <MoveModal selectedTabs={[tab]} on:exit={() => view = null} on:fullExit={() => dispatch('exit')}/>
+        </ModalContainer>
     {/if}
 </div>
 
@@ -161,7 +166,8 @@
     .context-menu {
         display: flex;
         flex-direction: column;
-        width: 100%;
+        width: calc(100% - 10px);
+        padding: 5px;
 
     }
 

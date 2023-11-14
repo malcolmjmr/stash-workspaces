@@ -3,7 +3,7 @@
     import ModalContainer from "../components/ModalContainer.svelte";
     import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
   import SearchBox from "../components/SearchBox.svelte";
-  import { get, getTabInfo, saveContext, tryToGetTabGroup } from "../utilities/chrome";
+  import { get, getTabFavIconUrl, getTabInfo, saveContext, tryToGetTabGroup } from "../utilities/chrome";
     import createWindowIcon from "../icons/new-window.png";
     import createFolderIcon from "../icons/new-folder.png";
   import { allWorkspaces } from "../stores";
@@ -21,6 +21,7 @@
     let mainTab;
     const load = () => {
         mainTab = selectedTabs[0];
+
         updateVisibleWorkspaces();
         loaded = true;
     };
@@ -30,12 +31,19 @@
 
     const onWorkspaceClicked = async (workspace) => {
         const openGroup = await tryToGetTabGroup(workspace.groupId);
+        const tabIds =  selectedTabs.map((t) => t.id);
         if (openGroup) {
-            await chrome.tabs.group({tabIds: selectedTabs.map((t) => t.id)});
+            
+            await chrome.tabs.group({ tabIds, groupId: openGroup.id });
+           
         } else {
-            workspace.tabs.push(selectedTabs.map(getTabInfo));
+            for (const tab of selectedTabs) {
+                workspace.tabs.push(getTabInfo(tab));
+            }
             await saveContext(workspace);
+            await chrome.tabs.remove(tabIds);
         }
+        dispatch('tabsMoved');
     };
 
     const moveToNewSpace = async () => {
@@ -43,6 +51,7 @@
         const group = await chrome.tabs.group({ 
             tabIds: selectedTabs.map((t) => t.id) 
         });
+        dispatch('tabsMoved');
     };
 
     const moveToNewWindow = async () => {
@@ -50,8 +59,9 @@
         const window = await chrome.windows.create({focused: true});
         const newTab = (await chrome.tabs.query({windowId: window.id}))[0];
         const tabIds = selectedTabs.map((t) => t.id);
-        await chrome.tabs.move(tabIds, { windowId: window.id});
+        await chrome.tabs.move(tabIds, { windowId: window.id, index: -1});
         await chrome.tabs.remove(newTab.id);
+        dispatch('tabsMoved');
     };
 
     $: {
@@ -61,7 +71,7 @@
 
     const updateVisibleWorkspaces = () => {
         const text = searchText.toLowerCase();
-        visibleSpaces = $allWorkspaces.filter((w) => !w.deleted && w.title?.includes(text));
+        visibleSpaces = $allWorkspaces.filter((w) => !w.deleted && w.title?.toLowerCase().includes(text));
         visibleSpaces.sort((a, b) => b.updated - a.updated);
     };
 
@@ -81,7 +91,7 @@
             </div>
         </div>
         <div class="selected-items">
-            <img src={mainTab.favIconUrl} alt=""/> 
+            <img src={getTabFavIconUrl(mainTab)} alt=""/> 
             <div class="container">
                 <div class="title">
                     {mainTab.title}
@@ -95,22 +105,25 @@
         </div>
         <div class="container">
             <div class="move-options">
-                <div class="list">
+                
+                <div class="search-container">
+                    <SearchBox bind:searchText placeholderText="Search or create..."/>
+                </div>
+                <div class="list new-window">
                     {#if searchText.length == 0}
                         <div class="list-item" on:mousedown={moveToNewWindow}>
                             <img src={createWindowIcon} alt={moveToNewWindow} />
                             <span>New Window</span>
                         </div>
                     {/if}
+                </div>
+                <div class="list">
+                    {#if searchText.length > 0}
                     <div class="list-item" on:mousedown={moveToNewSpace}>
                         <img src={createFolderIcon} alt="New Space" />
                         <span>New Space</span>
                     </div>
-                </div>
-                <div class="search-container">
-                    <SearchBox bind:searchText/>
-                </div>
-                <div class="list">
+                    {/if}
                     {#each visibleSpaces as workspace}
                         <WorkspaceListItem {workspace} onClick={onWorkspaceClicked}/> 
                     {/each}
@@ -126,7 +139,7 @@
         height: 300px;
         display: flex;
         flex-direction: column;
-        padding: 10px;
+        padding: 10px 10px 0px 10px;
         overflow: hidden;
     }
 
@@ -141,11 +154,7 @@
     .header .title {
         font-size: 14px;
         font-weight: 400;
-        overflow: hidden;
-        display: -webkit-box;
-        -webkit-line-clamp: 2; /* number of lines to show */
-                line-clamp: 2; 
-        -webkit-box-orient: vertical;
+        
     }
 
     .header .end {
@@ -169,13 +178,13 @@
 
     .search-container {
         height: 25px;
-        margin: 10px 0px;
+        margin-bottom: 10px;
     }
 
     .selected-items {
         display: flex;
         flex-direction: row;
-        align-items: start;
+        align-items: center;
         padding-bottom: 8px;
     }
 
@@ -193,7 +202,11 @@
     .selected-items .title {
         font-size: 14px;
         font-weight: 400;
-        max-lines: 2;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* number of lines to show */
+                line-clamp: 2; 
+        -webkit-box-orient: vertical;
         text-overflow: ellipsis;
     }
 
@@ -211,7 +224,6 @@
         flex-direction: column;
         border-radius: 8px;
         background-color: #333333;
-        margin-bottom: 10px;
     }
 
     .list-item {
@@ -221,8 +233,9 @@
         padding: 0px 10px;
         font-weight: 400;
         height: 30px;
-        color: #ffbf00;
+        opacity: 0.7;
     }
+
 
     .list-item img {
         height: 20px;
@@ -233,6 +246,11 @@
 
     .list-item:hover {
         cursor: pointer;
+        opacity: 1;
+    }
+
+    .new-window {
+        margin-bottom: 10px;
     }
 
 
