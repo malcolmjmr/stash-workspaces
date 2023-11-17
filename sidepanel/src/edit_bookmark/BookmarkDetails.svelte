@@ -201,7 +201,7 @@
             locationsAdded.push(location.folder);
 
         } else if (location.workspace) {
-            if (userData.saveToCloud) { // if (settings.cloudStorage)
+            if (userData) { // if (settings.cloudStorage)
                 resource = tab?.resource ?? resource ?? createResource(tab);
                 if (!resource.contexts) resource.contexts = [];
                 const index = resource.contexts.findIndex((id) => location.workspace.id == id);
@@ -231,7 +231,7 @@
             tab.bookmarks.push(bookmark);
         }
 
-        dispatch('dataUpdated', {tab});
+        //dispatch('dataUpdated', {tab});
     };
 
     let bookmarksToRemove = [];
