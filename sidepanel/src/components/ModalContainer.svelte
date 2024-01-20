@@ -46,12 +46,13 @@
         z-index: 10002;
         border-radius: 8px;
         background-color: #222222;
-        border: solid 1px #777777;
         width: calc(100% - 40px);
         max-height: calc(100% - 40px);
         margin: 20px;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
+        border: 2px solid #333333;
     }
 
 </style>

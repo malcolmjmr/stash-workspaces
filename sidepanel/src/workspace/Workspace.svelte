@@ -3,7 +3,7 @@
     /*
 
         Todo: 
-        - 
+        - check that workspace has stored group ID 
     */
     import { createEventDispatcher, onMount } from "svelte";
     import moreIcon from "../icons/more-horiz.png";
@@ -21,7 +21,7 @@
     import imageIcon from "../icons/image.png";
     import { colorMap } from "../utilities/colors";
     import { StorePaths } from "../utilities/storepaths";
-    import { getContext, get, tryToGetBookmark, openWorkspace} from "../utilities/chrome";
+    import { getContext, get, tryToGetBookmark, openWorkspace, saveContext} from "../utilities/chrome";
 
 
     import {
@@ -54,6 +54,7 @@
   import ResourceListItem from "./ResourceListItem.svelte";
   import BasicBookmarks from "./BasicBookmarks.svelte";
   import PremiumBookmarks from "./PremiumBookmarks.svelte";
+  import SearchResults from "../search/SearchResults.svelte";
 
     
 
@@ -111,6 +112,11 @@
         //getTabGroupStarts();
     }
 
+    $: {
+        group;
+        init();
+    }
+
     const checkIndexes = () => {
         // Check for tabs that have been duplicated and get tab group start and end index values
 
@@ -132,26 +138,44 @@
     const init = async () => {
 
         //tabs = tabs.filter((t) => t.groupId == group.id);
-        
+        console.log('initializing workspace');
+        console.log(group);
+        console.log(workspace);
         if (!group) isOpen = false;
-        if (workspace) {
-            await loadResources();
-        } else if (group?.workspaceId) {
+        if (group?.workspaceId) {
             await loadWorkspace();
+        } else if (workspace) {
+            await loadResources();
         } else if (group) {
 
             // should check openGroups and add the workspace if it doesn't exist
+
             workspace = {
-                title: group.title,
-                color: group.color
+                title: group?.title,
+                color: group?.color
             };
             isOpen = true;
         }
 
+
         updateTabData();
         checkScreenState();
+        checkWorkspaceColor();
         loaded = true;
     }
+
+    const checkWorkspaceColor = () => {
+        if (workspace?.color) return;
+
+        workspace.color = group?.color ?? 'grey';
+        saveContext(workspace);
+        const index = workspaces.findIndex((w) => w.id == workspace.id);
+        if (index > -1) {
+            workspaces[index] = workspace;
+        }
+        //dispatch('dataUpdated', { workspace });
+        
+    };
 
     // $: {
     //     if (group?.workspaceId) {
@@ -169,8 +193,8 @@
 
     let resources = [];
     const loadResources = async () => {
-
         if (user) {
+            resources = [];
             const path = StorePaths.userResources(user.id);
             const q = query(
                 collection(db, path),
@@ -178,8 +202,8 @@
             );
             if (resources.length == 0)
             resources = (await getDocs(q)).docs.map((d) => d.data());
+            otherCountString = `${resources.length} Resource${resources.length > 1 ? 's' :''}`;
         }
-        otherCountString = `${resources.length} Resource${resources.length > 1 ? 's' :''}`;
 
         updateVisibleTabs();
         if (!tabs) tabs = workspace.tabs;
@@ -196,10 +220,6 @@
             folders = (await getDocs(q)).docs.map((d) => d.data());
             folders.sort((a, b) => (b.updated ?? 0) - (a.updated ?? 0));
         } else {
-            let folder = await tryToGetBookmark(workspace.folderId);
-            if (!folder) {
-                // try to get folder by name
-            }
 
 
         }
@@ -277,7 +297,13 @@
     const updateVisibleTabs = () => {
         const text = searchText.toLowerCase();
         visibleTabs = tabs.filter((t) => t.title?.toLowerCase().includes(text));
+        // tabs.sort(sortTabs);
+        // visibleTabs.sort(sortTabs);
     };
+    
+    const sortTabs = (a, b) => {
+        return a.index - b.index;
+    }
 
     let window;
     let windowIsFullscreen;
@@ -293,8 +319,6 @@
 
     const openWorkspaceMenu = () => {
         showMenu = true;
-        console.log('opening menu');
-        console.log(showMenu)
     };
 
     const onResourceOpened = ({detail}) => {
@@ -334,11 +358,34 @@
     };
 
     let otherCountString;
+    let bookmarkCount;
     const onReceiveBookmarkCount = ({ detail }) => {
-        const count = detail;
+        bookmarkCount = detail;
         
-        otherCountString = count > 0 ? `${count} Bookmark${count > 1 ? 's' : ''}` : '';
-    }
+        otherCountString = bookmarkCount > 0 ? `${bookmarkCount} Bookmark${bookmarkCount > 1 ? 's' : ''}` : '';
+    };
+
+    const onLocationAdded = async ({ detail }) => {
+        let location = detail;
+        const folder = await tryToGetBookmark(workspace.folderId);
+        if (folder) {
+            const folderToMove = location.folder?.id ?? location.workspace.folderId;
+            if (!folderToMove || folderToMove == folder.id) return;
+            await chrome.bookmarks.move(folderToMove, {
+                parentId: folder.id,
+                index: 0,
+            });
+
+            lastBookmarkUpdate = Date.now();
+        }
+    };
+
+    const closeAllTabs = async () => {
+        const tabs = await chrome.tabs.query({ groupId: workspace.groupId });
+        const newTab = await chrome.tabs.create({});
+        await chrome.tabs.group({ tabIds: newTab.id, groupId: workspace.groupId });
+        await chrome.tabs.remove(tabs.map((t) => t.id));
+    };
 </script>
 
 {#if previewWorkspace}
@@ -361,7 +408,7 @@
             <div class="top">
                 <BackButton onClick={onBackButtonClicked}/>
                 <div class="actions">
-                    <div class="more-button" on:mousedown={openWorkspaceMenu}>
+                    <div class="more button" on:mousedown={openWorkspaceMenu}>
                         <img 
                             src={moreIcon} 
                             class="action icon menu" 
@@ -382,7 +429,9 @@
                 </div>
             </div>
 
-            <div class="title" style='color: {colorMap[workspace?.color]}'>{workspace?.title && workspace.title != '' ? workspace.title : workspace.color} </div>
+            <div class="title" style='color: {colorMap[workspace?.color]}; font-size: {(workspace?.title ?? 'Untitled').length < 30 ? '350%' : '200%'};'>
+                {workspace?.title && workspace.title != '' ? workspace.title : 'Untitled'} 
+            </div>
             <div class="search-container">
                 <SearchBox bind:searchText/>
             </div>
@@ -412,17 +461,17 @@
                     </div>
             </div>
             {/if}
-            {#if tabs.length > 0}
+            {#if (searchText.length > 0 ? visibleTabs : tabs).length > 0}
             <div class="tabs section">
                 <div class="heading">
                     <div class="title">Tabs</div>
                     <div class="actions">
                         <div class="actions">
-                            <img class="action icon" src={closeAllIcon} alt=""/>
+                            <img class="action icon button" src={closeAllIcon} alt="" on:mousedown={closeAllTabs}/>
                         </div>
                     </div>
                     <div class="spacer"></div>
-                    <img class="collapse icon" 
+                    <img class="collapse icon button" 
                         alt=""
                         src={tabsCollapsed ? arrowRightIcon : arrowDownIcon}
                         on:mousedown={() => tabsCollapsed = !tabsCollapsed}
@@ -431,7 +480,8 @@
                 {#if !tabsCollapsed}
                     <div class="items">
                         <div class="container">
-                            {#each (searchText.length > 0 ? visibleTabs : tabs) as tab (tab.id)}
+                            {#key tabs.length}
+                            {#each (searchText.length > 0 ? visibleTabs : tabs) as tab (tab)}
                                 <Tab 
                                     {db}
                                     {user}
@@ -446,13 +496,17 @@
                                     on:clicked={onTabClicked}
                                 />
                             {/each}
+                            {/key}
                         </div>
                     </div>
+                {:else}
+                    <div class="padding"></div>
                 {/if}
             </div>
             {/if}
 
-            {#if false} 
+            
+            {#if user} 
                 <PremiumBookmarks 
                     {user} 
                     {db} 
@@ -463,25 +517,35 @@
                     
                 />
             {:else}
-                <BasicBookmarks 
-                    {searchText} 
-                    {workspace}
-                    {lastBookmarkUpdate}
-                    on:bookmarkCount={onReceiveBookmarkCount}
-                    on:dataUpdated
-                    
-                />
+                {#if searchText.length > 0 && bookmarkCount == 0 && visibleTabs.length == 0}
+                    <SearchResults
+                        {searchText}
+                    />
+                {:else }
+
+                    {#key workspace}
+                        <BasicBookmarks 
+                            {searchText} 
+                            {workspace}
+                            {lastBookmarkUpdate}
+                            on:bookmarkCount={onReceiveBookmarkCount}
+                            on:dataUpdated 
+                        />
+                    {/key}
+                {/if}
             {/if}
 
         </div>
 
         <WorkspaceFooter 
             {workspaces} 
+            {workspace}
             {groups} 
             {otherCountString}
             resourceCount={resources.length} 
-            tabCount={tabs.length} 
+            tabCount={(searchText.length > 0 ? visibleTabs : tabs).length} 
             folderCount={folders.length}
+            on:locationSelected={onLocationAdded}
         />
         
     </div>
@@ -516,15 +580,19 @@
         width: 100%;
         justify-content: space-between;
         margin-top: 10px;
+        overflow: hidden;
     }
 
     .header .title {
-        font-size: 350%;
+        
         font-weight: bold;
         color: black;
-        white-space: nowrap;
+        width: 100%;
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* number of lines to show */
+                line-clamp: 2; 
+        -webkit-box-orient: vertical;
         text-overflow: ellipsis;
-        
     }
     
     .header img.action:hover {
@@ -540,7 +608,7 @@
     }
 
 
-    .more-button {
+    .more.button {
         border-radius: 100%;
         border: 1px solid white;
         display: flex;
@@ -550,7 +618,7 @@
         margin-right: 5px;
     }
 
-    .more-button img {
+    .more.button img {
         height: 12px;
         width: 12px;
         padding: 2px;
@@ -589,6 +657,12 @@
         width: 16px;
     }
 
+    .button:hover {
+        cursor: pointer;
+    }
+
+
+
     .section .heading .collapse.icon {
         
     }
@@ -626,6 +700,10 @@
 
     .search-container {
         margin: 10px 0px;
+    }
+
+    .padding {
+        height: 10px;
     }
 
 </style>

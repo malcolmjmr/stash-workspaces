@@ -39,6 +39,7 @@
     export let groups;
     export let workspacesLoaded;
     export let lastUpdatedGroup;
+    export let lastCreatedWorkspace;
     export let resources;
 
     //export let resourcesLoaded;
@@ -55,8 +56,14 @@
     };
 
     $: {
-        lastUpdatedGroup;
-        updateWorkspaces();
+        if (lastUpdatedGroup) {
+            setTimeout(() => updateWorkspaces(), 200);
+        }
+    }
+
+    $: {
+        lastCreatedWorkspace;
+        setTimeout(() => updateWorkspaces(), 1000);
     }
 
 
@@ -71,22 +78,20 @@
     */
     
     const updateWorkspaces = async () => {
-        if (!lastUpdatedGroup) return;
+
+        if (lastUpdatedGroup == null || lastUpdatedGroup.id == null) return;
         
+        console.log('updating workspaces');
         let openGroups = await get('openGroups');
-        let workspaceId = openGroups[lastUpdatedGroup.id];
-        console.log('updating workspace');
-        const index = workspaces.findIndex((w) => workspaceId ? w.id == workspaceId : w.groupId == lastUpdatedGroup.id);
+        let workspaceId = openGroups[lastUpdatedGroup?.id];
+        const index = workspaces.findIndex((w) => workspaceId ? w?.id == workspaceId : w?.groupId == lastUpdatedGroup?.id);
         if (index > -1) {
             
             const workspace = await getContext(workspaceId);
-            console.log(workspace);
-            if (lastUpdatedGroup.removed) {
-                console.log('deleted space');
+            if (lastUpdatedGroup.deleted) {
                 delete workspaces[index];
-            } else {
-                console.log('groups');
-                console.log(groups);
+                workspaces = [...workspaces];
+            } else if (workspace) {
                 workspaces[index] = workspace;
                 workspaces = [...workspaces];
             }
@@ -94,12 +99,18 @@
             allWorkspaces.set(workspaces);
             
         } else if (lastUpdatedGroup.created) {
-            console.log('created space');
-            const workspace = await getContext(workspaceId);
-            console.log(workspace);
-            workspaces.push(workspace);
+            // const workspace = await getContext(workspaceId);
+            // workspaces.push(workspace);
+            // allWorkspaces.set(workspaces);
+            console.log('updating newly created group');
+            console.log(lastUpdatedGroup);
+        } else if (lastCreatedWorkspace && Date.now() - lastCreatedWorkspace.created < 1500) {
+            console.log('updating newly created workspace');
+            console.log(lastCreatedWorkspace);
+            workspaces = [lastCreatedWorkspace,...workspaces];
             allWorkspaces.set(workspaces);
         } else {
+            console.log('reloading workspaces');
             getUserWorkspaces();
         }
     };
@@ -114,19 +125,12 @@
         }
 
         const data = await chrome.storage.local.get(null);
-        console.log('data');
-        console.log(data);
-
         await getResourcesForOpenWorkspaces();
 
         const currentWindow = await chrome.windows.get(await chrome.windows.WINDOW_ID_CURRENT);
         workspaces = tempWorkspaces.filter((w) => (w.isIncognito ?? false) == currentWindow.incognito);
         allWorkspaces.set(workspaces);
-        
         workspacesLoaded = Date.now();
-        console.log('loaded workspaces');
-        console.log(workspaces);
-
     };
 
     const getResourcesForOpenWorkspaces = async () => {

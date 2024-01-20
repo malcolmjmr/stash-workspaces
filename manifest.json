@@ -36,7 +36,8 @@
         "128": "logo.png"
     },
     "optional_permissions": [
-        "bookmarks"
+        "bookmarks",
+        "history"
     ],
     "permissions": [
         "identity",

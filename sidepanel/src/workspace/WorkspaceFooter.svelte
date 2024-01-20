@@ -17,6 +17,7 @@
  
     export let groups;
     export let workspaces;
+    export let workspace;
     export let tabCount;
     export let resourceCount;
     export let folderCount;
@@ -35,8 +36,6 @@
         if (activeTab.groupId > -1) {
             await chrome.tabs.group({tabIds: newTab.id, groupId: activeTab.groupId });
         }
-        
-        return  
     };
 
     let showCreateGroupModal;
@@ -44,11 +43,23 @@
         showCreateGroupModal = true;
     };
 
+    const onLocationSelected = ({detail}) => {
+        showCreateGroupModal = false;
+        dispatch('locationSelected', {...detail});
+    }
+
 </script>
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {groups} {workspaces} view={Views.workspace} on:locationSelected/>
+    <CreateGroup 
+        {groups} 
+        {workspaces} 
+        {workspace} 
+        view={Views.workspace} 
+        on:locationSelected={onLocationSelected} 
+        placeholder="Search or create folder..."
+    />
 </ModalContainer>
 {/if}
 
@@ -67,7 +78,7 @@
                     </div>
                     
                 {/if}
-                {#if otherCountString}
+                {#if otherCountString && tabCount > 0}
                     <CircleDivider />
                     <div class="count">
                         {otherCountString}
@@ -88,7 +99,8 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        width: 100%;
+        padding: 0px 5px;
+        width: calc(100% - 10px);
         height: 30px;
         z-index: 100;
         color: white;
@@ -115,8 +127,8 @@
 
     .action img {
         filter: invert(1);
-        height: 22px;
-        width: 22px;
+        height: 24px;
+        width: 24px;
     }
 
     .action {

@@ -98,7 +98,10 @@
 
 </script>
 
-<div class="windows" >
+<div 
+    class="windows"
+    
+>
 
     {#each windows as windowData (windowData)}
         <Window
@@ -111,6 +114,10 @@
             on:tabMoved
         />
     {/each}
+
+    <div class="background" on:drop={onDrop}>
+
+    </div>
     
 </div>
 
@@ -130,5 +137,11 @@
 
     .container {
         flex-grow: 1;
+    }
+
+    .background {
+        position: fixed;
+        height: 100%;
+        width: 100%;
     }
 </style>

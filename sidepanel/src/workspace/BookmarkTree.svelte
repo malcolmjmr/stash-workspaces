@@ -1,8 +1,9 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
     import Bookmark from "../components/Bookmark.svelte";
-    import { tryToGetBookmark, tryToGetBookmarkTree, tryToGetTabGroup } from "../utilities/chrome";
+    import { saveContext, tryToGetBookmark, tryToGetBookmarkTree, tryToGetTabGroup } from "../utilities/chrome";
     import { get } from "svelte/store";
+  import { allWorkspaces } from "../stores";
 
     export let searchText = '';
     export let workspace;
@@ -26,9 +27,44 @@
         load();
     }
 
+    $: {
+        searchText;
+        updateSearchResults();
+    }
+
+    let searchResults = [];
+
+    const updateSearchResults = () => {
+        searchResults = [];
+        if (searchText.length > 0) {
+            const text = searchText.toLowerCase();
+            for (const node of bookmarkTree) {
+                searchBookmarks(node, text);
+            }
+        }
+
+        bookmarkCount = searchResults.length;
+        dispatch('bookmarkCount', bookmarkCount);
+        
+    };
+
+    const searchBookmarks = (node, text) => {
+        if (node.children) {
+            for (const child of node.children) {
+                searchBookmarks(child, text)
+            }
+        } else {
+            const matchesTitle = node.title?.toLowerCase().includes(text);
+            const matchesUrl = node.url?.includes(text);
+            if (matchesTitle || matchesUrl) {
+                searchResults.push(node);
+            }
+        }
+
+    }
+
     let folder;
     const load = async () => {
-
         const folderFromId = await tryToGetBookmark(workspace.folderId);
         if (folderFromId?.title == workspace.title) folder = folderFromId;
         if (!folder) {
@@ -74,21 +110,8 @@
         }
     };
 
-    const searchTree = () => {
-        let results = [];
-        
-        function searchNode(node) {
-            if (node.children) {
-                for (const child of node.children) {
-                    searchNode(child);
-                }
-            } else {
-                if (node.title.toLowerCase().includes(t)) {
+    
 
-                }
-            }
-        }
-    };
 
     const onBookmarkMoved = ({ detail }) => {
         load();
@@ -96,23 +119,42 @@
 
     const onBookmarkClicked = async ({ detail }) => {
         const bookmark = detail;
-        const tab = await chrome.tabs.create({url: bookmark.url});
-        const group = await tryToGetTabGroup(workspace.groupId);
+
+        
+        let group = await tryToGetTabGroup(workspace.groupId);
+
+        if (!group) {
+            const matchingGroups = await chrome.tabGroups.query({ title: workspace.title });
+            if (matchingGroups.length == 1) {
+                group = matchingGroups[0];
+                workspace.groupId = group.id;
+                await saveContext(workspace);
+                dispatch('dataUpdated', { workspace });
+            }
+           
+        } 
         
         if (group) {
-            console.log('grouping tab');
+
+            
+            let tab;
+            const newTabs = await chrome.tabs.query({ groupId: group.id, url: 'chrome://newtab/' });
+            if (newTabs.length > 0) {
+                tab = newTabs[0];
+                await chrome.tabs.update({ url: bookmark.url });
+            } else {
+                tab = await chrome.tabs.create({ url: bookmark.url });
+            }
             chrome.tabs.group({tabIds: tab.id, groupId: group.id});
         } else {
-            console.log('couldn\'t find group');
-            // maybe create a tab group for the opened tab and 
-            // keep previously opened tab configuration dormant?
+            await chrome.tabs.create({ url: bookmark.url });
         }
     };
 </script>
 
 {#if loaded && bookmarkTree?.length > 0}
     <div class="bookmark-tree">
-        {#each bookmarkTree as bookmark (bookmark.id)}
+        {#each (searchText.length > 0 ? searchResults : bookmarkTree) as bookmark (bookmark.id)}
             <Bookmark 
                 {bookmark} 
                 on:bookmarkClicked={onBookmarkClicked} 
@@ -127,8 +169,6 @@
     .bookmark-tree {
         display: flex;
         flex-direction: column;
-        border-radius: 8px;
-        background-color: #333333;
         overflow: hidden;
     }
 

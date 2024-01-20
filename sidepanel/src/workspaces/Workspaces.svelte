@@ -96,7 +96,7 @@
             
             if (titleMatches && colorMatches) {
                 tempWorkspaces.push(workspace);
-                const color = workspace.color ?? 'grey';
+                const color = workspace?.color ?? 'grey';
                 if (!tempColorCounts[color]) tempColorCounts[color] = 0;
                 tempColorCounts[color] += 1;
             }

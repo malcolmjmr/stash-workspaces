@@ -38,6 +38,7 @@
     export let lastUpdatedTab;
     export let lastUpdatedGroup;
     export let lastUpdatedWindow;
+    export let lastWorkspaceUpdate;
     export let hasBookmarkPermission;
     export let resources;
 
@@ -52,14 +53,30 @@
 
     let activeWorkspace;
     let activeGroup;
+    // $: {
+    //     workspacesLoaded;
+    //     const neeedToSetActiveGroup = (
+    //         currentWindowId == activeTab.windowId
+    //         && (activeTab.groupId != activeGroup?.id 
+    //             || (!activeGroup && activeTab.groupId != -1)
+    //         )
+    //     );
+    //     if (neeedToSetActiveGroup) {
+    //        setActiveGroup();
+    //     }
+    // }
+
+    let previewWorkspace;
+    let previousView = view;
+
     $: {
-        workspacesLoaded;
-        const neeedToSetActiveGroup = (
-            activeTab.groupId != activeGroup?.id 
-            || (!activeGroup && activeTab.groupId != -1)
-        );
-        if (neeedToSetActiveGroup) {
-           setActiveGroup();
+        if (searchText.length > 0) {
+            if (view != Views.search) {
+                previousView = view;
+                view = Views.search;
+            } 
+        } else if (view == Views.search && previousView) {
+            view = previousView;
         }
     }
 
@@ -80,15 +97,21 @@
         removeListeners();
     });
 
-
-
     const setActiveGroup = () => {
         activeGroup = groups[activeTab.groupId];
-        if (!activeGroup) return;
-        activeWorkspace = $allWorkspaces.find((w) => w.id == activeGroup.workspaceId);
-        if (!activeWorkspace) return;
-        if (activeTab.windowId == currentWindowId) {
-            view = Views.workspace;
+        updateViewBasedOnActiveTab();
+    };
+     
+    const updateViewBasedOnActiveTab = () => {
+        if (activeTab.groupId > -1) {
+            if (view != Views.workspace) {
+                view = Views.workspace;
+            }
+            
+        } else {
+            if (view != Views.tabs) {
+                view = Views.tabs;
+            }
         }
     }
 
@@ -155,14 +178,13 @@
 
 
     const showWorkspaceView = async ({detail}) => {
-        selectedGroup = detail;
+        activeGroup = detail;
 
         // if (activeTab.groupId != selectedGroup.id) {
         //     const newActiveTab = (await chrome.tabs.query({groupId: selectedGroup.id}))[0];
         //     await chrome.tabs.update(newActiveTab.id, {active: true});
         // }
         view = Views.workspace;
-    
     }
 
     let showFooter;
@@ -181,6 +203,8 @@
         hasBookmarkPermission = true;
         updateResults();
     }
+
+
 
 
     const fullScreenViews = [Views.workspace, Views.trash, Views.history];
@@ -209,8 +233,9 @@
     {/if}
 
     <div class="body" bind:this={body}>
-        {#if searchText.length > 0 && view != Views.saved}
+        {#if view == Views.search}
             <SearchResults
+                bind:view
                 {tabs}
                 {searchText}
                 {lastUpdate}
@@ -218,6 +243,7 @@
                 {lastSelectionUpdate}
                 {selectedTabs}
                 {hasBookmarkPermission}
+                {currentWindowId}
             />
         {:else if view == Views.home}
             <Home 
@@ -229,6 +255,8 @@
                 {groups}
                 {lastUpdatedGroup}
                 {lastUpdatedTab}
+                on:dataUpdated
+                
             />
         {:else if view == Views.history}
             <History
@@ -257,6 +285,7 @@
             />
         {:else if view == Views.tabs}
             <ActiveWindow
+                {activeTab}
                 tabs={tabs.filter((t) => t.windowId == currentWindowId)}
                 {user}
                 {db}
@@ -289,10 +318,10 @@
             />
         {:else if view == Views.workspace}
             <Workspace
-                tabs={tabs.filter((t) => t.groupId == (selectedGroup ?? activeGroup)?.id)}
-                group={selectedGroup ?? activeGroup}
+                tabs={tabs.filter((t) => t.groupId == (activeGroup)?.id)}
+                group={activeGroup}
                 {groups}
-                {workspaces}
+                bind:workspaces
                 {db}
                 {user}
                 {lastUpdate} 
@@ -307,9 +336,11 @@
             <Trash
                 {db}
                 {user}
+                bind:view
                 on:goBack={() => view = Views.home}
-                {workspaces}
+                bind:workspaces
                 on:refreshSpaces
+                on:dataUpdated
             />
         {/if}
     </div>

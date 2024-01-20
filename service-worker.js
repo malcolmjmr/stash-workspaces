@@ -36,6 +36,7 @@ async function onInstalled(details) {
     await chrome.runtime.setUninstallURL(uninstallPageURL);
     await setInitialData();
     await importUsersTabGroups();
+    await importRecentFolders(); // Todo
 }
 
 async function onUpdateAvailable(details) {
@@ -128,6 +129,10 @@ async function importUsersTabGroups() {
 
 }
 
+async function importRecentFolders() {
+    // get code from stash-extension
+}
+
 // Commands 
 
 async function onCommand(command, tab) {
@@ -213,7 +218,23 @@ async function onTabMoved(tabId, moveInfo) {
 async function onTabUpdated(tabId, updated) {
     // check if tab updated 
     if (updated.status == 'complete') onResourceLoaded(tabId);
+    else if (updated.status == 'loading') onResourceLoading(tabId);
     else if (updated.groupId) onTabsGroupUpdated(tabId, updated.groupId);
+}
+
+async function onResourceLoading(tabId) {
+    const tab = await chrome.tabs.get(tabId);
+
+    console.log('resource loading');
+    console.log(tab);
+
+    const context = await getContextFromTab(tab);
+    if (!context) return;
+    const uri = new URL(tab.url);
+    if (Date.now() - context.opened < 1500 && !tab.active && tab.favIconUrl && !tab.title.includes(uri.host)) {
+        chrome.tabs.discard(tab.id);
+    }
+  
 }
 
 async function onTabsHighlighted(tabIds) {
@@ -231,7 +252,7 @@ async function updateContextTabs(context) {
     const tabsInGroup = await chrome.tabs.query({ groupId: context.groupId });
     tabsInGroup.sort((a, b) => a.index - b.index);
     context.tabs = tabsInGroup.map(getTabInfo);
-    context.activeTabId = tabsInGroup.find((t) => t.active).id;
+    context.activeTabId = tabsInGroup.find((t) => t.active)?.id;
     await saveContext(context);
 }
 
@@ -245,10 +266,6 @@ async function onResourceLoaded(tabId) {
 async function onTabsGroupUpdated(tabId, groupId) {
 
     const context = await getContextFromGroupId(groupId);
-    console.log('found context of updated tab');
-    console.log(await chrome.tabs.get(tabId));
-    console.log(context);
-
 
     if (context) {
         if (!context.groupId) context.groupId = groupId;
@@ -293,10 +310,9 @@ async function onTabGroupCreated(group) {
         setTimeout(async () => {
             group = await chrome.tabGroups.get(group.id);
 
-
             const contexts = await getContexts();
             context = (
-                contexts.find((c) => c.title == group.title)
+                contexts.find((c) => group.id == c.groupId || (group.title != '' && c.title == group.title))
                 ?? await createContextFromGroup(group)
             );
 
@@ -307,6 +323,11 @@ async function onTabGroupCreated(group) {
             let openGroups = await get('openGroups');
             openGroups[group.id] = context.id;
             await set({ openGroups });
+
+            await chrome.runtime.sendMessage({
+                command: 'workspacesCreated',
+                workspace: context,
+            });
             
         }, 500);
         
@@ -420,7 +441,7 @@ async function createContextFromGroup(group) {
         groupId: group.id,
         color: group.color,
         tabs: (await chrome.tabs.query({groupId: group.id})).map(getTabInfo),
-        isIncognito: window.incognito
+        isIncognito: window.incognito,
     });
 }
 
@@ -481,6 +502,11 @@ async function closeContext(context) {
     console.log('closing context:');
     console.log(context);
 
+    chrome.runtime.sendMessage(null, {
+        command: 'contextClosed',
+        context,
+    });
+
     if (!context) return;
     await removeOpenContext(context);
 
@@ -492,8 +518,6 @@ async function closeContext(context) {
     delete context.isCollapsed;
     delete context.groupId;
     await saveContext(context);
-
-    
 
 }
 
@@ -543,6 +567,11 @@ async function removeContext(context) {
 
     const collectionKey = getContextDataKey(context.id);
     await chrome.storage.local.remove(collectionKey);
+
+    chrome.runtime.sendMessage({
+        command: 'workspaceRemoved',
+        workspace: context,
+    });
 
 }
 
@@ -654,7 +683,6 @@ async function updateTabInfoIfNeeded(context, tab, options) {
 }
 
 async function onBrowserOpen() {
-    console.log('browser opneed');
     await checkOpenContexts();
 }
 

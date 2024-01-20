@@ -7,6 +7,7 @@
   import Bookmark from "../components/Bookmark.svelte";
   import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
   import FolderListItem from "../components/FolderListItem.svelte";
+  import { Views } from "../view";
     export let searchText;
 
     let searchResults = [];
@@ -15,6 +16,8 @@
     export let hasBookmarkPermission;
     export let tabs;
     export let lastUpdate;
+    export let view = null;
+    export let currentWindowId;
     //export let userSettings?
 
     /*
@@ -45,7 +48,7 @@
         );
 
         if (hasBookmarkPermission) {
-            const searchResults = await chrome.bookmarks.search({query: text});
+            const searchResults = await chrome.bookmarks.search({ query: text });
             let tempBookmarks = [];
             let tempFolders = [];
             for (const result of searchResults) {
@@ -71,7 +74,29 @@
         if (granted) {
             dispatch('searchBookmarks');
         }
-    }
+    };
+
+    const onBookmarkClicked = async ({ detail }) => {
+        const bookmark = detail;
+        await chrome.tabs.create({url: bookmark.url});
+    };
+
+    const onTabClicked = ({ detail }) => {
+        if (view == Views.search) {
+            const tab = detail;
+            if (tab.windowId == currentWindowId) {
+                if (tab.groupId > -1) {
+                    view = Views.workspace;
+                } else {
+                    view = Views.tabs;
+                }
+                
+            } else {
+                chrome.windows.update(tab.windowId, { focused: true });
+            } 
+            
+        }
+    };
 </script>
 
 <div class="search-results">
@@ -80,38 +105,50 @@
 
         
         <SearchResutlsSection title="Tabs" count={visibleTabs.length}>
-            {#each visibleTabs as tab (tab)}
+            {#each visibleTabs as tab, i (tab)}
                 <Tab
                     {tab}
                     {selectedTabs}
                     {lastSelectionUpdate}
                     on:updateSelection
+                    isListItem={true}
+                    on:clicked={onTabClicked}
+                    
                 />
-            {/each}
-        </SearchResutlsSection>
-        <SearchResutlsSection title="Bookmarks" count={visibleBookmarks.length}>
-            {#each visibleBookmarks as bookmark (bookmark.id)}
-                <Bookmark {bookmark} />
+                {#if i < visibleTabs.length - 1}
+                    <div class="divider"></div>
+                {/if}
             {/each}
         </SearchResutlsSection>
         <SearchResutlsSection title="Spaces" count={visibleSpaces.length}>
-            {#each visibleSpaces as workspace (workspace.id)}
+            {#each visibleSpaces as workspace, i (workspace.id)}
                 <WorkspaceListItem
                     {workspace}
                     isOpen={false}
-                    onClick={() => null}
-                 
                 />
+                {#if i < visibleSpaces.length - 1}
+                    <div class="divider"></div>
+                {/if}
+            {/each}
+        </SearchResutlsSection>
+        <SearchResutlsSection title="Bookmarks" count={visibleBookmarks.length}>
+            {#each visibleBookmarks as bookmark, i (bookmark.id)}
+                
+                <Bookmark {bookmark} on:bookmarkClicked={onBookmarkClicked} isListItem={true}/>
+                {#if i < visibleBookmarks.length - 1}
+                    <div class="divider"></div>
+                {/if}
             {/each}
         </SearchResutlsSection>
         <SearchResutlsSection title="Folders" count={visibleFolders.length}>
-            {#each visibleFolders as folder (folder.id)}
+            {#each visibleFolders as folder, i (folder.id)}
                 <WorkspaceListItem
                     workspace={{folderId: folder.id, title: folder.title}}
                     isOpen={false}
-                    onClick={() => null}
-                
                 />
+                {#if i < visibleFolders.length - 1}
+                    <div class="divider"></div>
+                {/if}
             {/each}
         </SearchResutlsSection>
         </div>
@@ -163,6 +200,11 @@
         cursor: pointer;
     }
 
-    
+
+    .divider {
+        height: 0.5px;
+        background-color: #555555;
+    }
+
 
 </style>

@@ -22,34 +22,44 @@
 
 </script>
 
-{#if bookmarkCount.length > 0}
+
 <div class="bookmarks">
+    {#if bookmarkCount > 0}
     <div class="heading">
         Bookmarks
     </div>
-    <BookmarkTree 
-        {searchText} 
-        {workspace} 
-        {lastBookmarkUpdate} 
-        bind:bookmarkCount
-        on:bookmarkCount
-        on:dataUpdated
-    />
+    {/if}
+    <div class="container">
+        <BookmarkTree 
+            {searchText} 
+            {workspace} 
+            {lastBookmarkUpdate} 
+            bind:bookmarkCount
+            on:bookmarkCount
+            on:dataUpdated
+        />
+    </div>
 </div>
-{/if}
+
 
 <style>
     .bookmarks {
         margin: 12px 8px 50px 8px;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow: hidden; 
     }
 
     .heading {
         font-size: 16px;
         font-weight: 400;
         margin: 0px 0px 8px 8px;
+    }
+
+    .container {
+        border-radius: 8px;
+        background-color: #333333;
+        overflow: hidden;
     }
 
 </style>

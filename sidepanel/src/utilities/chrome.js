@@ -23,17 +23,25 @@ export const getOpenGroups = async () => {
     return await get('openGroups');
 };
 
-export const getTabFavIconUrl = ({url, favIconUrl}) => {
-    if (favIconUrl && favIconUrl != '' && !favIconUrl.includes('chrome:')) {
-        return favIconUrl;
+export const getTabFavIconUrl = ({url, favIconUrl, pendingUrl}) => {
+    const browserNames = ['chrome', 'brave', 'edge'];
+    if (!url || url == '') url = pendingUrl;
+    if (!favIconUrl || url.includes('chrome:')) {
+        let favIconUrlFromChrome = new URL(chrome.runtime.getURL("/_favicon/"));
+        favIconUrlFromChrome.searchParams.set("pageUrl", url);
+        favIconUrlFromChrome.searchParams.set("size", "32");
+        // url += '?pageUrl=' + u;
+        // url += '&size=32';
+        favIconUrl = favIconUrlFromChrome.toString();
     }
+        
+    return favIconUrl;
 
-    let favIconUrlFromChrome = new URL(chrome.runtime.getURL("/_favicon/"));
-    favIconUrlFromChrome.searchParams.set("pageUrl", url);
-    favIconUrlFromChrome.searchParams.set("size", "32");
-    // url += '?pageUrl=' + u;
-    // url += '&size=32';
-    return favIconUrlFromChrome.toString();
+    
+};
+
+export const getActiveTab = async () => {
+    return (await chrome.tabs.query({ currentWindow: true, active: true }))[0];
 };
 
 export const requestBookmarkPermssion = async () => {
@@ -112,8 +120,6 @@ export async function closeTabGroup(groupId) {
 
     const tabs = await chrome.tabs.query({ groupId: groupId });
     const tabIds = tabs.map((t) => t.id);
-    console.log('closing tab group');
-    console.log(tabIds);
 
     let context = await getContextFromGroupId(groupId);
 
@@ -123,11 +129,9 @@ export async function closeTabGroup(groupId) {
         chrome.tabs.remove(tabIds);
     }, 200)
 
-
-
 }
 
-export const openWorkspace = async (workspace, {openInNewWindow}) => {
+export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
 
     const groupWorkspaceMap = await getOpenGroups();
 
@@ -156,16 +160,26 @@ export const openWorkspace = async (workspace, {openInNewWindow}) => {
         window = await chrome.windows.create({incognito: workspace.isIncognito ?? false, focused:true});
         newTab = (await chrome.tabs.query({windowId: window.id}))[0];
     }
-    
+    if (!workspace.tabs) workspace.tabs = [];
     if (workspace.tabs.length == 0)  {
         workspace.tabs.push({
-            url: ''
+            url: 'chrome://newtab/'
         });
     }
 
-    for (const tab of workspace.tabs) {
-        openedTabs.push(await chrome.tabs.create({url: tab.url, windowId: window?.id}));
+
+    for (let i = 0; i < workspace.tabs.length; i++) {
+        const tab = await chrome.tabs.create({
+            url: workspace.tabs[i].url, //chrome.extension.getUrl(''), 
+            windowId: window?.id
+        });
+        //workspace.tabs[i].id = tab.id;
+        //loaded = false;
+        openedTabs.push(tab);
     }
+
+    await saveContext(workspace);
+
     const groupId = await chrome.tabs.group({
         tabIds: openedTabs.map((t) => t.id),
         createProperties: {
@@ -412,8 +426,42 @@ export async function tryToGetWorkspaceFolder(workspace, parentId) {
     return folder;
 }
 
+export async function createContextFromGroup(group) {
+    const window = await chrome.windows.get(group.windowId);
+    return await createContext({
+        title: group.title,
+        groupId: group.id,
+        color: group.color,
+        tabs: (await chrome.tabs.query({groupId: group.id})).map(getTabInfo),
+        isIncognito: window.incognito
+    });
+}
 
 
+export async function createContext(properties = {}, save = true) {
+
+    let context = {
+        id: createId(),
+        created: Date.now(),
+        tabs: [],
+        isCollapsed: false,
+        //hasDefaultTitle: true,
+        ...properties,
+    };
+
+    if (save) {
+
+        const contextKey = getContextKey(context.id);
+
+        let contextKeys = (await get('contextKeys') ?? []);
+        contextKeys.push(contextKey);
+
+        await set({ contextKeys });
+        await saveContext(context);
+    }
+
+    return context;
+}
 
 export function createId() {
     let string = '';
@@ -426,10 +474,13 @@ function S4() {
 }
 
 export function getTabInfo(tab, showAdditionalData = false) {
-
+    if (!tab) return tab;
     let additionalData = {
         groupId: tab.groupId,
         index: tab.index,
+        pinned: tab.pinned,
+        audible: tab.audible,
+        mutedInfo: tab.mutedInfo,
     };
 
     let tabInfo = {

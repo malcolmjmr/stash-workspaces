@@ -10,7 +10,10 @@
     import SearchResults from "../search/SearchResults.svelte";
     import { horizontalSlide } from "../utilities/transitions";
   import { setDoc } from "firebase/firestore";
-  import { createId, getContextData, getTabInfo, saveContextData } from "../utilities/chrome";
+  import { createId, getContextData, getTabInfo, saveContextData, get } from "../utilities/chrome";
+  import { quickActions } from "../stores";
+  import { actions } from "../tab/actions";
+
 
     let dispatch = createEventDispatcher();
 
@@ -26,13 +29,14 @@
     export let searchResults = [];
     export let selectedTabs = [];
     export let searchText;
+    export let activeTab;
 
     let dragoverItem;
 
     let loaded;
     onMount(() => {
         getTabGroupStarts();
-        
+        getQuickActions();
         loaded = true;
     });
 
@@ -41,7 +45,6 @@
         lastUpdate;
         workspacesLoaded;
         groups;
-
         checkIndexes();
         getTabGroupStarts();
     }
@@ -49,8 +52,6 @@
     let groupStarts = {};
     let groupEnds = {};
     const getTabGroupStarts = () => {
-
-        console.log('getting tab order');
         groupStarts = {};
         groupEnds = {};
         tabs.sort((a, b) => a.index - b.index);
@@ -63,6 +64,12 @@
                 groupEnds[tab.groupId] = tab.index;
             }
         }
+    };
+
+    
+    const getQuickActions = async () => {
+        quickActions.set(((await get('quickActions')) ?? [])
+            .map((id) => actions[id]));
     };
 
     let lastGroupUpdate = Date.now();
@@ -162,12 +169,13 @@
     
 </script>
 
+<div class="padding"></div>
 {#if loaded}
-    {#key lastUpdate}
-        <div class="padding"></div>
-        {#each tabs as tab, i (tab)}
+    
+        {#each tabs as tab (tab)}
             {#if tab.groupId > -1 && groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
                 <GroupLabel
+                    {activeTab}
                     groupId={tab.groupId}
                     {groups}
                     {lastGroupUpdate}
@@ -202,13 +210,13 @@
                 
             {/if}
         {/each}
-    {/key}
+ 
     
 {/if}
-
+<div class="padding"></div>
 <style>
     .padding {
-        height: 5px;
+        min-height: 5px;
     }
 
     .tab-container.grouped {

@@ -6,6 +6,7 @@
     import mergeIcon from "../icons/merge.png";
     import splitIcon from "../icons/split.png";
     import SelectionActions from "../components/SelectionActions.svelte";
+  import { getActiveTab } from "../utilities/chrome";
 
     let dispatch = createEventDispatcher();
 
@@ -30,10 +31,6 @@
         windowCount = windows.length;
         tabCount = tabs.length;
         groupCount = Object.keys(groups).length;
-        
-        console.log('group count');
-        console.log(groupCount);
-        console.log(groups);
     };
 
     $: {
@@ -47,9 +44,27 @@
     };
 
     const splitTabGroups = async () => {
+        let activeTab = await getActiveTab();
         const tabGroups = await chrome.tabGroups.query({});
+
+        if (activeTab.groupId > -1) {
+            const looseTabs = (await chrome.tabs.query({ windowId: activeTab.windowId, groupId: -1 }))
+                .map((t) => t.id);
+            const window = await chrome.windows.create({ focused: false });
+            const newTab = (await chrome.tabs.query({windowId: window.id}))[0];
+            await chrome.tabs.move(looseTabs, {
+                windowId: window.id,
+                index: -1
+            });
+            await chrome.tabs.remove(newTab.id);
+        }
+
+
         for (const group of tabGroups) {
-            const window = await chrome.windows.create();
+            const tabs = await chrome.tabs.query({ groupId: group.id});
+            const isActiveWindow = tabs.find((t) => t.id == activeTab.id) != null;
+            if (isActiveWindow) continue;
+            const window = await chrome.windows.create({ focused: false });
             const newTab = (await chrome.tabs.query({windowId: window.id}))[0];
             await chrome.tabGroups.move(group.id, {
                 windowId: window.id,
@@ -58,17 +73,33 @@
             await chrome.tabs.remove(newTab.id);
             await new Promise((resolve) => setTimeout(resolve, 200));
         }
+
+        if (activeTab.groupId > -1) {
+
+        }
+
+
         dispatch("mergedWindows");
     
     };
 
     const mergeWindows = async () => {
+
+    
         const activeTab = (
             await chrome.tabs.query({
                 active: true,
                 currentWindow: true,
             })
         )[0];
+
+        const currentWindow = await chrome.windows.get(activeTab.windowId);
+
+        let windowIds = (await chrome.windows.getAll())
+            .filter((w) => currentWindow.incognito == w.incognito)
+            .map((w) => w.id);
+        
+
         const moveProperties = {
             windowId: activeTab.windowId,
             index: -1,
@@ -76,8 +107,12 @@
 
         const tabGroups = await chrome.tabGroups.query({});
         for (const group of tabGroups) {
+            if (!windowIds.includes(group.windowId)) return;
             try {
                 await chrome.tabGroups.move(group.id, moveProperties);
+                if (activeTab.groupId != group.id) {
+                    await chrome.tabGroups.update(group.id, { collapsed: true });
+                }
                 await new Promise((resolve) => setTimeout(resolve, 200));
             } catch (e) {
                 console.log(e);
@@ -87,11 +122,12 @@
         let tabs = await chrome.tabs.query({
             currentWindow: false,
             groupId: -1,
+            
         });
 
         if (tabs.length > 0) {
             await chrome.tabs.move(
-                tabs.map((t) => t.id),
+                tabs.filter((t) => t.incognito == currentWindow.incognito).map((t) => t.id),
                 moveProperties
             );
         }
@@ -134,7 +170,8 @@
 
 <style>
     .home-footer {
-        width: 100%;
+        padding: 0px 5px;
+        width: calc(100% - 10px);
         height: 100%;
         display: flex;
         flex-direction: row;
@@ -153,8 +190,8 @@
 
     .action img {
         filter: invert(1);
-        height: 22px;
-        width: 22px;
+        height: 24px;
+        width: 24px;
     }
 
     .action {

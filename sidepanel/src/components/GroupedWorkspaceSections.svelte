@@ -6,6 +6,7 @@
     export let db = null;
     export let workspaces;
     export let onShowMore = null;
+    export let sortBy = 'updated';
 
     let loaded;
     onMount(() => {
@@ -21,13 +22,13 @@
     let sections = [];
 
     const getTimeSections = () => {
-        workspaces.sort((b, a) => a.updated - b.updated);
+        workspaces.sort((b, a) => a[sortBy] - b[sortBy]);
         let sectionMap = {};
         const now = Date.now();
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         for (let space of workspaces) {
-            const date = new Date(space.updated ?? space.created);
-            const timeDelta = now - (space.updated ?? space.created);
+            const date = new Date(space[sortBy] ?? space.created);
+            const timeDelta = now - (space[sortBy] ?? space.created);
             const oneDay = 1000 * 60 * 60 * 24;
             
             if (timeDelta < oneDay && date.day == now.day) {
@@ -101,9 +102,13 @@
                 {/if}
             </div>
             <div class="list">
-                {#each section.spaces as workspace (workspace.id)}
-                    <WorkspaceListItem {user} {db} {workspace} />
+                {#each section.spaces as workspace, j (workspace.id)}
+                    <WorkspaceListItem {user} {db} bind:workspace={section.spaces[j]} on:permenantlyDeleteWorkspace on:dataUpdated/>
+                    {#if j < section.spaces.length - 1}
+                        <div class="divider"/>
+                    {/if}
                 {/each}
+                
             </div>
             
         </div>
@@ -156,6 +161,11 @@
         flex-direction: column;
         overflow: hidden;
 
+    }
+
+    .divider {
+        height: 0.5px;
+        background-color: #555555;
     }
 
 </style>

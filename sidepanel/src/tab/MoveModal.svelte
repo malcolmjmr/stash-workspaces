@@ -2,11 +2,11 @@
     import { createEventDispatcher, onMount } from "svelte";
     import ModalContainer from "../components/ModalContainer.svelte";
     import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
-  import SearchBox from "../components/SearchBox.svelte";
-  import { get, getTabFavIconUrl, getTabInfo, saveContext, tryToGetTabGroup } from "../utilities/chrome";
+    import SearchBox from "../components/SearchBox.svelte";
+    import { get, getTabFavIconUrl, getTabInfo, saveContext, tryToGetTabGroup } from "../utilities/chrome";
     import createWindowIcon from "../icons/new-window.png";
     import createFolderIcon from "../icons/new-folder.png";
-  import { allWorkspaces } from "../stores";
+    import { allWorkspaces } from "../stores";
 
     export let groups;
     export let selectedTabs;
@@ -224,6 +224,8 @@
         flex-direction: column;
         border-radius: 8px;
         background-color: #333333;
+        overflow: hidden;
+        margin-bottom: 10px;
     }
 
     .list-item {

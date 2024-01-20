@@ -11,6 +11,9 @@
   import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
   import Tab from "../tab/Tab.svelte";
     export let isOpen = false;
+    export let isListItem = false;
+
+
     let isFolder = !bookmark.url;
     const onclick = (e) => {
         if (!isFolder) return;
@@ -33,13 +36,14 @@
 
     let dispatch = createEventDispatcher();
     const onClicked = () => {
+
         dispatch('bookmarkClicked', bookmark);
     };
 
     let isDragged;
     const onDragStart = (e) => {
         isDragged = true;
-        if (isOpen) isOpen = false;
+       if (isOpen) isOpen = false;
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("bookmarkId", bookmark.id);
     };
@@ -54,7 +58,6 @@
         if (isDraggedOver) isDraggedOver = false;
         const bookmarkId = e.dataTransfer.getData("bookmarkId");
         const tabId = e.dataTransfer.getData("tabId");
-        console.log('bookmarkId: ' + bookmarkId);
         let draggedBookmark = await tryToGetBookmark(bookmarkId);
         let draggedTab = tabId ? await chrome.tabs.get(parseInt(tabId)) : null;
         if (!draggedBookmark && !draggedTab) {
@@ -68,7 +71,20 @@
         let index = 0;
 
         if (isFolder) {
-            parentId = bookmark.id
+            if (draggedBookmark.url) {
+                if (draggedBookmark.parentId == bookmark.id) {
+                    parentId = bookmark.parentId;
+                } else {
+                    parentId = bookmark.id
+                }
+            } else {
+                if (isOpen && draggedBookmark.parentId != bookmark.id) {
+                    parentId = bookmark.id;
+                } else {
+                    index = bookmark.index;
+                    parentId = bookmark.parentId;
+                }
+            }
         } else { // is folder
             index = bookmark.index;
             parentId = bookmark.parentId;
@@ -95,11 +111,11 @@
             } 
         }
 
-        if (draggedBookmark) {
+        if (draggedBookmark && draggedBookmark.id != parentId) {
             await chrome.bookmarks.move(draggedBookmark.id, {
                 index,
                 parentId,
-            });
+            }); 
         }
 
         dispatch('bookmarkMoved', {bookmark});
@@ -136,12 +152,16 @@
     };
 
     const onBookmarkClicked = () => {
-        if (isDragged) return;
+       
 
         if (isFolder) {
             if (!isOpen) isOpen = true;
         } else {
-            dispatch('bookmarkClicked', bookmark);
+            setTimeout(() => {
+                if (isDragged) return;
+                dispatch('bookmarkClicked', bookmark);
+            }, 500);
+            
         }
     };
 
@@ -170,16 +190,15 @@
 {#if loaded}
     <div
         class="bookmark"
-        
-        on:dragstart={onDragStart}
-        on:dragend={onDragEnd}
-        on:dragleave={onDragLeave}
-        on:drop={onDrop}
-        draggable="true"
     >
         <div 
-            class="head{isDraggedOver ? ' dragged-over' : ''}{isInFocus ? ' focused' : ''}"
+            class="head{isDraggedOver ? ' dragged-over' : ''}{isInFocus ? ' focused' : ''}{isListItem ? ' list-item' : ''}"
             on:dragover={onDragOver}
+            on:dragstart={onDragStart}
+            on:dragend={onDragEnd}
+            on:dragleave={onDragLeave}
+            on:drop={onDrop}
+            draggable="true"
             on:mouseenter={() => (isInFocus = true)}
             on:mouseleave={() => (isInFocus = false)}
             
@@ -224,7 +243,6 @@
     .bookmark {
         display: flex;
         flex-direction: column;
-        
         font-size: 14px;
     }
 
@@ -240,6 +258,12 @@
         flex-direction: row;
         align-items: center;
         padding: 5px;
+        border-radius: 8px 0px 0px 8px;
+        height: 25px;
+    }
+
+    .list-item {
+        border-radius: 0px;
     }
 
     .focused {

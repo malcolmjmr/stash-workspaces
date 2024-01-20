@@ -24,6 +24,7 @@
     import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext } from "../utilities/chrome";
 
     import soundIcon from "../icons/volume-up.png";
+    import mutedIcon from "../icons/volume-off.png";
     import starIcon from "../icons/star.png";
     import starIconFilled from "../icons/star-filled.png";
   
@@ -32,8 +33,12 @@
     import { doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import { createResource } from "../utilities/firebase";
-  import { allWorkspaces, openGroups } from "../stores";
+  import { allWorkspaces, openGroups, quickActions } from "../stores";
   import { getWorkspaceData } from "../workspace/workspaceData";
+  import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
+  import UpdateModal from "./UpdateModal.svelte";
+  import { actions } from "./actions";
+  import { get } from "../utilities/chrome";
 
 
     export let db;
@@ -52,25 +57,28 @@
     export let isEndingTab = false;
     export let canDrag = true;
     export let canSelect = true;
+    export let isListItem = false;
 
 
     let el;
     let isSelected;
     let isSaved;
+    let isPinned;
+    let isAudible;
+
 
     $: {
         lastSelectionUpdate;
         isSelected = selectedTabs.find((t) => t.id == tab.id) != null;
     }
 
+    let updated;
     $: {
 
         if (lastUpdatedTab && lastUpdatedTab.id == tab.id) {
-            console.log('tab updated');
-            console.log(tab);
-            tab = lastUpdatedTab;
-            console.log(tab);
+            //tab = {...lastUpdatedTab};
             init();
+
             if (tab.id && tab.active) {
                 scrollToTabIfActive();
             }
@@ -83,7 +91,6 @@
 
     $: {
         if (group != groups[tab.groupId]) {
-            console.log('updating tabs group data');
             group = groups[tab.groupId];
         }
     } 
@@ -107,11 +114,14 @@
         group = groups[tab.groupId];
         updateFavIconUrl();
         updateSavedState();
+        isPinned = tab.pinned;
+        isAudible = tab.audible;
         isBookmark = tab.parentId;
+    
         loaded = true;
     };
 
-    const updateFavIconUrl = async () => {
+    const updateFavIconUrl = () => {
         favIconUrl = getTabFavIconUrl(tab);
     }
 
@@ -168,6 +178,12 @@
         chrome.tabs.remove(tab.id);
     };
 
+    const toggleMute = () => {
+
+        chrome.tabs.update(tab.id, { muted: !tab.mutedInfo.muted });
+        //tab.mutedInfo.muted = !tab.mutedInfo.muted;
+    };
+
     const onSelectionUpdated = () => {
         dispatch("updateSelection", tab);
     };
@@ -207,7 +223,15 @@
             if (draggedTab.groupId > -1 && (tab.groupId == -1)) {
                 await chrome.tabs.ungroup(draggedTab.id);
             }
+
+            if (draggedTab.groupId == -1 && tab.groupId > -1) {
+                const tabs = await chrome.tabs.query({ groupId: tab.groupId });
+                if (tabs.length == 1) {
+                    await chrome.tabs.group({ groupId: tab.groupId, tabIds: draggedTab.id });
+                }
+            }
             await chrome.tabs.move(draggedTab.id, { index: tab.index });
+
         } else if (groupId) {
             await chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
         }
@@ -217,6 +241,10 @@
         dispatch('clicked', tab);
         if (isOpen) {
             if (isSelected) return;
+
+            if (tab.active) {
+                showUpdateModal = true;
+            }
 
             if (isBookmark) {
                 const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
@@ -279,6 +307,7 @@
             if (user) {
                 let resource = createResource(tab);
                 resource.contexts = [workspace.id];
+                resource.updated = Date.now();
                 const ref = doc(db, StorePaths.userResource(user.id, resource.id));
                 await setDoc(ref, resource, {merge: true});
                 tab.resource = resource;
@@ -346,6 +375,9 @@
         showMore = false;
     };
 
+    let showUpdateModal;
+
+
     
 </script>
 
@@ -370,6 +402,12 @@
         {/if}
     </ModalContainer>
 {/if}
+
+{#if showUpdateModal}
+    <UpdateModal {tab} />
+{/if}
+
+
 {#if loaded}
 
 <div
@@ -379,6 +417,7 @@
         : ''}{isDraggedOver ? ' dragged-over' : ''}{tab.active
         ? ' active'
         : ''}{group ? ' grouped' : ''}
+        {isListItem ? ' list-item' : ''}
         {isStartingTab ? ' start-tab' : ''}
         {isEndingTab ? ' end-tab' : ''}"
     on:mouseenter={onMouseEnter}
@@ -390,6 +429,7 @@
     on:drop={onDrop}
     draggable={showMore || !canDrag ? "false" : "true"}
 >
+
     <div class="main-container">
         <div
             class="favicon-container"
@@ -410,10 +450,10 @@
                     alt="Select"
                     on:mousedown={onSelectionUpdated}
                 />
-            {:else}
-                <img class="favicon" src={favIconUrl} alt={tab.title} />
+            {:else if favIconUrl && favIconUrl != ''}
+                <img class="favicon" src={favIconUrl} alt={tab.title ?? ''} />
             {/if}
-            {#if group}
+            {#if group && !workspace}
                 <div
                     class="group-indicator"
                     style="background-color: {colorMap[group.color]}"
@@ -426,7 +466,7 @@
         {#if !isSelected && !isDragged && isOpen}
             <div class="actions">
 
-                {#if tab.pinned}
+                {#if isPinned}
                     <img
                         src={pinnedIcon}
                         class="icon"
@@ -435,26 +475,37 @@
                     />
                 {/if}
 
-
+                {#if false}
                 {#if isSaved}
-                    <img
-                        class="icon"
-                        src={starIconFilled}
-                        alt="Save"
+                    <WorkspaceIcon
+                        icon={starIconFilled}
+                        color={null}
                         on:mousedown={onStarIconClicked}
+                        size={16}
                     />
                 {:else if isInFocus}
-                    <img
-                        class="icon"
-                        src={starIcon}
-                        alt="Save"
+                    <WorkspaceIcon
+                        icon={starIcon}
+                        color={null}
                         on:mousedown={saveTab}
+                        size={16}
                     />
+                {/if}
                 {/if}
 
 
                 
                 {#if isInFocus && !isDragged}
+                    {#each $quickActions as action}
+                    {#if action}
+                    <img
+                        class="icon"
+                        src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
+                        alt={typeof action.title == 'string' ? action.title : action.title(tab)}
+                        on:mousedown={() => action.onClick(tab)}
+                    />
+                    {/if}
+                    {/each}
                     <img
                         src={menuIcon}
                         class="icon"
@@ -469,19 +520,17 @@
                     />
                 {/if}
 
-                {#if tab.audible}
+                {#if isAudible}
                     <img
-                        src={soundIcon}
+                        src={tab.mutedInfo.muted ? mutedIcon : soundIcon}
                         class="icon"
                         alt="Sound"
-                        
+                        on:mousedown={toggleMute}
                     />
                 {/if}
             </div>
         {/if}
     </div>
-
-    
 </div>
 {/if}
 
@@ -495,6 +544,8 @@
         font-weight: 300;
         color: white;
         user-select: none;
+        margin: 2px 5px;
+        border-radius: 8px;
     }
 
     .main-container {
@@ -507,6 +558,17 @@
 
     .tab.grouped {
         background-color: #333333;
+        margin: 0px;
+        border-radius: 0px;
+    }
+
+    .list-item {
+        margin: 0px;
+        border-radius: 0px;
+    }
+
+    .list-item.grouped {
+        background-color: #222222;
     }
 
     .tab.focused {
@@ -530,7 +592,7 @@
 
     .tab.end-tab {
         border-radius: 0px 0px 8px 8px;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
     }
 
     .favicon-container {
@@ -582,7 +644,7 @@
     .icon {
         height: 16px;
         width: 16px;
-        padding: 2px;
+        padding: 2px 5px;
         filter: invert(1);
         opacity: 0.7;
     }

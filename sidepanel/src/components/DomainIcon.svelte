@@ -22,10 +22,14 @@
         dispatch('domainSelected', domain);
     };
 
+    const onClick = () => {
+        dispatch('click', domain);
+    }
+
 </script>
 
 
-<div class="domain-icon" on:mouseenter={onHover}>
+<div class="domain-icon" on:mouseenter={onHover} on:mousedown={onClick}>
     {#if loaded}
         <img src={favIconUrl} alt={domain.name} /> 
     {/if}

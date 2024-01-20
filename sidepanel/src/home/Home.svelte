@@ -8,6 +8,7 @@
 
     import trashIcon from "../icons/delete.png";
     import GroupedWorkspaceSections from "../components/GroupedWorkspaceSections.svelte";
+  import { lastWorkspaceUpdate } from "../stores";
 
     export let db = null;
     export let user = null;
@@ -24,7 +25,6 @@
     let favoriteTags = [];
     let deletedSpaces = [];
 
-    
 
     onMount(() => {
         
@@ -33,8 +33,8 @@
     });
 
     $: {
-        workspaces;
-        lastUpdatedGroup;
+        groups;
+        $lastWorkspaceUpdate;
         refreshSpaces();
     }
 
@@ -44,16 +44,12 @@
     const refreshSpaces = async () => {
         if (workspaces.length == 0) return;
         openSpaces = Object.values(groups).map((g) => workspaces.find((w) => g.workspaceId == w?.id)).filter((s) => s);
-        closedSpaces = [...workspaces.filter((w) => !w.deleted && !openSpaces.find((openSpace) => w.id == openSpace.id))];
+        closedSpaces = [...workspaces.filter((w) => !w?.deleted && !openSpaces.find((openSpace) => w?.id == openSpace?.id))];
         closedSpaces.sort((a,b) => b.updated - a.updated);
         recentSpaces = closedSpaces.slice(0, 10);
-        favoriteSpaces = ((await get('favoriteSpaces')) ?? []).map((favoriteSpaceId) => workspaces.find((s) => s.id == favoriteSpaceId));
-        deletedSpaces = workspaces.filter((w) => w.deleted);
+        favoriteSpaces = ((await get('favoriteSpaces')) ?? []).map((favoriteSpaceId) => workspaces.find((s) => s?.id == favoriteSpaceId));
+        deletedSpaces = workspaces.filter((w) => w?.deleted);
         loaded = true;
-    };
-
-    const openTrash = async () => {
-        view = Views.history;
     };
 
     const closeAllOpenSpaces = async () => {
@@ -67,7 +63,7 @@
         if (recentSpaces.length == 0) {
             recentSpaces = closedSpaces.slice(0, 20);
         }
-    }
+    };
 
 
 </script>
@@ -92,8 +88,14 @@
             </div>
             
             <div class="section-items">
-                {#each openSpaces as workspace, i}
-                    <WorkspaceListItem {db} {user} {workspace} isOpen={true}/>
+                {#each openSpaces as workspace, i (workspace.id)}
+                    <WorkspaceListItem 
+                        {db} 
+                        {user} 
+                        {workspace} 
+                        isOpen={true} 
+                        on:dataUpdated
+                    />
                     {#if i < openSpaces.length - 1}
                         <div class="divider"/>
                     {/if}
@@ -109,11 +111,12 @@
                 Favorites
             </div>
             <div class="section-items">
-                {#each favoriteSpaces as workspace, i}
-                    <WorkspaceListItem {db} {user} {workspace} />
-                        {#if i < favoriteSpaces.length - 1}
+                {#each favoriteSpaces as workspace, i (workspace.id)}
+                    <WorkspaceListItem {db} {user} {workspace} on:dataUpdated/>
+                    {#if i < favoriteSpaces.length - 1}
                         <div class="divider"/>
                     {/if}
+                    
                 {/each}
             </div>
         </div>
@@ -123,7 +126,10 @@
             workspaces={recentSpaces} 
             {user} 
             {db}
-            onShowMore={ () => view = Views.history}
+            onShowMore={ closedSpaces.length > recentSpaces.length ? () => view = Views.history : null }
+            on:dataUpdated
+            
+            
         />
     
         {#if deletedSpaces.length > 0}
@@ -157,6 +163,7 @@
         background-color: #333333;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
     }
 
     .section-heading {

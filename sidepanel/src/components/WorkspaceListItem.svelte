@@ -8,10 +8,11 @@
     export let showUpdateTime = null;
 
     
+    import menuIcon from "../icons/more-vert.png";
     import arrowRightIcon from "../icons/arrow-right.svg";
     import arrowDownIcon from "../icons/arrow-down.svg";
     import autoDeleteIcon from "../icons/delete.png"
-    import { onMount } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import { colorMap } from "../utilities/colors";
     import WorkspaceListItem from "./WorkspaceListItem.svelte";
     import openIcon from "../icons/open-in-new-window.png";
@@ -19,8 +20,11 @@
     import ModalContainer from "./ModalContainer.svelte";
     import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
     import { getTimeSinceString } from "../workspaces/helpers";
-    import WorkspaceFolder from "./WorkspaceFolder.svelte";
-  import { closeTabGroup, openWorkspace } from "../utilities/chrome";
+    import WorkspaceFolder from "./WorkspaceIcon.svelte";
+  import { closeTabGroup, openWorkspace, saveContext } from "../utilities/chrome";
+  import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
+    
+    let dispatch = createEventDispatcher();
     
     let showPreview;
     let showSubFolders;
@@ -71,14 +75,21 @@
 
     };
 
-    const navigateToWorkspace = async () => {
+    const navigateToWorkspace = async (terminate) => {
         const tabs = await chrome.tabs.query({groupId: workspace.groupId});
-        if (tabs.length > 0) {
-            chrome.windows.update(tabs[0].windowId, { focused: true });
-            // Todo: navigate to last active tab (check if current active tab in window is in group) 
+        if (workspace.groupId && tabs.length > 0) {
+            chrome.windows.update(tabs[0].windowId, { focused: true }); 
             chrome.tabs.update(tabs[0].id, { active: true });
+        } else if (!terminate) {
+            const matchingGroups = await chrome.tabGroups.query({ title: workspace.title });
+            if (matchingGroups.length == 1) {
+                workspace.groupId = matchingGroups[0].id;
+                await saveContext(workspace);
+                navigateToWorkspace(true);
+            }
         }
     }
+
 
     const onTitleClicked = () => {
         if (onClick) {
@@ -93,22 +104,44 @@
     }
 
     const onCloseClicked = async () => {
-        console.log('close clicked');
-        console.log(workspace);
         await closeTabGroup(workspace.groupId);
     }
 
+    let showMenu;
+
+    $: {
+        if (showMenu == false) {
+            dispatch('closed');
+        }
+    }
+
+    const exitModals = () => {
+        showMenu = false;
+        showPreview = false;
+    }
     
 </script>
 
 
 {#if showPreview}
     <ModalContainer on:exit={() => showPreview = false}>
-        <WorkspacePreview {db} {workspace} {user} on:exit={() => showPreview = false} />
+        <WorkspacePreview {db} {workspace} {user} on:exit={() => showPreview = false} on:dataUpdated/>
     </ModalContainer>
 {/if}
 
-<div class="workspace-list-item" 
+{#if showMenu} 
+    <ModalContainer on:exit={() => showMenu = false }>
+        <WorkspaceMenu 
+            bind:workspace
+            {isOpen} 
+            on:exit={exitModals}
+            on:permenantlyDeleteWorkspace
+            on:dataUpdated
+        />
+    </ModalContainer>
+{/if}
+
+<div class="workspace-list-item{isInFocus ? ' focused': ''}" 
     on:mouseenter={() => isInFocus = true}
     on:mouseleave={() => isInFocus = false}
 >
@@ -121,6 +154,7 @@
         <div class="spacer"></div>
         {#if isInFocus && !onClick && !workspace.deleted}
             {#if !isOpen}
+                <img src={menuIcon} alt="Menu" class="more button" on:mousedown={() => showMenu = true}/>
                 <img 
                     class="open-in-new-window icon" 
                     alt="Open in New Window" 
@@ -146,6 +180,7 @@
         {#if workspace.deleted} 
             {#if isInFocus}
                 <!--Restore or Delete or menu?-->
+                <img src={menuIcon} alt="Menu" class="more button" on:mousedown={() => showMenu = true}/>
             {:else}
                 <div class='deletion-time'>
                     <!-- <img src={autoDeleteIcon} alt=""/> -->
@@ -176,8 +211,13 @@
     .workspace-list-item {
         display: flex;
         flex-direction: column;
-        padding: 5px 10px;
-        width: calc(100% - 20px);
+        padding: 5px 8px;
+        min-height: 20px;
+        width: calc(100% - 16px);
+    }
+
+    .focused {
+        background-color: #444444;
     }
 
 
@@ -226,7 +266,6 @@
 
     .title:hover {
         cursor: pointer;
-        font-weight: 400;
     }
 
     .deletion-time {
@@ -234,6 +273,17 @@
         flex-direction: row;
         align-items: center;
         white-space: nowrap;
+    }
+
+    .more.button {
+        height: 18px;
+        width: 18px;
+        filter: invert(1);
+        margin-right: 3px;
+    }
+
+    .button:hover {
+        cursor: pointer;
     }
 
 </style>

@@ -28,9 +28,6 @@
             Empty
         </div>
     </div>
-    <div class="bottom">
-        Item's in trash are removed after 30 days
-    </div>
 </div>
 
 <style>
@@ -44,8 +41,7 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        padding: 5px 10px;
-        margin: 8px 0px;
+        margin: 10px 0px 0px 0px;
         
     }
 

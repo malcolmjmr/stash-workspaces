@@ -43,7 +43,7 @@
         tabSubset = tabs
             .filter(
                 (t) =>
-                    t.index != activeTab.index &&
+                    t?.index != activeTab?.index &&
                     t.favIconUrl &&
                     t.favIconUrl != ""
             )
@@ -196,7 +196,7 @@
             </div>
         </div>
 
-        {#if tabs.length > 1}
+        {#if windowData.type == 'normal'}
             {#if activeGroup && !closeWindowInFocus }
                 <div class="active-group-container">
                     <div
@@ -215,7 +215,7 @@
 
             <div class="details">
                 <div class="other-tabs">
-                    {#if tabs.length > 1}
+
                         <div class="tab-icons">
                             {#each showAllTabs ? tabs : tabSubset as tab}
                                 <TabIcon
@@ -227,13 +227,9 @@
                                     
                                 />
                             {/each}
+                            <div class="spacer"></div>
                         </div>
-                        {#if !showAllTabs}
-                            <div class="count">
-                                +{tabs.length - 1} Tab{#if tabs.length - 1 > 1}s{/if}
-                            </div>
-                        {/if}
-                    {/if}
+                        
                 </div>
             </div>
 
@@ -257,10 +253,10 @@
         border-radius: 5px;
         background-color: #444444;
         color: white;
-        width: calc(100% - 20px);
+        width: calc(100% - 24px);
         padding: 5px;
         user-select: none;
-        margin: 10px 5px;
+        margin: 7px;
         z-index: 1;
     }
 
@@ -384,6 +380,8 @@
         flex-direction: row;
         align-items: center;
         flex-wrap: wrap;
+        justify-content: space-between;
+        
     }
 
     .tab-icons img {

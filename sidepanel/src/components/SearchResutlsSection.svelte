@@ -26,7 +26,7 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        margin: 8px 5px;
+        margin: 15px 5px 8px 5px;
     }
 
     .section .header .title {

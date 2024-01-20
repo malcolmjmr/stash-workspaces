@@ -62,14 +62,14 @@
 </script>
 
 {#if showCreateGroupModal}
-<ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {workspaces} {groups} {view}/>
+<ModalContainer on:exit={() => showCreateGroupModal = false}>
+    <CreateGroup {workspaces} {groups} {view} on:exit={() => showCreateGroupModal = false}/>
 </ModalContainer>
 {/if}
 {#key lastSelectionUpdate}
 
     <div class="main-container">
-        <div class="action" on:mousedown={createNewGroup}>
+        <div class="action" on:mousedown={() => showCreateGroupModal = true}>
             <img src={createGroupIcon} alt="Create New Group" />
         </div>
         
@@ -84,7 +84,8 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        width: 100%;
+        padding: 0px 5px;
+        width: calc(100% - 10px);
         height: 100%;
         z-index: 100;
         color: white;
@@ -93,8 +94,8 @@
 
     .action img {
         filter: invert(1);
-        height: 22px;
-        width: 22px;
+        height: 24px;
+        width: 24px;
     }
 
     .action {

@@ -164,7 +164,7 @@
             console.log('deleting bookmark');
             await chrome.bookmarks.remove(resource.id);
             resource.deleted = true;
-            if (tab.bookmarks) {
+            if (tab?.bookmarks) {
                 
             }
             dispatch('dataUpdated', { resource} );
@@ -549,6 +549,7 @@
         display: flex;
         flex-direction: column;
         border-radius: 8px;
+        overflow: hidden;
     }
 
     .add-location {
@@ -558,7 +559,6 @@
         padding: 5px;
         border-radius: 8px;
         background-color: #333333;
-        
         font-size: 14px;
         font-weight: 400;
     }
@@ -578,6 +578,7 @@
         display: flex;
         flex-direction: row;
         align-items: center;
+        position: relative;
     }
 
     .location-list .list-item .remove {
@@ -586,6 +587,8 @@
         display: flex;
         flex-direction: row;
         align-items: center;
+        position: fixed;
+        right: 40px;
     }
 
     .location-list .list-item .remove:hover {

@@ -8,7 +8,7 @@
     import SignIn from "./signin/SignIn.svelte";
     import WorkspaceManager from "./WorkspaceManager.svelte";
     import WindowManager from "./WindowManager.svelte";
-    import { settings } from "./stores.js";
+    import { allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
     import { getTabInfo } from "./utilities/chrome.js";
     import { getTabsBookmarks } from "./utilities/helpers.js";
 
@@ -83,7 +83,21 @@
         }
 
         if (data.workspace) {
-           
+            console.log('updating workspaces');
+            const index = workspaces.findIndex((w) => w.id = data.workspace.id); 
+            console.log(data);
+            console.log(index);
+            if (index > -1) {
+                workspaces[index] = data.workspace;
+                workspaces = [...workspaces];
+            } else {
+                workspaces = [...workspaces, data.workspace]; 
+            }
+            if (data.notify) {
+                allWorkspaces.set(workspaces);
+                lastWorkspaceUpdate.set(Date.now());
+            }
+            
         }
 
         
@@ -91,8 +105,6 @@
 
     const updateTabsThatIncludeUrl = async (url) => {
         const matchingTabs = tabs.filter((t) => t.url == url);
-        print('found matching tabs');
-        print(matchingTabs);
         for (let matchingTab of matchingTabs) {
             const index = tabs.findIndex((t) => t.id == matchingTab.id);
             matchingTab = { ...tabs[index], ...getTabInfo(await chrome.tabs.get(matchingTab.id), true) };
@@ -103,12 +115,19 @@
             // if (tab.id == matchingTab.id) {
 
             // }
-
         }
 
         //lastUpdate = Date.now();
         
     }
+
+    let lastCreatedWorkspace;
+    chrome.runtime.onMessage.addListener((msg, sender, response) => {
+        if (msg.command == 'workspaceCreated') {
+            console.log('workspace created');
+            lastCreatedWorkspace = msg.workspace;
+        }
+    });
 
     /*
 
@@ -155,6 +174,7 @@
         {authLoaded} 
         {activeTab}
         {lastUpdatedGroup}
+        {lastCreatedWorkspace}
         bind:tabs
         bind:resources
         bind:user 

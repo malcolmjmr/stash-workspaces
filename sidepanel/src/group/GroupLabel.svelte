@@ -8,14 +8,19 @@
     import { slide } from "svelte/transition";
     import { colorMap } from "../utilities/colors";
     import GroupColors from "./GroupColors.svelte";
-    import fullScreenIcon from "../icons/open-in-full.png";
+    import fullScreenIcon from "../icons/expand-content.png";
     import starIcon from "../icons/star.png";
     import starFilledIcon from "../icons/star-filled.png";
     import Workspace from "../workspace/Workspace.svelte";
     import ModalContainer from "../components/ModalContainer.svelte";
     import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
+    import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
+    import tabGroupIcon from "../icons/tab-group.png";
 
 
+
+
+    export let activeTab;
     export let groups;
     export let groupId;
     export let group;
@@ -35,7 +40,7 @@
     let el;
 
     onMount(() => {
-        if (group.new) {
+        if (!group.title || group.title == '') {
             isEditingTitle = true;
             el?.scrollIntoView({
                 behavior: "smooth",
@@ -207,8 +212,14 @@
     };
 
     let showWorkspace;
-    const openWorkspace = () => {
+    const openWorkspace = async () => {
         //showWorkspace = true;
+        if (activeTab.groupId != group.id) {
+            const tabs = await chrome.tabs.query({ groupId: group.id });
+            tabs.sort((a, b) => a.index - b.index);
+            await chrome.tabs.update(tabs[0].id, { active: true });
+        }
+        
         dispatch('showWorkspaceView', group);
     };
 
@@ -243,27 +254,31 @@
     on:dragend={onDragEnd}
     draggable={isEditingTitle ? 'false' : 'true'}
     bind:this={el}
+    style="color: {colorMap[group.color]};"
 >
     <div
         class="container"
-        style="background-color: {colorMap[group.color]};"
+        
     >
+        
         {#if isEditingTitle}
             <input
                 type="text"
                 class="title-input"
-                placeholder="Name this group"
+                style="color: {colorMap[group.color]};"
+                placeholder="Enter Group Name"
                 bind:value={group.title}
                 on:blur={onTitleInputBlur}
                 on:keydown={onInput}
                 autofocus="true"
             />
         {:else}
-            <div class="title" >
-                <span class="text" on:mousedown={openWorkspace}>
-                    {group?.title ?? "Untitled Group"}
+            <div class="title"on:mousedown={toggleCollapse} >
+                <WorkspaceIcon color={group.color}/>
+                <span class="text" >
+                    {group?.title && group.title != '' ? group.title :  "Untitled"}
                 </span>
-                {#if group.collapsed}
+                {#if false}
                     <div class="count">
                         ({tabs.length})
                     </div>
@@ -276,16 +291,8 @@
 
         {#if isInfocus && !isDragged}
             <div class="actions">
-                {#if group.workspace}
-                    <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openWorkspace}/>
-                {:else}
-                    <img
-                        src={group.collapsed ? expandIcon : collapseIcon}
-                        alt="Toggle Collapsed"
-                        on:mousedown={toggleCollapse}
-                    />
-                {/if}
-                
+                <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openWorkspace}/>
+
                 <img
                     src={moreIcon}
                     alt="More"
@@ -305,8 +312,22 @@
         flex-direction: column;
         justify-content: center;
         user-select: none;
-        margin: 5px 5px 0px 5px;
+        margin: 4px 5px 0px 5px;
         font-weight: 300;
+        background-color: #333333;
+        border-bottom: 2px solid #444444;
+        border-radius: 8px 8px 0px 0px;
+    }
+
+    .group-label.collapsed {
+        border-bottom: none;
+        border-radius: 8px;
+        margin-bottom: 2px;
+        background-color: #111111;
+    }
+
+    .group-label.collapsed:hover {
+        background-color: #333333;
     }
 
     .dragged-over {
@@ -314,26 +335,18 @@
     }
 
     .container {
-        padding: 3px;
-        min-height: 20px;
+        padding: 2px 5px;
+        min-height: 30px;
         display: flex;
         flex-direction: row;
         align-items: center;
-        border-radius: 8px 8px 0px 0px;
-        width: calc(100% - 6px);
-    }
-
-    .collapsed .container {
-        border-radius: 8px;
-        margin-bottom: 10px;
+        
+        width: calc(100% - 10px);
     }
 
     .title {
-        color: black;
-        font-weight: 400;
         flex-grow: 1;
-        font-size: 14px;
-        margin-left: 5px;
+        font-size: 16px;
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -344,6 +357,7 @@
         white-space: nowrap;
         text-overflow: ellipsis;
         overflow: hidden;
+        margin-left: 5px;
     }
 
     .title .count {
@@ -353,14 +367,16 @@
     .title-input {
         text-decoration: none;
         box-shadow: none;
-        border: black;
         border-radius: 5px;
+        border: none;
         outline: none;
-        background-color: #999999;
-        color: black;
+        background-color: transparent;
         flex-grow: 1;
         padding: 5px;
+        font-size: 16px;
     }
+
+
 
     .title:hover {
         cursor: pointer;
@@ -381,6 +397,7 @@
         width: 16px;
         padding: 2px;
         opacity: 0.6;
+        filter: invert(1);
     }
 
     .actions img:hover {
@@ -416,5 +433,9 @@
         width: 100%;
         background-color: #999999;
         
+    }
+
+    .count {
+        font-size: 12px;
     }
 </style>

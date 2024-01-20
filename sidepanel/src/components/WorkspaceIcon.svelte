@@ -3,13 +3,14 @@
     import folderIcon from "../icons/folder-filled.svg";
     export let color = 'grey';
     export let size = 22;
+    export let icon = folderIcon;
 
 </script>
 
-<img 
+<img on:mousedown
     class="folder-icon filter-{color ?? 'grey'}" 
     style='height: {size}px; width: {size}px' 
-    src={folderIcon} alt=''
+    src={icon} alt=''
 />
 
 <style>

@@ -25,6 +25,11 @@
         Report Bug
         Talk to Dev? 
     */
+
+    const setView = (newView) => {
+        view = newView;
+        if (searchText.length > 0) searchText = '';
+    }
 </script>
 
 <div class="header">
@@ -35,14 +40,14 @@
         {#if workspaces.length > 0}
         <div
             class="action{view == Views.home ? ' selected' : ''}"
-            on:mousedown={() => (view = Views.home)}
+            on:mousedown={() => setView(Views.home)}
         >
             <img src={homeIcon} alt="Home" />
         </div>
         {/if}
         <div
             class="action{view == Views.windows ? ' selected' : ''}"
-            on:mousedown={() => (view = Views.windows)}
+            on:mousedown={() => setView(Views.windows)}
         >
             <img src={windowsIcon} alt="Windows" />
             {#if view != Views.windows}
@@ -53,7 +58,7 @@
         </div>
         <div
             class="action{view == Views.tabs ? ' selected' : ''}"
-            on:mousedown={() => (view = Views.tabs)}
+            on:mousedown={() => setView(Views.tabs)}
         >
             <img src={tabsIcon} alt="Tabs" />
             {#if view != Views.tabs}

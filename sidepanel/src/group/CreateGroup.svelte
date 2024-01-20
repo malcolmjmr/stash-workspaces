@@ -6,12 +6,13 @@
     import { colorMap } from "../utilities/colors";
     import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
     import ModalContainer from "../components/ModalContainer.svelte";
-    import WorkspaceFolder from "../components/WorkspaceFolder.svelte";
+    import WorkspaceFolder from "../components/WorkspaceIcon.svelte";
     import createFolderIcon from "../icons/new-folder.png";
   import { Views } from "../view";
   import { userData } from "../stores";
   import Bookmark from "../components/Bookmark.svelte";
   import FolderListItem from "../components/FolderListItem.svelte";
+  import { createContext, openWorkspace, saveContext, tryToGetTabGroup } from "../utilities/chrome";
 
 
     export let selectedTabs = [];
@@ -19,6 +20,8 @@
     export let groups;
     export let workspaces;
     export let view;
+    export let placeholder = 'Search or create space...';
+    export let tabs = [];
     
 
 
@@ -35,6 +38,7 @@
 
     onMount(() => {
         getFolders();
+        getUngroupedTabs();
     });
 
     let suggestions = [];
@@ -44,6 +48,7 @@
     let visibleSpaces = [];
    
     const getFolders = async () => {
+       
         let workspaceFolderIds = workspaces.map((s) => s.folderId);
         let workspaceFoldderTitles = workspaces.map((s) => s.title);
         folders = (await chrome.bookmarks.search({ url: null }))
@@ -53,11 +58,25 @@
                     && !workspaceFoldderTitles.includes(folder.title)
                 );
             });
+        workspaces = workspaces.filter((w) => w?.id != workspace?.id);
         folders.sort((a, b) => b.dateGroupModified - a.dateGroupModified);
         updateSearchResults();
         // if (workspaces.length < 5) {
         //     visibleFolders = folders.slice(0, 10);
         // }
+    };
+
+    let ungroupedTabs = [];
+    let hasGroupedTabs;
+    const getUngroupedTabs = () => {
+        for (const tab of tabs) {
+            if (!hasGroupedTabs && tab.groupId > -1) {
+                hasGroupedTabs = true;
+            }
+            if (tab.groupId == -1) {
+                ungroupedTabs.push(tab);
+            }
+        }
     };
 
 
@@ -75,16 +94,11 @@
 
     const onKeyDown = async (e) => {
         if (e.key == 'Enter') {
-            if (view == Views.workspace) {
+            if (workspace) {
                 if ($userData) {
 
                 } else {
-
-                    const bookmark = await chrome.bookmarks.create({
-                        title: searchText,
-                        parentId: workspace.folderId
-                    });
-                    dispatch('locationCreated', bookmark);
+                    await createNewFolder();
                 }
             } else if (view == Views.tabs) {
                 let tabIds = selectedTabs.map((t) => t.id);
@@ -100,6 +114,14 @@
        
     };
 
+    const createNewFolder = async () => {
+        const folder = await chrome.bookmarks.create({
+            title: searchText,
+            parentId: workspace.folderId
+        });
+        dispatch('locationSelected', { folder });
+    }
+
     let showFolders;
     let showSpaces = true;
 
@@ -108,14 +130,28 @@
         visibleFolders = folders.filter((f) => {
             return f.title?.toLowerCase().includes(text);
         });
-
+        visibleFolders.sort(sortFolders);
+        const openWorkspaceIds = Object.values(groups).map((g) => g.workspaceId);
         visibleSpaces = workspaces.filter((s) => {
-            return s.title?.toLowerCase().includes(text);
+            return (
+                !s.deleted 
+                && (!s.groupId || !openWorkspaceIds.includes(s.id)) 
+                && s.title?.toLowerCase().includes(text)
+            ); 
         });
+        visibleSpaces.sort(sortSpaces);
 
         showFolders = visibleFolders.length > 0;
         //showSpaces = visibleSpaces.length > 0
 
+    };
+
+    const sortFolders = (a, b) => {
+        return b.dateGroupModified - a.dateGroupModified;
+    };
+
+    const sortSpaces = (a, b) => {
+        return b.updated - a.updated;
     };
 
     // $: {
@@ -141,7 +177,7 @@
 
     let dispatch = createEventDispatcher();
     const exitModal = () => {
-        dispatch('exitModal');
+        dispatch('exit');
     };
 
     const setColor = (color) => {
@@ -150,11 +186,13 @@
 
 
     const onCreateSpace = () => {
-        if (view == Views.workspace) {
-
+        if (workspace) {
+            // create folder 
+            createNewFolder();
         } else { 
-
+            
         }
+        
     }
     //style={'background-color: ' + colorMap[group.color]}
 
@@ -162,31 +200,86 @@
     const openFolderAsWorkspace = () => {
 
     };
+
+    const onFolderClicked = async (folder) => {
+        if (workspace) {
+            dispatch('locationSelected', { folder });
+        } else {
+            // create workspace from folder 
+            const newWorkspace = await createContext({ 
+                title: folder.title,
+                folderId: folder.id,
+                created: folder.dateAdded,
+                updated: Date.now(), 
+                color: 'grey',
+            });
+
+            openWorkspace(newWorkspace, { openInNewWindow: false });
+        }
+        exitModal();
+    };
+
+    const onWorkspaceClicked = async (selectedWorkspace) => {
+        if (workspace) {
+            dispatch('locationSelected', { workspace: selectedWorkspace });
+        } else {
+            // open workspace
+            const openGroup = await tryToGetTabGroup(selectedWorkspace.groupId);
+            if (openGroup) {
+                // todo: navigate to last active tab
+                let tabs = await chrome.tabs.query({groupId: openGroup.id});
+                tabs.sort((a, b) => a.index - b.index);
+                const firstTab = tabs[0];
+                await chrome.tabs.update(firstTab.id, { active: true });
+                await chrome.windows.update(firstTab.windowId, { focused: true });
+            } else {
+                openWorkspace(selectedWorkspace, { openInNewWindow: false });
+            }
+        }
+
+        exitModal();
+    };
+
+    const createNewGroup = async () => {
+        /*
+            
+        */
+
+        let tabIds = ungroupedTabs.map((t) => t.id);
+        await chrome.tabs.update(tabIds[0], {active:true});
+        const group = await chrome.tabs.group({tabIds});
+
+        exitModal();
+
+    };
 </script>
 
 
     <div class="main-container" >
-
-        <div class="search" >
-            <input
-                type="text"
-                class="search-input"
-                bind:value={searchText}
-                on:blur={onTitleInputBlur}
-                on:keydown={onKeyDown}
-                placeholder='Search or create space'
-                autofocus="true"
-            />
-            <!--
-            {#if autoCompleteSuggestion}
-                <div class="auto-complete">
-                    {autoCompleteSuggestion.title}
-                </div>
-            {/if}
-            -->
+        <div class="search-container">
+            <div class="search" >
+                <input
+                    type="text"
+                    class="search-input"
+                    bind:value={searchText}
+                    on:blur={onTitleInputBlur}
+                    on:keydown={onKeyDown}
+                    placeholder={placeholder}
+                    autofocus="true"
+                />
+                <!--
+                {#if autoCompleteSuggestion}
+                    <div class="auto-complete">
+                        {autoCompleteSuggestion.title}
+                    </div>
+                {/if}
+                -->
+            </div>
         </div>
+        
     
         <!--
+            <div class="divider"></div>
             <div class="colors">
                 {#each Object.entries(colorMap) as [name, hex]}
                     <div class="color-container">
@@ -200,13 +293,20 @@
             </div>
 
         -->
+            
         
             <div class="results">
                 {#if searchText.length > 1}
-                <div class="create-space" on:mousedown={onCreateSpace}> 
-                    <img src={createFolderIcon} alt="Create Space"/>
-                    <span>Create {searchText.length > 0 ? '"'+searchText+'"' : ''}</span>
-                </div>
+                    <div class="create-space" on:mousedown={onCreateSpace}> 
+                        <img src={createFolderIcon} alt="Create Space"/>
+                        <span>Create {searchText.length > 0 ? '"'+searchText+'"' : ''}</span>
+                    </div>
+                {/if}
+                {#if searchText.length == 0 && ungroupedTabs.length > 0}
+                    <div class="create-space" on:mousedown={createNewGroup}> 
+                        <img src={createFolderIcon} alt="Create Space"/>
+                        <span>Group {ungroupedTabs.length} loose tab{ungroupedTabs.length > 1 ? 's' : '' }</span>
+                    </div>
                 {/if}
                 {#if visibleSpaces.length > 0}
                     <div class="spaces section"> 
@@ -223,8 +323,7 @@
                             {#each visibleSpaces as workspace}
                                 <WorkspaceListItem 
                                     {workspace}
-
-                                    onClick={() => dispatch('locationSelected', { workspace })}
+                                    onClick={() => onWorkspaceClicked(workspace)}
                                 />
                             {/each}
                         </div>
@@ -244,7 +343,7 @@
                             {#each visibleFolders as folder}
                                 <WorkspaceListItem 
                                     workspace={{folderId: folder.id, title: folder.title}} 
-                                    onClick={openFolderAsWorkspace}
+                                    onClick={() => onFolderClicked(folder)}
                                 />
                             {/each}
                         </div>
@@ -264,7 +363,11 @@
         flex-direction: column;
         overflow: hidden;
         height: 300px;
-        padding: 10px 10px 0px 10px;
+    }
+
+    .search-container {
+        padding: 5px;
+        border-bottom: 1px solid #444444;
     }
 
     .search {
@@ -277,6 +380,7 @@
         display: flex;
         flex-direction: row;
         align-items: center;
+        
     }
 
     .search > input {
@@ -301,6 +405,7 @@
         display: flex;
         flex-direction: column;
         overflow-y: scroll;
+        padding: 0px 10px 0px 10px;
     }
 
     .section .header {
@@ -323,15 +428,15 @@
     }
 
     .create-space {
-        padding: 5px;
-        height: 25px;
+        padding: 3px;
+        min-height: 25px;
         border-radius: 8px;
         background-color: #333333;
         display: flex;
         flex-direction: row;
         align-items: center;
         font-size: 14px;
-        margin-bottom: 5px;
+        margin-top: 10px;
     }
 
     .create-space img {
@@ -378,6 +483,12 @@
         cursor: pointer;
         width: 20px;
         height: 20px;
+    }
+
+    .divider {
+        margin-top: 10px;
+        height: 1px;
+        background-color: #777777;
     }
 
 

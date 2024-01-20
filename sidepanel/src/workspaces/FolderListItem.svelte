@@ -39,6 +39,7 @@
 <style>
     .folder {
         width: calc(100% - 10px);
+        height: 30px;
         padding: 5px;
         display: flex;
         flex-direction: row;

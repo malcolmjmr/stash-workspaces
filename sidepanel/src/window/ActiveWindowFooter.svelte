@@ -40,13 +40,26 @@
         const activeTab = (
             await chrome.tabs.query({ active: true, currentWindow: true })
         )[0];
-        const newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
-
-        if (activeTab.groupId > -1) {
-            await chrome.tabs.group({tabIds: newTab.id, groupId: activeTab.groupId });
-        }
         
-        return  
+        let newTab;
+        if (activeTab.groupId > -1) {
+            const group = await chrome.tabGroups.get(activeTab.groupId); 
+            console.log('creating new tab');
+            console.log(group);
+            if (!group.collapsed) {
+                newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
+                await chrome.tabs.group({tabIds: newTab.id, groupId: activeTab.groupId });
+            } else {
+                newTab = await chrome.tabs.create({});
+            }
+        }
+
+        if (!newTab) {
+            newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
+        }
+
+
+        
     };
 
     const selectAll = async () => {
@@ -57,30 +70,19 @@
     };
 
     let showCreateGroupModal;
-    const createNewGroup = async () => {
-        const windowTabs = await chrome.tabs.query({currentWindow: true});
-        const windowHasGroup = windowTabs.filter((t) => t.groupId > -1).length > 0;
-        
-        if (windowHasGroup) {
-            showCreateGroupModal = true;
-        } else {
-            let tabIds = windowTabs.map((t) => t.id);
-            await chrome.tabs.update(tabIds[0], {active:true});
-            const group = await chrome.tabs.group({tabIds});
-        }
-    };
+
 
 </script>
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {groups} {workspaces}/>
+    <CreateGroup {groups} {workspaces} {tabs} on:exit={() => showCreateGroupModal = false}/>
 </ModalContainer>
 {/if}
 {#key lastSelectionUpdate}
 
     <div class="main-container">
-        <div class="action" on:mousedown={createNewGroup}>
+        <div class="action" on:mousedown={() => showCreateGroupModal = true}>
             <img src={createGroupIcon} alt="Select All" />
         </div>
         <div class="counts">
@@ -113,7 +115,8 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        width: 100%;
+        padding: 0px 5px;
+        width: calc(100% - 10px);
         height: 100%;
         z-index: 100;
         color: white;
@@ -138,8 +141,8 @@
 
     .action img {
         filter: invert(1);
-        height: 22px;
-        width: 22px;
+        height: 24px;
+        width: 24px;
     }
 
     .action {

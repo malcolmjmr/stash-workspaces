@@ -44,9 +44,10 @@
         const groupId = await chrome.tabs.group({
             tabIds: selectedTabs.map((t) => t.id),
         });
-        await chrome.tabGroups.update(groupId, {
-            title: selectedTabs[0].title,
-        });
+        // set title to search query if applicable 
+        // await chrome.tabGroups.update(groupId, {
+        //     title: selectedTabs[0].title,
+        // });
         selectedTabs = [];
     };
 

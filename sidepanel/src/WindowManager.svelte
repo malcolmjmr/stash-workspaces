@@ -35,10 +35,10 @@
         loadTabsGroupsAndWindows();
     }
 
-    $: {
-        $allResources;
-        updateTabsWithinGroup()
-    }
+    // $: {
+    //     $allResources;
+    //     updateTabsWithinGroup()
+    // }
 
 
     export let windowsLoaded;
@@ -76,6 +76,7 @@
         const groupsArray = await chrome.tabGroups.query({});
 
         let groupMap = await get('openGroups');
+        console.log('groupMap');
         console.log(groupMap);
         let needToUpdateOpenGroups = false;
         let tempGroups = {};
@@ -192,6 +193,7 @@
     };
 
     const onTabUpdated = async (tabId, updates, tab) => {
+
         let tabIndex = tabs.findIndex((t) => t.id == tab.id);
 
         if (!tab){
@@ -228,31 +230,35 @@
 
     const onTabMoved = async (tabId, { windowId, toIndex, fromIndex }) => {
         const tabIndex = tabs.findIndex((t) => t.id == tabId);
+        const tab = await chrome.tabs.get(tabId);
         if (tabIndex == -1) {
             console.log("could not find tab");
-            return;
+            loadTabsGroupsAndWindows();
         }
+
         let delay = 0;
-        if (tabs[tabIndex].windowId != windowId) {
-            tabs[tabIndex].windowId = windowId;
+        if (tabs[tabIndex].windowId != tab.windowId) {
+            tabs[tabIndex].windowId = tab.windowId;
         }
 
         const window = windows.find((w) => w.id == windowId);
         if (!window) {
             windows = [...windows, await chrome.windows.get(windowId)];
         }
-        updateTabsWithinWindow(windowId, tabId);
+        updateTabsWithinWindow(tab.windowId, tabId);
     };
 
     const onTabRemoved = (tabId) => {
         console.log('tab removed');
-        const index = tabs.findIndex((t) => t.id == tabId);
-        if (index > -1) {
-            const tab = { ...tabs[index] };
-            console.log(tab);
-            tabs.splice(index, 1);
-            if (tab) updateTabsWithinWindow(tab.windowId, tabId);
-        }
+        //tabs = tabs.filter((t) => t.id != tabId);
+        loadTabsGroupsAndWindows();
+        // const index = tabs.findIndex((t) => t.id == tabId);
+        // if (index > -1) {
+        //     const tab = { ...tabs[index] };
+        //     console.log(tab);
+        //     tabs.splice(index, 1);
+        //     if (tab) updateTabsWithinWindow(tab.windowId, tabId);
+        // }
     };
 
     const updateTabsWithinWindow = async (windowId, updatedTabId) => {
@@ -265,7 +271,6 @@
                 if (storedTab.id == updatedTabId) storedTab.updated = Date.now();
                 tabs[index] = { ...storedTab, ...tab };
             } else {
-                
                 tabs.push(tab);
             }
         }
@@ -297,10 +302,10 @@
         for (let tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) tabs[index] = { ...tabs[index], ...tab };
-            else {
-                tab = await getTabsBookmarks(tab);
-                tabs.push(tab);
-            }
+            // else {
+            //     tab = await getTabsBookmarks(tab);
+            //     tabs.push(tab);
+            // }
         }
         tabs.sort((a, b) => a.index - b.index);
         tabs = tabs;
@@ -326,27 +331,34 @@
 
     const onTabGroupCreated = async (group) => {
 
-        group.new = true;
-        //group.workspace = workspaces[group]
         groups[group.id] = group;
-        updateTabsWithinGroup(group.windowId);
+        
         group.created = true;
         lastUpdatedGroup = group;
-        lastUpdate = Date.now();
-        
+        // updateTabsWithinGroup(group.windowId);
+        // lastUpdate = Date.now();
+
+        setTimeout(() => {
+            loadTabsGroupsAndWindows();
+        }, 200);
+
     };
 
     const onTabGroupUpdated = (group) => {
         groups[group.id] = {...groups[group.id], ...group};
-        delete groups[group.id].new;
         lastUpdatedGroup = group;
     };
 
     const onTabGroupRemoved = (groupId) => {
         
-        const deletedGroup = {...groups[groupId], deleted: true};
+        const deletedGroup = {...groups[groupId], removed: true};
         delete groups[groupId];
+        groups = {...groups};
         lastUpdatedGroup = deletedGroup;
+        setTimeout(() => {
+            loadTabsGroupsAndWindows();
+        }, 200);
+        
     };
 
     const onBookmarkCreated = async (id, bookmark) => {

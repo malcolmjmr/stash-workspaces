@@ -25,7 +25,7 @@
     const updateSearchResults = async () => {
         const text = searchText.toLowerCase();
         let workspaces = $allWorkspaces.filter((w) => {
-            return w.title?.toLowerCase().includes(text);
+            return !w.deleted && w.title?.toLowerCase().includes(text);
         });
 
         workspaces.sort((a, b) => b.updated - a.updated);
@@ -190,12 +190,13 @@
     .section .list {
         background-color: #333333;
         border-radius: 8px;
+        overflow: hidden;
     }
 
     .bookmarkbar.list-item {
         padding: 5px;
         border-radius: 8px;
-        height: 20px;
+        min-height: 20px;
         margin-top: 10px;
         display: flex;
         flex-direction: row;

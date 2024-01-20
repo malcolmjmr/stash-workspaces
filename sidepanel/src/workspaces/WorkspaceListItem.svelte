@@ -161,7 +161,7 @@
 >
     <div 
         class="container" 
-        style="background-color: {colorMap[workspace.color ?? 'grey']};{showMenu
+        style="background-color: {colorMap[workspace?.color ?? 'grey']};{showMenu
             ? 'border-radius: 5px 5px 0px 0px;'
             : ''}">
         {#if isEditingTitle}
