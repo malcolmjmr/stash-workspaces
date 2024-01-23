@@ -488,7 +488,6 @@
                                     {tab}
                                     {isOpen} 
                                     {workspace}
-                                    {lastUpdatedTab}
                                     {groups}
                                     on:dataUpdated={onTabDataUpdated}
                                     canDrag={visibleTabs.length == tabs.length}

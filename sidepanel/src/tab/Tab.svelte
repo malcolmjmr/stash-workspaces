@@ -17,7 +17,7 @@
     import emptyBoxIcon from "../icons/empty-box.png";
     import checkedBoxIcon from "../icons/checked-box.png";
     import webIcon from "../icons/web.png";
-    import { createEventDispatcher, onMount } from "svelte";
+    import { createEventDispatcher, onDestroy, onMount } from "svelte";
     import TabMenu from "./TabMenu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
@@ -33,12 +33,12 @@
     import { doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import { createResource } from "../utilities/firebase";
-  import { allWorkspaces, openGroups, quickActions } from "../stores";
-  import { getWorkspaceData } from "../workspace/workspaceData";
-  import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
-  import UpdateModal from "./UpdateModal.svelte";
-  import { actions } from "./actions";
-  import { get } from "../utilities/chrome";
+    import { _lastUpdatedTab, allWorkspaces, openGroups, quickActions } from "../stores";
+    import { getWorkspaceData } from "../workspace/workspaceData";
+    import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
+    import UpdateModal from "./UpdateModal.svelte";
+    import { actions } from "./actions";
+    import { get } from "../utilities/chrome";
 
 
     export let db;
@@ -52,7 +52,6 @@
     export let lastSelectionUpdate = null;
     export let dragoverItem = null;
     export let isOpen = true;
-    export let lastUpdatedTab;
     export let isStartingTab = false;
     export let isEndingTab = false;
     export let canDrag = true;
@@ -75,19 +74,21 @@
     let updated;
     $: {
 
-        if (lastUpdatedTab && lastUpdatedTab.id == tab.id) {
-            //tab = {...lastUpdatedTab};
-            init();
+        // if ($_lastUpdatedTab && $_lastUpdatedTab.id == tab.id) {
+        //     //tab = {...lastUpdatedTab};
+        //     init();
 
-            if (tab.id && tab.active) {
-                scrollToTabIfActive();
-            }
-        }
+        //     if (tab.id && tab.active) {
+        //         scrollToTabIfActive();
+        //     }
+        // }
 
         if ((!tab.bookmarks && isSaved) || (tab.bookmarks && !isSaved)) {
             updateSavedState();
         }
     }
+
+    let unsubscribeToTabUpdates; 
 
     $: {
         if (group != groups[tab.groupId]) {
@@ -98,7 +99,24 @@
     let loaded;
     let favIconUrl;
     onMount(() => {
+
+        unsubscribeToTabUpdates = _lastUpdatedTab.subscribe((t) => {
+            if (t?.id == tab.id)  {
+                init();
+
+                if (tab.id && tab.active) {
+                    scrollToTabIfActive();
+                }
+            }
+
+            
+        });
+
         init();
+    });
+
+    onDestroy(() => {
+        unsubscribeToTabUpdates();
     });
 
     const updateSavedState = () => {
@@ -242,10 +260,6 @@
         if (isOpen) {
             if (isSelected) return;
 
-            if (tab.active) {
-                showUpdateModal = true;
-            }
-
             if (isBookmark) {
                 const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
                 const newTab = await chrome.tabs.create({url: tab.url, index: activeTab.index + 1});
@@ -260,6 +274,10 @@
         } else {
             chrome.tabs.create({url: tab.url});
         }
+    };
+
+    const onTitleDoubleClicked = () => {
+        showUpdateModal = true;
     };
 
     const reload = () => {
@@ -404,7 +422,9 @@
 {/if}
 
 {#if showUpdateModal}
-    <UpdateModal {tab} />
+    <ModalContainer on:exit={() => showUpdateModal = false} >
+        <UpdateModal {tab} />
+    </ModalContainer>
 {/if}
 
 
@@ -460,8 +480,14 @@
                 />
             {/if}
         </div>
-        <div class="title" on:mousedown={onTitleClicked}>{tab.title}</div>
-        <div class="spacer" on:mousedown={onTitleClicked} />
+        <div 
+            class="title" 
+            on:click={onTitleClicked}
+            on:dblclick={onTitleDoubleClicked}
+        >
+            {tab.title}
+        </div>
+        <div class="spacer" on:click={onTitleClicked} on:dblclick={onTitleDoubleClicked}/>
 
         {#if !isSelected && !isDragged && isOpen}
             <div class="actions">
@@ -644,7 +670,7 @@
     .icon {
         height: 16px;
         width: 16px;
-        padding: 2px 5px;
+        padding: 2px 3px;
         filter: invert(1);
         opacity: 0.7;
     }

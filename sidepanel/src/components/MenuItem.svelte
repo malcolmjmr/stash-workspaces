@@ -37,7 +37,7 @@
     });
 
     const getQuickActions = async () => {
-        isQuickAction = $quickActions.find((a) => action.id == a.id) != null;
+        isQuickAction = $quickActions.find((a) => action?.id == a.id) != null;
     };
 
     const onMouseDown = () => {

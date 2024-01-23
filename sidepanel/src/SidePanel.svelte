@@ -290,10 +290,8 @@
                 {user}
                 {db}
                 {groups}
-                {lastUpdate}
                 {selectedTabs}
-                {lastUpdatedTab}
-                {lastSelectionUpdate}
+                {lastUpdate}
                 {workspaces}
                 bind:searchText
                 {searchResults}

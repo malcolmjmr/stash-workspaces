@@ -5,10 +5,12 @@
     import expandIcon from "../icons/expand.png";
     import moreIcon from "../icons/more-vert.png";
     import closeIcon from "../icons/close.png";
-    import { slide } from "svelte/transition";
-    import { colorMap } from "../utilities/colors";
-    import GroupColors from "./GroupColors.svelte";
     import fullScreenIcon from "../icons/expand-content.png";
+    import { colorMap } from "../utilities/colors";
+    import { slide } from "svelte/transition";
+    
+    import GroupColors from "./GroupColors.svelte";
+
     import starIcon from "../icons/star.png";
     import starFilledIcon from "../icons/star-filled.png";
     import Workspace from "../workspace/Workspace.svelte";
@@ -24,14 +26,7 @@
     export let groups;
     export let groupId;
     export let group;
-    export let isCollapsed = null;
     export let tabs = [];
-    export let lastGroupUpdate = null;
-    export let user;
-    export let db;
-    export let lastUpdate;
-    export let lastUpdatedTab;
-    export let lastSelectionUpdate;
 
     let dispatch = createEventDispatcher();
     let isInfocus;
@@ -77,7 +72,6 @@
     };
 
     const saveGroup = async () => {
-
         // const folder = await chrome.bookmarks.create({title: `${group.title} [space|${group.color}|${group.id}]`});
         // for (const tab of tabs) {
         //     await chrome.bookmarks.create({
@@ -219,19 +213,8 @@
             tabs.sort((a, b) => a.index - b.index);
             await chrome.tabs.update(tabs[0].id, { active: true });
         }
-        
         dispatch('showWorkspaceView', group);
     };
-
-    const onColorSelected = ({detail}) => {
-        const color = detail;
-        if (group.id) {
-            chrome.tabGroups.update(group.id, { color });
-        } else {
-            group.color = color;
-        }
-    };
-
 
 
 </script>

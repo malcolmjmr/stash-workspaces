@@ -51,9 +51,9 @@
         }
 
        let tempDomains = Object.entries(domainCounts)
-            .map(([name, count]) => {
+            .map(([url, count]) => {
                 return {
-                    name,
+                    url,
                     count,
                 };
             })

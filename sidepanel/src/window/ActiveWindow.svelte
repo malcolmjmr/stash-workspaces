@@ -13,6 +13,7 @@
   import { createId, getContextData, getTabInfo, saveContextData, get } from "../utilities/chrome";
   import { quickActions } from "../stores";
   import { actions } from "../tab/actions";
+  import TabViewWorkspace from "../workspace/TabViewWorkspace.svelte";
 
 
     let dispatch = createEventDispatcher();
@@ -23,13 +24,11 @@
     export let groups;
     export let workspaces;
     export let workspacesLoaded = false;
-    export let lastUpdatedTab;
-    export let lastUpdate;
-    export let lastSelectionUpdate;
-    export let searchResults = [];
+    export let lastUpdatedTab = null;
+    export let lastUpdate = null;
+    export let lastSelectionUpdate = null;
     export let selectedTabs = [];
-    export let searchText;
-    export let activeTab;
+    export let windowId; 
 
     let dragoverItem;
 
@@ -55,6 +54,8 @@
         groupStarts = {};
         groupEnds = {};
         tabs.sort((a, b) => a.index - b.index);
+        console.log('getting group starts');
+        console.log(groups);
 
         for (const tab of tabs) {
             if (tab.groupId > -1) {
@@ -173,24 +174,39 @@
 {#if loaded}
     
         {#each tabs as tab (tab)}
-            {#if tab.groupId > -1 && groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
-                <GroupLabel
-                    {activeTab}
-                    groupId={tab.groupId}
-                    {groups}
-                    {lastGroupUpdate}
-                    {lastSelectionUpdate}
-                    {lastUpdate}
-                    {lastUpdatedTab}
-                    {user}
-                    {db}
-                    isCollapsed={collapsedGroups.includes(tab.groupId)}
-                    tabs={tabs.filter((t) => t.groupId == tab.groupId)}
-                    on:groupSaved
-                    on:showWorkspaceView
-                />
-            {/if}
-            {#if !groups[tab.groupId]?.collapsed}
+            {#if tab.groupId > -1}
+                {#if groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
+                <!--
+                    <GroupLabel
+                        {activeTab}
+                        groupId={tab.groupId}
+                        {groups}
+                        {lastGroupUpdate}
+                        {lastSelectionUpdate}
+                        {lastUpdate}
+                        {lastUpdatedTab}
+                        {user}
+                        {db}
+                        isCollapsed={collapsedGroups.includes(tab.groupId)}
+                        tabs={tabs.filter((t) => t.groupId == tab.groupId)}
+                        on:groupSaved
+                        on:showWorkspaceView
+                    />
+
+                -->
+                {#key tab.groupId}
+                    <TabViewWorkspace 
+                        groupId={tab.groupId}
+                        {groups}
+                        {user}
+                        {db}
+                        tabs={tabs.filter((t) => t.groupId == tab.groupId)}
+                        {workspacesLoaded}
+                    
+                    />
+                {/key}
+                {/if}
+            {:else}
                 <div class="tab-container{groups[tab.groupId] ? ' grouped' : ''}">
                     <Tab
                         {db}
@@ -198,7 +214,6 @@
                         {groups}
                         {user}
                         {selectedTabs}
-                        {lastUpdatedTab}
                         {lastSelectionUpdate}
                         {dragoverItem}
                         isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}

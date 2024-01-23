@@ -3,6 +3,7 @@
   import { getTabFavIconUrl } from "../utilities/chrome";
 
     export let domain;
+    export let size = 20;
 
     let dispatch = createEventDispatcher();
 
@@ -14,7 +15,7 @@
     });
 
     const loadFavIcon = async () => {
-        favIconUrl = getTabFavIconUrl({url: 'https://' + domain.name});
+        favIconUrl = domain.favIconUrl ??  getTabFavIconUrl({url: 'https://' + domain.url});
         loaded = true;
     };
 
@@ -24,14 +25,19 @@
 
     const onClick = () => {
         dispatch('click', domain);
-    }
+    };
 
 </script>
 
 
-<div class="domain-icon" on:mouseenter={onHover} on:mousedown={onClick}>
+<div 
+    class="domain-icon" 
+    style="height: {size}px; width: {size}px;" 
+    on:mouseenter={onHover}
+    on:mousedown={onClick}
+>
     {#if loaded}
-        <img src={favIconUrl} alt={domain.name} /> 
+        <img src={favIconUrl} alt={domain.url} /> 
     {/if}
 </div>
 
@@ -41,6 +47,11 @@
         height: 20px;
         width: 20px;
         border-radius: 100%;
+    }
+
+    img {
+        height: 100;
+        width: 100%;
     }
 
 </style>

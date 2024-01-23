@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { get, getPermissions, getTabInfo, set, tryToGetBookmark, tryToGetTab } from "./utilities/chrome.js";
     import { Views } from "./view.js";
-    import { allResources, allWorkspaces, openGroups } from "./stores.js";
+    import { _activeTab, _groups, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
 
 
@@ -67,6 +67,7 @@
     const loadTabsGroupsAndWindows = async () => {
         console.log('loading tabs and windows');
         tabs = await chrome.tabs.query({});
+        
 
         for (let i = 0; i < tabs.length; i++) {
             tabs[i] = await getTabsBookmarks(tabs[i]);
@@ -76,8 +77,6 @@
         const groupsArray = await chrome.tabGroups.query({});
 
         let groupMap = await get('openGroups');
-        console.log('groupMap');
-        console.log(groupMap);
         let needToUpdateOpenGroups = false;
         let tempGroups = {};
         for (let group of groupsArray) {
@@ -115,6 +114,9 @@
         if (needToUpdateOpenGroups) {
             await set({ openGroups: groupMap });
         }
+
+        _tabs.set(tabs);
+        _groups.set(groups);
 
     };
 
@@ -170,11 +172,16 @@
             if (oldActiveTabIndex > -1) {
                 tabs[oldActiveTabIndex].active = false;
                 lastUpdatedTab = tabs[oldActiveTabIndex];
+                
             }
             tabs[newActiveTabIndex].active = true;
             activeTab = tabs[newActiveTabIndex];
             lastUpdatedTab = tabs[newActiveTabIndex];
             recentTabs = [activeTab, ...recentTabs.slice(0, 10)];
+            _lastUpdatedTab.set(lastUpdatedTab);
+            _tabs.set(tabs);
+            _activeTab.set(activeTab);
+            
         }
         if (view == Views.windows && windowId == currentWindowId) {
             // Need to account for when active tab is set after tabs are moved
@@ -188,6 +195,7 @@
     const onTabCreated = async (tab) => {
         tab = await getTabsBookmarks(tab);
         tab.updated = Date.now();
+        _lastUpdatedTab.set(tab);
         tabs = [...tabs, tab];
         updateTabsWithinWindow(tab.windowId, tab.id);
     };
@@ -208,6 +216,7 @@
             tabs[tabIndex] = tab;
             tabs = tabs;
             lastUpdatedTab = tab;
+            _lastUpdatedTab.set(lastUpdatedTab);
             //lastUpdatedWindow = tab.windowId;
         }
     };
@@ -268,7 +277,10 @@
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) {
                 let storedTab = tabs[index];
-                if (storedTab.id == updatedTabId) storedTab.updated = Date.now();
+                if (storedTab.id == updatedTabId) {
+                    storedTab.updated = Date.now();
+                    _lastUpdatedTab.set(storedTab);
+                }
                 tabs[index] = { ...storedTab, ...tab };
             } else {
                 tabs.push(tab);
@@ -276,6 +288,7 @@
         }
         tabs.sort((a, b) => a.index - b.index);
         tabs = tabs;
+        _tabs.set(tabs);
         lastUpdate = Date.now();
         //checkForDataRefresh();
         lastUpdatedWindow = windowId;

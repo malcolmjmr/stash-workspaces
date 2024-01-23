@@ -114,7 +114,6 @@
                 {tab} 
                 {isOpen}
                 {selectedTabs} 
-                {lastUpdatedTab} 
                 {lastSelectionUpdate} 
                 on:updateSelection={onSelectionUpdate} 
                 on:toggleTabSaved

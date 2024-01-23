@@ -225,9 +225,6 @@ async function onTabUpdated(tabId, updated) {
 async function onResourceLoading(tabId) {
     const tab = await chrome.tabs.get(tabId);
 
-    console.log('resource loading');
-    console.log(tab);
-
     const context = await getContextFromTab(tab);
     if (!context) return;
     const uri = new URL(tab.url);
