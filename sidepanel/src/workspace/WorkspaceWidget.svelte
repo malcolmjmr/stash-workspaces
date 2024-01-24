@@ -16,6 +16,7 @@
     export let groupId;
     export let groups;
     export let workspacesLoaded;
+    export let selectedTabs = [];
 
     let workspace;
 
@@ -32,7 +33,7 @@
     import BookmarkTree from "./BookmarkTree.svelte";
     import GroupLabel from "../group/GroupLabel.svelte";
     import { colorMap } from "../utilities/colors";
-    import { _groups, _openWorkspaces, _tabs, _workspacesLoaded } from "../stores";
+    import { _authLoaded, _groups, _openWorkspaces, _tabs, _workspacesLoaded } from "../stores";
 
     let dispatch = createEventDispatcher();
 
@@ -87,19 +88,17 @@
     }
 
     $: {
-        
+        if (user) {
+
+            load(false);
+        }
     }
 
     export let tabs = [];
 
-    
-    // const unsubscribeToTabs = _tabs.subscribe((t) => {
-    //     tabs = t.filter((tab) => tab.groupId == groupId);
-    // });
 
     onDestroy(() => {
-        //unsubscribeToTabs();
-        //unsubscribeToWorkspaceLoaded();
+
     });
     
 
@@ -283,118 +282,168 @@
         
     }
 
-    const load = async () => {
+    let cachedData;
+    const load = async (getCache = true) => {
         group = $_groups[groupId];
         loaded = true;
         await getWorkspace();
-        sections = $_openWorkspaces[workspace.id]?.sections ?? [];
+
+        console.log('loading workspace widget');
+        console.log(getCache);
+        if (getCache) {
+            cachedData = $_openWorkspaces[workspace.id];
+            sections = cachedData?.sections ?? [];
+        } else {
+            cachedData = null;
+            sections = [];
+        }
+        
         fetchData();
-        loaded = true;
         
     };
 
     const fetchData = async () => {
+
         if (user) {
             await loadDataFromCloud();
         } else {
             await loadLocalData();
         }
-        updateStoredSectionData();
+        updateStoredData();
+
     };
 
-    const updateStoredSectionData = () => {
+    const updateStoredData = () => {
         let spacesData = $_openWorkspaces;
-        spacesData[workspace.id] = sections;
+        spacesData[workspace.id] = cachedData;
         _openWorkspaces.set(spacesData);
     };
 
+    let bookmarkTree;
+
     const loadLocalData = async () => {
-        console.log('loading local workspace');
-        console.log(workspace);
-        if(workspace.tabs && workspace.tabs.length > 0) {
-            sections.push({
-                name: SectionNames.tabs,
-                //icon: tabsIcon, 
-            });
-            if (!visibleSection) visibleSection = SectionNames.tabs;
+        if (cachedData) {
+            bookmarkCount = cachedData.bookmarkCount;
+            bookmarkTree = cachedData.bookmarkTree;
+            visibleSection = cachedData.visibleSelection;
+            
+        } else {
+            cachedData = {};
+            if(workspace.tabs && workspace.tabs.length > 0) {
+                sections.push({
+                    name: SectionNames.tabs,
+                    //icon: tabsIcon, 
+                });
+                if (!visibleSection) visibleSection = SectionNames.tabs;
+            }
+
+            const folder = await tryToGetWorkspaceFolder(workspace);
+            if (folder) {
+                bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
+                bookmarkCount = 0;
+                const incrementBookmarkCount = (node) => {
+                    bookmarkCount += 1;
+                    for (const child of node.children ?? []) {
+                        incrementBookmarkCount(child);
+                    }
+                };
+                if (bookmarkTree) {
+                    for (const node of bookmarkTree) {
+                        incrementBookmarkCount(node);
+                    }
+                    if (bookmarkCount > 0) {
+                        sections.push({
+                            name: SectionNames.bookmarks,
+                        });
+                    }
+                }
+                
+            }
+            sections = sections;
+            cachedData.bookmarkCount = bookmarkCount;
+            cachedData.bookmarkTree = bookmarkTree;
+            cachedData.sections = sections;
+           
         }
 
-        const folder = await tryToGetWorkspaceFolder(workspace);
-        if (folder) {
-            let bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
-            let bookmarkCount = 0;
-            const incrementBookmarkCount = (node) => {
-                bookmarkCount += 1;
-                for (const child of node.children ?? []) {
-                    incrementBookmarkCount(child);
-                }
-            };
-            if (bookmarkTree) {
-                for (const node of bookmarkTree) {
-                    incrementBookmarkCount(node);
-                }
-                if (bookmarkCount > 0) {
-                    sections.push({
-                        name: SectionNames.bookmarks,
-                    });
-                }
-            }
-            
-        }
-        sections = sections;
         updateVisibleItems(visibleSection);
+        
     };
 
     const loadDataFromCloud = async () => {
-        let data = await getWorkspaceData({db, user, workspace});
-        resources = data.resources.filter((r) => !r.title?.startsWith('* ') && !r.isQueued);
-        queue = data.resources.filter((r) => r.title?.startsWith('* ') || r.isQueued);
-        folders = data.workspaces;
-        if(workspace.tabs && workspace.tabs.length > 0) {
-            sections.push({
-                name: SectionNames.tabs,
-                //icon: tabsIcon, 
-            });
-            if (!visibleSection) visibleSection = SectionNames.tabs;
+
+        if (cachedData) {
+            resources = cachedData.resources;
+            queue = cachedData.queue;
+            folders = cachedData.folders;
+            visibleSection = cachedData.visibleSelection;
+            
+        } else {
+            let data = await getWorkspaceData({db, user, workspace});
+            cachedData = {};
+            resources = data.resources.filter((r) => !r.title?.startsWith('* ') && !r.isQueued);
+            cachedData.resources = resources;
+            queue = data.resources.filter((r) => r.title?.startsWith('* ') || r.isQueued);
+            cachedData.queue = queue;
+            folders = data.workspaces;
+            cachedData.folders = folders;
+            if(workspace.tabs && workspace.tabs.length > 0) {
+                sections.push({
+                    name: SectionNames.tabs,
+                    //icon: tabsIcon, 
+                });
+                if (!visibleSection) visibleSection = SectionNames.tabs;
+            }
+
+            if (folders.length > 0) {
+                sections.push({
+                    name: SectionNames.folders,
+                });
+                if (!visibleSection) visibleSection = SectionNames.folders;
+            }
+
+            if (resources.length > 0) {
+                sections.push({
+                    name: SectionNames.saved,
+                    items: resources,
+                });
+                if (!visibleSection) visibleSection = SectionNames.saved;
+            }
+
+            if (queue.length > 0) {
+                sections.push({
+                    name: SectionNames.toVisit,
+                    items: queue
+                });
+                if (!visibleSection) visibleSection = SectionNames.toVisit;
+            }
+            sections = sections;
+            cachedData.sections = sections;
+            
         }
 
-        if (folders.length > 0) {
-            sections.push({
-                name: SectionNames.folders,
-            });
-            if (!visibleSection) visibleSection = SectionNames.folders;
-        }
-
-        if (resources.length > 0) {
-            sections.push({
-                name: SectionNames.saved,
-            });
-            if (!visibleSection) visibleSection = SectionNames.saved;
-        }
-
-        if (queue.length > 0) {
-            sections.push({
-                name: SectionNames.toVisit,
-            });
-            if (!visibleSection) visibleSection = SectionNames.toVisit;
-        }
-        sections = sections;
         updateVisibleItems(visibleSection);
+        
     }
 
     let visibleItems = null;
 
     const updateVisibleItems = (sectionName) => {
         visibleSection = sectionName;
+
+        // save visbleSection
         if (sectionName == SectionNames.folders) {
             visibleItems = folders;
         } else if (sectionName == SectionNames.toVisit) {
-            visibleItems = resources.filter((r) => r.title.startsWith('* ') || r.isQueued);
+            visibleItems = queue;
         } else if (sectionName == SectionNames.saved) {
-            visibleItems = resources.filter((r) => !r.title.startsWith('* ') && !r.isQueued);
+            visibleItems = resources;
         } else if (sectionName == SectionNames.tabs) {
             visibleItems = tabs;
         }
+
+        cachedData.visibleSection = visibleSection;
+        updateStoredData(cachedData);
     };
 
     $: {
@@ -421,6 +470,22 @@
         
     };
 
+    let lastBookmarkUpdate;
+    const onTabDataUpdated = ({detail}) => {
+        const data = detail;
+        if (data.resource) {
+            allResources[data.resource.url] = data.resource;
+            updateVisibleTabs();
+        }
+        lastBookmarkUpdate = Date.now();
+        dispatch('dataUpdated', data);
+    };
+
+    let bookmarkCount;
+    const onReceiveBookmarkCount = ({ detail }) => {
+        bookmarkCount = detail;
+        
+    };
 </script>
 
 {#if showMenu}
@@ -494,6 +559,8 @@
                 <img src={closeIcon} alt="close" on:mouseup={onCloseClicked} />
             </div>
         {/if}
+
+        
     </div>
 
     <!--
@@ -504,9 +571,9 @@
 
 
     -->
-    {#if !group.collapsed || isDragged}
+    {#if !group.collapsed}
         <div class="divider"></div>
-        {#if sections.length > 1 ||  sections[0]?.name != SectionNames.tabs}
+        {#if sections.length > 1}
             <div class="section-options">
                 
                 <div class="container">
@@ -524,6 +591,7 @@
         {/if}
 
         
+
         <div class="section-items">
             <div class="container">
                 {#if user} 
@@ -533,7 +601,11 @@
                             tab={item} 
                             isOpen={visibleSection == SectionNames.tabs} 
                             isListItem={true}
-                            on:clicked={visibleSection != SectionNames.tabs ? onClosedResourceClicked(tab) : null}
+                            bind:selectedTabs
+                            {workspace}
+                            on:clicked={visibleSection != SectionNames.tabs ? onClosedResourceClicked(item) : null}
+                            on:dataUpdated={onTabDataUpdated}
+                            
                         />
                     {:else}
                         <WorkspaceListItem 
@@ -548,11 +620,27 @@
                 {:else}
                     {#if visibleSection == SectionNames.tabs}
                     {#each visibleItems ?? tabs as tab (tab)}
-                        <Tab {tab} isOpen={true} isListItem={true}/>
+                        <Tab 
+                            {tab} 
+                            isOpen={true} 
+                            isListItem={true} 
+                            bind:selectedTabs
+                            {workspace}
+                            on:dataUpdated={onTabDataUpdated}
+                        />
                     {/each}
                     {:else if visibleSection == SectionNames.bookmarks}
                         <div class="bookmarks-container">
-                            <BookmarkTree {workspace} on/>
+                            {#key lastBookmarkUpdate}
+                            <BookmarkTree 
+                                {bookmarkTree}
+                                {workspace} 
+                                {lastBookmarkUpdate} 
+                                bind:bookmarkCount
+                                on:bookmarkCount
+                                on:dataUpdated
+                            />
+                            {/key}
                         </div>
                         
                     {/if}

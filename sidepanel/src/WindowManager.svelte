@@ -196,7 +196,7 @@
         tab = await getTabsBookmarks(tab);
         tab.updated = Date.now();
         _lastUpdatedTab.set(tab);
-        tabs = [...tabs, tab];
+        //tabs = [...tabs, tab];
         updateTabsWithinWindow(tab.windowId, tab.id);
     };
 

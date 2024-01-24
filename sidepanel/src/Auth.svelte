@@ -23,13 +23,14 @@
     export let db;
     export let userRef;
     export let fbApp;
-    export let authLoaded;
     export let view;
+    export let authLoaded;
 
   
     import {createEventDispatcher, onMount } from "svelte";
     import { get } from "./utilities/chrome.js";
     import { Views } from "./view.js";
+    import { _authLoaded } from "./stores.js";
     
     
     let fbAuth;
@@ -52,7 +53,7 @@
     const init = async () => {
         await initializeFirebase();
         authLoaded = Date.now();
-    
+        _authLoaded.set(authLoaded);
     }
   
   
@@ -113,6 +114,7 @@
 
       
       authLoaded = Date.now();
+      _authLoaded.set(authLoaded);
       
     };
 

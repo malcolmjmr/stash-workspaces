@@ -22,8 +22,8 @@
   import ModalContainer from "../components/ModalContainer.svelte";
   import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
     import WorkspacePreview from "./WorkspacePreview.svelte";
-  import BasicBookmarks from "./BasicBookmarks.svelte";
-  import BookmarkTree from "./BookmarkTree.svelte";
+    import BasicBookmarks from "./BasicBookmarks.svelte";
+    import BookmarkTree from "./BookmarkTree.svelte";
 
   let dispatch = createEventDispatcher();
 
@@ -43,7 +43,7 @@
         folders: 'Folders',
         tabs: 'Tabs',
         saved: 'Recent',
-        temporary: 'Temporary',
+        temporary: 'To Visit',
         bookmarks: 'Bookmarks',
     };
 
@@ -72,9 +72,10 @@
         loaded = true;
     };
 
+    let bookmarkTree;
+    let bookmarkCount;
     const loadLocalData = async () => {
-        console.log('loading local workspace');
-        console.log(workspace);
+
         if(workspace.tabs && workspace.tabs.length > 0) {
             sections.push({
                 name: SectionNames.tabs,
@@ -85,8 +86,8 @@
 
         const folder = await tryToGetWorkspaceFolder(workspace);
         if (folder) {
-            let bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
-            let bookmarkCount = 0;
+            bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
+            bookmarkCount = 0;
             const incrementBookmarkCount = (node) => {
                 bookmarkCount += 1;
                 for (const child of node.children ?? []) {
@@ -152,9 +153,9 @@
         if (sectionName == SectionNames.folders) {
             visibleItems = folders;
         } else if (sectionName == SectionNames.temporary) {
-            visibleItems = resources.filter((r) => r.title.startsWith('* ') || r.isQueued);
+            visibleItems = resources;
         } else if (sectionName == SectionNames.saved) {
-            visibleItems = resources.filter((r) => !r.title.startsWith('* ') && !r.isQueued);
+            visibleItems = queue;
         } else if (sectionName == SectionNames.tabs) {
             visibleItems = workspace.tabs;
         }
@@ -249,7 +250,7 @@
                 {/each}
                 {:else if visibleSection == SectionNames.bookmarks}
                     <div class="bookmarks-container">
-                        <BookmarkTree {workspace}/>
+                        <BookmarkTree {workspace} {bookmarkTree}/>
                     </div>
                     
                 {/if}
@@ -307,7 +308,7 @@
     .icon-button {
         height: 20px;
         width: 20px;
-        margin-left: 5px;
+        margin: 0px 0px 5px 5px;
         filter: invert(1);
     }
 
@@ -368,7 +369,7 @@
     }
 
     .bookmarks-container {
-       margin-left: -3px;
+       margin-left: 1px;
     }
 
 </style>

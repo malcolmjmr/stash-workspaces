@@ -237,18 +237,33 @@
         const groupId = e.dataTransfer.getData("groupId");
         if (tabId) {
             tabId = parseInt(tabId);
-            const draggedTab = await chrome.tabs.get(tabId);
-            if (draggedTab.groupId > -1 && (tab.groupId == -1)) {
-                await chrome.tabs.ungroup(draggedTab.id);
+            let draggedTabs = [];
+            console.log('tab dropped');
+            console.log(tabId);
+            console.log(selectedTabs);
+            if (selectedTabs.find((t) => t.id == tabId)) {
+                draggedTabs = [...selectedTabs];
+                selectedTabs = [];
+            } else {
+                draggedTabs = [(await chrome.tabs.get(tabId))];
             }
 
-            if (draggedTab.groupId == -1 && tab.groupId > -1) {
-                const tabs = await chrome.tabs.query({ groupId: tab.groupId });
-                if (tabs.length == 1) {
-                    await chrome.tabs.group({ groupId: tab.groupId, tabIds: draggedTab.id });
+            for (const draggedTab of draggedTabs) {
+                if (draggedTab.groupId > -1 && (tab.groupId == -1)) {
+                    await chrome.tabs.ungroup(draggedTab.id);
                 }
+
+                if (draggedTab.groupId == -1 && tab.groupId > -1) {
+                    const tabs = await chrome.tabs.query({ groupId: tab.groupId });
+                    if (tabs.length == 1) {
+                        await chrome.tabs.group({ groupId: tab.groupId, tabIds: draggedTab.id });
+                    }
+                }
+                await chrome.tabs.move(draggedTab.id, { index: tab.index });
+
             }
-            await chrome.tabs.move(draggedTab.id, { index: tab.index });
+            
+
 
         } else if (groupId) {
             await chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
@@ -272,6 +287,7 @@
             }
             
         } else {
+            
             chrome.tabs.create({url: tab.url});
         }
     };
@@ -302,6 +318,11 @@
         if (group && !workspace) {
             workspace = await getContext(groups[tab.groupId].workspaceId);
         }
+
+        console.log('saving tab to workspace');
+        console.log(tab);
+        console.log(workspace);
+        console.log(group);
         
         
         if (tab.bookmarks && tab.bookmarks.length > 0) {
@@ -396,6 +417,15 @@
     let showUpdateModal;
 
 
+    const onActionButtonClicked = (action) => {
+        
+        if (action == actions.save) {
+            saveTab(tab);
+        } else {
+            action.onClick(tab);
+        }
+
+    };
     
 </script>
 
@@ -528,7 +558,7 @@
                         class="icon"
                         src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
                         alt={typeof action.title == 'string' ? action.title : action.title(tab)}
-                        on:mousedown={() => action.onClick(tab)}
+                        on:mousedown={() => onActionButtonClicked(action)}
                     />
                     {/if}
                     {/each}

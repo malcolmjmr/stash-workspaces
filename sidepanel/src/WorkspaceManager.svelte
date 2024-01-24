@@ -23,9 +23,9 @@
     } from "firebase/firestore";
 
     import { StorePaths } from "./utilities/storepaths.js";
-    import { onMount } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import { getWorkspaceData } from "./workspace/workspaceData";
-    import { allWorkspaces } from "./stores";
+    import { _authLoaded, allWorkspaces } from "./stores";
 
 
     export let db;
@@ -35,7 +35,6 @@
     export let tabs;
     export let activeTab;
     export let workspaces;
-    export let authLoaded;
     export let groups;
     export let workspacesLoaded;
     export let lastUpdatedGroup;
@@ -48,12 +47,21 @@
 
     onMount(() => {
         //getUserContexts();
+        authUnsubscribe = _authLoaded.subscribe((loaded) => {
+            getUserWorkspaces();
+        });
     });
 
-    $: {
-        authLoaded;
-        getUserWorkspaces();
-    };
+    onDestroy(() => {
+        authListener();
+    });
+
+    // $: {
+    //     authLoaded;
+        
+    // };
+
+    let authUnsubscribe;
 
     $: {
         if (lastUpdatedGroup) {

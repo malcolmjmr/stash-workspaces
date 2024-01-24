@@ -13,7 +13,7 @@
   import { createId, getContextData, getTabInfo, saveContextData, get } from "../utilities/chrome";
   import { quickActions } from "../stores";
   import { actions } from "../tab/actions";
-  import TabViewWorkspace from "../workspace/TabViewWorkspace.svelte";
+  import WorkspaceWidget from "../workspace/WorkspaceWidget.svelte";
 
 
     let dispatch = createEventDispatcher();
@@ -173,7 +173,7 @@
 <div class="padding"></div>
 {#if loaded}
     
-        {#each tabs as tab (tab)}
+        {#each tabs as tab (tab.id)}
             {#if tab.groupId > -1}
                 {#if groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
                 <!--
@@ -195,12 +195,13 @@
 
                 -->
                 {#key tab.groupId}
-                    <TabViewWorkspace 
+                    <WorkspaceWidget 
                         groupId={tab.groupId}
                         {groups}
                         {user}
                         {db}
                         tabs={tabs.filter((t) => t.groupId == tab.groupId)}
+                        bind:selectedTabs
                         {workspacesLoaded}
                     
                     />

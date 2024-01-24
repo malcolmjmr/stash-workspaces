@@ -203,18 +203,21 @@
             onClick={pinTab} 
             icon={isPinned ? pinIcon : unpinIcon } 
             {tab}
+            canToggle={true}
         />
         <MenuItem 
             action={actions.reload}
             onClick={reloadTab} 
             icon={reloadIcon}
             {tab}
+            canToggle={true}
         />
         <MenuItem 
             action={actions.duplicate}
             onClick={duplicateTab} 
             icon={duplicateIcon} 
             {tab}
+            canToggle={true}
         />
         <div class="divider"></div>
 
@@ -224,6 +227,7 @@
             onClick={onEditTabBookmarkClicked} 
             icon={isSaved ? starFilledIcon : starUnfilledIcon}
             {tab}
+            canToggle={true}
         />
 
         {#if user}
@@ -232,6 +236,7 @@
             onClick={saveForLater}
             icon={moveToInboxIcon}
             {tab}
+            canToggle={true}
         />
 
         <MenuItem 
@@ -240,6 +245,7 @@
             onClick={addToFavoriteDomains}
             icon={addDomainIcon}
             {tab}
+            canToggle={true}
         />
         {/if}
 
@@ -250,12 +256,14 @@
             onClick={moveTabToPopup} 
             icon={moveToPopupIcon}
             {tab}
+            canToggle={true}
             />
         <MenuItem 
             action={actions.moveToNewWindow}
             onClick={moveTabToNewWindow} 
             icon={moveToWindowIcon}
             {tab}
+            canToggle={true}
         />
         {#if false}
             <MenuItem
@@ -269,13 +277,15 @@
             onClick={openMoveModal} 
             icon={moveToSpaceIcon}
             {tab}
+            canToggle={true}
         />
         <div class="divider" />
         <MenuItem 
-            action={actions.moveToSpace}
+            action={actions.close}
             onClick={closeTab} 
             icon={closeTabIcon}
             {tab}
+            
         />
         {#if false}
             <MenuItem title="Close Group" onClick={closeTabGroup} />

@@ -8,7 +8,7 @@
     import SignIn from "./signin/SignIn.svelte";
     import WorkspaceManager from "./WorkspaceManager.svelte";
     import WindowManager from "./WindowManager.svelte";
-    import { allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
+    import { _authLoaded, allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
     import { getTabInfo } from "./utilities/chrome.js";
     import { getTabsBookmarks } from "./utilities/helpers.js";
 
@@ -143,8 +143,8 @@
     bind:userRef 
     bind:db 
     bind:fbApp 
-    bind:authLoaded 
     bind:view
+    bind:authLoaded
 />
 
 <WindowManager 
@@ -171,7 +171,6 @@
     <WorkspaceManager 
         {db} 
         {userRef} 
-        {authLoaded} 
         {activeTab}
         {lastUpdatedGroup}
         {lastCreatedWorkspace}

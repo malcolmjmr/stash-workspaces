@@ -1,14 +1,13 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
     import Bookmark from "../components/Bookmark.svelte";
-    import { saveContext, tryToGetBookmark, tryToGetBookmarkTree, tryToGetTabGroup } from "../utilities/chrome";
-    import { get } from "svelte/store";
+    import { get, saveContext, tryToGetBookmark, tryToGetBookmarkTree, tryToGetTabGroup } from "../utilities/chrome";
   import { allWorkspaces } from "../stores";
 
     export let searchText = '';
     export let workspace;
     export let lastBookmarkUpdate = null;
-    let bookmarkTree;
+    export let bookmarkTree = mull;
 
     let dispatch = createEventDispatcher();
 
@@ -65,6 +64,10 @@
 
     let folder;
     const load = async () => {
+        if (bookmarkTree) {
+            loaded = true;
+            return;
+        }
         const folderFromId = await tryToGetBookmark(workspace.folderId);
         if (folderFromId?.title == workspace.title) folder = folderFromId;
         if (!folder) {

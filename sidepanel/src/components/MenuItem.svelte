@@ -13,6 +13,7 @@
     export let onDoubleClick = null;
     export let context = null;
     export let tab = null;
+    export let canToggle = false;
 
     let dispatch = createEventDispatcher();
 
@@ -78,7 +79,7 @@
         double click
     </div>
     {/if}
-    {#if tab && (isQuickAction || isInFocus)}
+    {#if tab && (isQuickAction || isInFocus) && canToggle}
         <img 
             class="quick-action-toggle"
             src={isQuickAction ? toggleOffIcon : toggleOnIcon } 

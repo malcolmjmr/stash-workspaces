@@ -2,6 +2,7 @@ import { writable } from "svelte/store";
 
 
 
+export const _authLoaded = writable(null);
 export const _workspacesLoaded = writable(null);
 export const allWorkspaces = writable([]);
 export const lastWorkspaceUpdate = writable(null);
@@ -12,6 +13,7 @@ export const _activeTab = writable(null);
 export const _lastUpdatedTab = writable(null);
 export const _openWorkspaces = writable({});
 export const allResources = writable({});
+
 
 export const settings = writable({});
 
