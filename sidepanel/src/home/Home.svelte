@@ -1,6 +1,6 @@
 <script>
     import { onMount } from "svelte";
-    import  { closeTabGroup, get } from "../utilities/chrome";
+    import  { closeTabGroup, get, tryToGetTabGroup } from "../utilities/chrome";
 
     import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
     import RecentTabs from "./RecentTabs.svelte";
@@ -13,6 +13,7 @@
     export let db = null;
     export let user = null;
     export let view;
+    export let currentWindowId;
     export let recentTabs;
     export let workspaces;
     export let lastUpdatedGroup;
@@ -59,11 +60,28 @@
     };
 
     $: {
-        recentSpaces = closedSpaces.filter((s) =>  (s.updated ?? s.created) > now - (1000 * 60 * 60 * 24 * 7));
-        if (recentSpaces.length == 0) {
-            recentSpaces = closedSpaces.slice(0, 20);
-        }
+        recentSpaces = closedSpaces.slice(0, 20);
     };
+
+    const onOpenWorkspaceClicked = async (workspace) => {
+        const group = await tryToGetTabGroup(workspace.groupId);
+
+        if (group.windowId == currentWindowId) {
+            view = Views.tabs;
+        }
+
+        navigateToWorkspace(workspace);
+
+    };
+
+
+    const navigateToWorkspace = async (workspace) => {
+        const tabs = await chrome.tabs.query({groupId: workspace.groupId});
+        if (workspace.groupId && tabs.length > 0) {
+            chrome.windows.update(tabs[0].windowId, { focused: true }); 
+            chrome.tabs.update(tabs[0].id, { active: true });
+        } 
+    }
 
 
 </script>
@@ -71,7 +89,7 @@
 <div class="home">
     <div class="container">
         {#if false}
-        <RecentTabs {recentTabs} {groups}/>
+            <RecentTabs {recentTabs} {groups}/>
         {/if}
         {#if openSpaces.length > 0}
         <div class="open spaces section">
@@ -95,6 +113,7 @@
                         {workspace} 
                         isOpen={true} 
                         on:dataUpdated
+                        onClick={() => onOpenWorkspaceClicked(workspace)}
                     />
                     {#if i < openSpaces.length - 1}
                         <div class="divider"/>
@@ -128,7 +147,6 @@
             {db}
             onShowMore={ closedSpaces.length > recentSpaces.length ? () => view = Views.history : null }
             on:dataUpdated
-            
             
         />
     

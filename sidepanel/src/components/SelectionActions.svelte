@@ -89,12 +89,13 @@
         showMoveModal = false;
         selectedTabs = [];
     };
+
 </script>
 
 
 {#if showMoveModal}
     <ModalContainer on:exit={() => showMoveModal = false}>
-        <MoveModal {selectedTabs} {workspaces} {groups} on:tabsMoved={onTabsMoved}/>
+        <MoveModal {selectedTabs} {workspaces} {groups} on:tabsMoved={onTabsMoved} on:exit={() => showMoveModal = false}/>
     </ModalContainer>
     
 {/if}
@@ -128,7 +129,7 @@
         align-items: center;
         justify-content: space-between;
         width: calc(100% - 6px);
-        margin: 0px 3px;
+        margin: 0px 8px;
         z-index: 3;
     }
 

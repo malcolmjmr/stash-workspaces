@@ -1,7 +1,7 @@
 <script>
     import { slide } from "svelte/transition";
     import GroupColors from "../group/GroupColors.svelte";
-    import { closeTabGroup, get, getContext, getOpenGroups, openWorkspace, saveContext, tryToGetBookmark } from "../utilities/chrome";
+    import { closeTabGroup, get, getContext, getOpenGroups, openWorkspace, saveContext, tryToGetBookmark, tryToGetTabGroup, tryToGetWorkspaceFolder } from "../utilities/chrome";
     import { createEventDispatcher, onMount } from "svelte";
     import { colorMap } from "../utilities/colors";
     import MenuItem from "../components/MenuItem.svelte";
@@ -41,30 +41,14 @@
             Todo: check that 
         */
 
-        if (group?.workspaceId) {
-            if (!workspace) {
-                workspace = await getContext(group.workspaceId);
-                if (!isOpen) isOpen = true;
-            }
-            
-        } else if (group) {
-            const workspaceId = (await getOpenGroups())[group.id];
-            if (workspaceId) {
-                workspace = await getContext(workspaceId);
-            }
-        }
-
-        const tempFolder = await tryToGetBookmark(workspace?.folderId);
-
-        if (tempFolder && tempFolder.title == workspace?.title) {
-            folder = tempFolder;
-        }
 
         loaded = true;
     }
 
     const onColorSelected = async ({detail}) => {
         const color = detail;
+
+        group  = await tryToGetTabGroup(workspace.groupId);
         if (group) {
             chrome.tabGroups.update(group.id, { color });
         }
@@ -111,8 +95,15 @@
         dispatch('exit');
     };
 
-    const moveWorkspaceToNewWindow = () => {
-
+    const moveWorkspaceToNewWindow = async () => {
+        
+        const window = await chrome.windows.create({ focused: true });
+        const newTab = (await chrome.tabs.query({windowId: window.id}))[0];
+        await chrome.tabGroups.move(workspace.groupId, {
+            windowId: window.id,
+            index: -1
+        });
+        await chrome.tabs.remove(newTab.id);
     };
 
 
@@ -123,16 +114,23 @@
 
     const onTitleInputChanged = async (e) => {
         await saveContext(workspace);
+
+        let group = await tryToGetTabGroup(workspace.groupId);
+
         if (group) {
             chrome.tabGroups.update(group.id, { title: workspace.title });
         }
 
-        if (folder) {
-            chrome.bookmarks.update(folder.id, {
-                title: workspace.title,
-            });
+        if (!workspace.folderId) {
+            workspace.folderId = await tryToGetWorkspaceFolder(workspace);
         }
-        dispatch('dataUpdated', {workspace, notify: false});
+
+
+        chrome.bookmarks.update(workspace.folderId, {
+            title: workspace.title,
+        });
+    
+        dispatch('dataUpdated', {workspace, notify: true});
     }
 
     const toggleFavorite = () => {
@@ -149,8 +147,6 @@
 {#if loaded}
 <div
     class="workspace-menu"
-    in:slide
-    out:slide
 >
 
     <div class="container">

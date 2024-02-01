@@ -7,7 +7,7 @@
     export let searchText = '';
     export let workspace;
     export let lastBookmarkUpdate = null;
-    export let bookmarkTree = mull;
+    export let bookmarkTree = null;
 
     let dispatch = createEventDispatcher();
 
@@ -23,7 +23,7 @@
 
     $: {
         lastBookmarkUpdate;
-        load();
+        load(true);
     }
 
     $: {
@@ -63,11 +63,14 @@
     }
 
     let folder;
-    const load = async () => {
-        if (bookmarkTree) {
+    const load = async (forceReload = false) => {
+        console.log('reloading boomkark tree');
+        if (bookmarkTree && !forceReload) {
             loaded = true;
             return;
         }
+        console.log('cool');
+
         const folderFromId = await tryToGetBookmark(workspace.folderId);
         if (folderFromId?.title == workspace.title) folder = folderFromId;
         if (!folder) {
@@ -87,9 +90,12 @@
             }
         }
 
+        console.log('loading bookmark treed');
         if (folder) {
+            console.log('found bookmark folder');
             bookmarkTree = await tryToGetBookmarkTree(folder.id);
             if (bookmarkTree.length == 1) {
+                console.log('found bookmarks');
                 bookmarkTree = bookmarkTree[0].children;
                 getBookmarkCount();
             }
@@ -117,7 +123,7 @@
 
 
     const onBookmarkMoved = ({ detail }) => {
-        load();
+        load(true);
     };
 
     const onBookmarkClicked = async ({ detail }) => {
@@ -163,6 +169,7 @@
                 on:bookmarkClicked={onBookmarkClicked} 
                 on:bookmarkMoved={onBookmarkMoved}
                 on:dataUpdated
+                on:bookmarkDeleted
             /> 
         {/each}
     </div>

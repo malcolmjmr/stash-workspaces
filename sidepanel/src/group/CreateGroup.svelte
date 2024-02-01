@@ -232,6 +232,7 @@
                 const firstTab = tabs[0];
                 await chrome.tabs.update(firstTab.id, { active: true });
                 await chrome.windows.update(firstTab.windowId, { focused: true });
+                view = Views.tabs;
             } else {
                 openWorkspace(selectedWorkspace, { openInNewWindow: false });
             }
@@ -248,6 +249,16 @@
         let tabIds = ungroupedTabs.map((t) => t.id);
         await chrome.tabs.update(tabIds[0], {active:true});
         const group = await chrome.tabs.group({tabIds});
+
+        // const newWorkspace = await createContext({ 
+        //     title: folder.title,
+        //     folderId: folder.id,
+        //     created: folder.dateAdded,
+        //     updated: Date.now(), 
+        //     color: 'grey',
+        // });
+
+        // openWorkspace(newWorkspace, { openInNewWindow: false });
 
         exitModal();
 

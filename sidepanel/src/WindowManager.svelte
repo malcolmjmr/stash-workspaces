@@ -1,6 +1,14 @@
 <script>
     import { onMount } from "svelte";
-    import { get, getPermissions, getTabInfo, set, tryToGetBookmark, tryToGetTab } from "./utilities/chrome.js";
+    import { 
+        get, 
+        getPermissions, 
+        getTabInfo, 
+        set, 
+        tryToGetBookmark, 
+        tryToGetTab,
+        findExistingContextForGroup
+     } from "./utilities/chrome.js";
     import { Views } from "./view.js";
     import { _activeTab, _groups, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
@@ -77,13 +85,22 @@
         const groupsArray = await chrome.tabGroups.query({});
 
         let groupMap = await get('openGroups');
+        
         let needToUpdateOpenGroups = false;
         let tempGroups = {};
         for (let group of groupsArray) {
             if (!tempGroups[group.id]) {
      
                 group.workspaceId = groupMap[group.id];
-                
+                if (!group.workspaceId) {
+                    const workspace = await findExistingContextForGroup(group);
+                    if (workspace) {
+                        group.workspaceId = workspace.id;
+                        groupMap[group.id] = workspace.id;
+                        needToUpdateOpenGroups = true;
+                    }
+                    
+                }
                 tempGroups[group.id] = group;
             } 
 
@@ -195,7 +212,9 @@
     const onTabCreated = async (tab) => {
         tab = await getTabsBookmarks(tab);
         tab.updated = Date.now();
-        _lastUpdatedTab.set(tab);
+        tab.created = Date.now();
+        lastUpdatedTab = tab;
+        _lastUpdatedTab.set(lastUpdatedTab);
         //tabs = [...tabs, tab];
         updateTabsWithinWindow(tab.windowId, tab.id);
     };
@@ -348,6 +367,7 @@
         
         group.created = true;
         lastUpdatedGroup = group;
+
         // updateTabsWithinGroup(group.windowId);
         // lastUpdate = Date.now();
 

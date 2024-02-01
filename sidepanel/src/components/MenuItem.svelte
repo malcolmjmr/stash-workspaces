@@ -38,7 +38,7 @@
     });
 
     const getQuickActions = async () => {
-        isQuickAction = $quickActions.find((a) => action?.id == a.id) != null;
+        isQuickAction = $quickActions.find((a) => action?.id == a?.id) != null;
     };
 
     const onMouseDown = () => {
@@ -51,18 +51,17 @@
     const toggleQuickAction = async () => {
         isQuickAction = !isQuickAction;
         // save to context data
-        const index = $quickActions.findIndex((a) => a.id == action.id);
+        const index = $quickActions.findIndex((a) => a?.id == action.id);
         if (index > -1) {
             if (!isQuickAction) {
-                quickActions.set($quickActions.filter((a) => a.id == action.id));
+                quickActions.set($quickActions.filter((a) => a?.id != action.id));
             }
         } else {
             if (isQuickAction) {
                 quickActions.set([...$quickActions, action])
             }
         }
-
-        set({ quickActions: $quickActions.map((a) => a.id) });
+        set({ quickActions: $quickActions.map((a) => a?.id) });
     }
 </script>
 

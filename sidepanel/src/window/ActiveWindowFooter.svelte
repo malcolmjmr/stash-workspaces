@@ -44,8 +44,6 @@
         let newTab;
         if (activeTab.groupId > -1) {
             const group = await chrome.tabGroups.get(activeTab.groupId); 
-            console.log('creating new tab');
-            console.log(group);
             if (!group.collapsed) {
                 newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
                 await chrome.tabs.group({tabIds: newTab.id, groupId: activeTab.groupId });
@@ -58,6 +56,8 @@
             newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
         }
 
+
+        dispatch('newTabCreated', newTab);
 
         
     };

@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import WorkspaceListItem from "./WorkspaceListItem.svelte";
 
     export let user = null;
@@ -7,6 +7,8 @@
     export let workspaces;
     export let onShowMore = null;
     export let sortBy = 'updated';
+
+    let dispatch = createEventDispatcher();
 
     let loaded;
     onMount(() => {
@@ -103,7 +105,14 @@
             </div>
             <div class="list">
                 {#each section.spaces as workspace, j (workspace.id)}
-                    <WorkspaceListItem {user} {db} bind:workspace={section.spaces[j]} on:permenantlyDeleteWorkspace on:dataUpdated/>
+                    <WorkspaceListItem 
+                        {user} 
+                        {db} 
+                        bind:workspace={section.spaces[j]} 
+                        on:permenantlyDeleteWorkspace 
+                        on:dataUpdated
+                    
+                    />
                     {#if j < section.spaces.length - 1}
                         <div class="divider"/>
                     {/if}

@@ -183,6 +183,7 @@
             isNativeBookmark={true} 
             on:exit={() => showBookmarkDetails = false}
             on:dataUpdated
+            on:bookmarkDeleted
         />
     </ModalContainer>
 {/if}

@@ -253,7 +253,7 @@
     }
 
     .title span {
-        margin-left: 5px;
+        margin-left: 3px;
         max-lines: 1;
         text-overflow: ellipsis;
         overflow: hidden;

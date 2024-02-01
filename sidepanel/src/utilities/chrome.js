@@ -93,7 +93,7 @@ export async function getContext(contextId) {
         return await get(getContextKey(contextId));
 }
 
-async function findExistingContextForGroup(group) {
+export async function findExistingContextForGroup(group) {
     if (group.title == '') return null;
     return (await getContexts()).find((c) => c.title == group.title);
 }
@@ -399,7 +399,7 @@ export async function tryToGetTabGroup(groupId) {
     return group;
 }
 
-export async function tryToGetWorkspaceFolder(workspace, parentId) {
+export async function tryToGetWorkspaceFolder(workspace) {
     let folder = await tryToGetBookmark(workspace.folderId);
     if (!folder) {
         // search for folders with the same name 
@@ -414,11 +414,12 @@ export async function tryToGetWorkspaceFolder(workspace, parentId) {
         // creat folder
         folder = await chrome.bookmarks.create({
             title: workspace.title,
-            parentId,
+            parentId: await (getExtensionFolder()).id
         });
     }
 
     if (folder.id != workspace.folderId) {
+        workspace.folderId = folder.id;
         await saveContext(workspace);
         // need to make sure that the context data is updated in sidepanel
     }
@@ -433,7 +434,7 @@ export async function createContextFromGroup(group) {
         groupId: group.id,
         color: group.color,
         tabs: (await chrome.tabs.query({groupId: group.id})).map(getTabInfo),
-        isIncognito: window.incognito
+        isIncognito: window.incognito,
     });
 }
 
@@ -447,9 +448,20 @@ export async function createContext(properties = {}, save = true) {
         isCollapsed: false,
         //hasDefaultTitle: true,
         ...properties,
+        
     };
 
+
+
     if (save) {
+
+        if (!context.folderId) {
+            const folder = await chrome.bookmarks.create({
+                title: workspace.title,
+                parentId: await (getExtensionFolder()).id
+            });
+            context.folderId = folder.id;
+        }
 
         const contextKey = getContextKey(context.id);
 
@@ -461,6 +473,19 @@ export async function createContext(properties = {}, save = true) {
     }
 
     return context;
+}
+
+export async function getExtensionFolder() {
+    const folderId = await get('folderId');
+    let folder = await tryToGetBookmark(folderId);
+    if (!folder) {
+        folder = await chrome.bookmarks.create({
+            index: 0,
+            title: 'Stash'
+        });
+        await set({ folderId: folder.id });
+    }
+    return folder;
 }
 
 export function createId() {

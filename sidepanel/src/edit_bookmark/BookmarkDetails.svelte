@@ -167,7 +167,8 @@
             if (tab?.bookmarks) {
                 
             }
-            dispatch('dataUpdated', { resource} );
+            dispatch('dataUpdated', { resource } );
+            dispatch('bookmarkDeleted');
             
         }
         
@@ -176,8 +177,10 @@
                 await chrome.bookmarks.remove(bookmark.id);
             }
 
+            tab.bookmarks = null;
+
             dispatch('dataUpdated',{tab});
-            dispatch('bookmarkMoved');
+            dispatch('bookmarkDeleted');
 
         }
         
@@ -210,11 +213,8 @@
                 }
                
             } else {
-                console.log('saving tab to workspace');
-                console.log(tab);
-                console.log(location.workspace)
                 parentFolderId = location.workspace.folderId;
-                console.log(parentFolderId);
+
             }
 
             locations.push(location.workspace);
@@ -607,15 +607,14 @@
     }
 
     .delete.button {
-
         display: flex;
         flex-direction: row-reverse;
         align-items: center;
-        opacity: 0.4;
+        
         margin-bottom: 15px;
     }
 
-    .delete.button:hover {
+    .delete.button img:hover {
         cursor: pointer;
         opacity: 1;
     }
@@ -625,6 +624,7 @@
         width: 20px;
         filter: invert(1);
         margin-right: 8px;
+        opacity: 0.4;
     }
 
 </style>

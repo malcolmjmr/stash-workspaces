@@ -21,6 +21,9 @@
   import History from "./history/History.svelte";
   import Trash from "./trash/Trash.svelte";
   import { allWorkspaces } from "./stores";
+  import ModalContainer from "./components/ModalContainer.svelte";
+  import TabUpdateModal from "./tab/TabUpdateModal.svelte";
+  import { getActiveTab } from "./utilities/chrome";
 
 
     export let user;
@@ -178,7 +181,7 @@
 
 
     const showWorkspaceView = async ({detail}) => {
-        activeGroup = detail;
+        activeWorkspace = detail;
 
         // if (activeTab.groupId != selectedGroup.id) {
         //     const newActiveTab = (await chrome.tabs.query({groupId: selectedGroup.id}))[0];
@@ -208,14 +211,45 @@
 
 
     const fullScreenViews = [Views.workspace, Views.trash, Views.history];
+
+    let newTab;
+
+    const onNewTabCreated = ({ detail }) => {
+        newTab = detail;
+    };
+
+    const onShiftClickTab = async ({ detail }) => {
+
+        console.log('shfit click tab');
+        const tab = detail;
+
+        const activTab = await getActiveTab();
+
+
+        if (tab.index < activeTab.index) {
+            selectedTabs = tabs.filter((t) => t.index >= tab.index && t.index <= activTab.index );
+        } else {
+            selectedTabs = tabs.filter((t) => t.index <= tab.index && t.index >= activTab.index );
+        }
+    };
+
 </script>
+
+{#if newTab}
+    <ModalContainer on:exit={() => newTab = null}>
+        <TabUpdateModal 
+            tab={newTab} 
+            on:exit={() => newTab = null}
+        />
+    </ModalContainer>
+{/if}
 
 <main>
     {#if true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
         <div class="container header">
             {#if selectedTabs.length > 0}
                 {#key lastSelectionUpdate}
-                    <SelectionHeader bind:selectedTabs />
+                    <SelectionHeader bind:selectedTabs tabs={tabs?.filter((t) => t.windowId == currentWindowId)}/>
                 {/key}
             {:else if !fullScreenViews.includes(view)}
                 <Header
@@ -255,6 +289,7 @@
                 {groups}
                 {lastUpdatedGroup}
                 {lastUpdatedTab}
+                {currentWindowId}
                 on:dataUpdated
                 
             />
@@ -290,7 +325,7 @@
                 {user}
                 {db}
                 {groups}
-                {selectedTabs}
+                bind:selectedTabs
                 {lastUpdate}
                 {workspaces}
                 bind:searchText
@@ -301,6 +336,7 @@
                 on:groupSaved
                 on:showWorkspaceView={showWorkspaceView}
                 on:dataUpdated
+                on:shiftClickTab={onShiftClickTab}
             />
         {:else if view == Views.saved}
             <Workspaces 
@@ -316,8 +352,8 @@
             />
         {:else if view == Views.workspace}
             <Workspace
-                tabs={tabs.filter((t) => t.groupId == (activeGroup)?.id)}
-                group={activeGroup}
+                tabs={tabs.filter((t) => t.groupId == activeWorkspace.groupId)}
+                workspace={activeWorkspace}
                 {groups}
                 bind:workspaces
                 {db}
@@ -370,6 +406,7 @@
                     bind:selectedTabs
                     {groups}
                     {workspaces}
+                    on:newTabCreated={onNewTabCreated}
                 />
             {:else if view == Views.home}
                 <HomeFooter
@@ -388,7 +425,6 @@
 <style>
     main {
         position: relative;
-        z-index: 99999;
         background-color: #111111;
         width: 100%;
         height: 100%;

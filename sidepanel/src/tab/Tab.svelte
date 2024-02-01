@@ -21,7 +21,7 @@
     import TabMenu from "./TabMenu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
-    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext } from "../utilities/chrome";
+    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext, getActiveTab } from "../utilities/chrome";
 
     import soundIcon from "../icons/volume-up.png";
     import mutedIcon from "../icons/volume-off.png";
@@ -36,9 +36,12 @@
     import { _lastUpdatedTab, allWorkspaces, openGroups, quickActions } from "../stores";
     import { getWorkspaceData } from "../workspace/workspaceData";
     import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
-    import UpdateModal from "./UpdateModal.svelte";
+
     import { actions } from "./actions";
     import { get } from "../utilities/chrome";
+  import { horizontalSlide } from "../utilities/transitions";
+  import MoveModal from "./MoveModal.svelte";
+  import TabUpdateModal from "./TabUpdateModal.svelte";
 
 
     export let db;
@@ -132,7 +135,7 @@
         group = groups[tab.groupId];
         updateFavIconUrl();
         updateSavedState();
-        isPinned = tab.pinned;
+        isPinned = workspace?.pinnedTabs?.find((t) => t.id == tab.id || t.url == tab.url) ?? tab.pinned;
         isAudible = tab.audible;
         isBookmark = tab.parentId;
     
@@ -165,8 +168,21 @@
     let isInFocus;
     let favIconInFocus;
 
-    const onPinTab = () => {
-        chrome.tabs.update(tab.id, { pinned: !tab.pinned });
+    const onPinTab = async () => {
+        if (workspace) {
+            if (!workspace.pinnedTabs) workspace.pinnedTabs = [];
+            const index = workspace.pinnedTabs.findIndex((t) => t.id == tab.id || t.url == tab.url);
+            if (index > -1) {
+                workspace.pinnedTabs.splice(index, 1);
+            } else {
+                workspace.pinnedTabs.push({ id: tab.id, url: tab.url });
+            }
+            await saveContext(workspace);
+            dispatch('dataUpdated', { workspace });
+            isPinned = tab.pinned ?? workspace?.pinnedTabs.find((t) => t.id == tab.id || t.url == tab.url);
+        } else {
+            chrome.tabs.update(tab.id, { pinned: !tab.pinned });
+        } 
     };
 
     const onMouseEnter = (e) => {
@@ -238,9 +254,6 @@
         if (tabId) {
             tabId = parseInt(tabId);
             let draggedTabs = [];
-            console.log('tab dropped');
-            console.log(tabId);
-            console.log(selectedTabs);
             if (selectedTabs.find((t) => t.id == tabId)) {
                 draggedTabs = [...selectedTabs];
                 selectedTabs = [];
@@ -263,6 +276,7 @@
 
             }
             
+            
 
 
         } else if (groupId) {
@@ -270,12 +284,17 @@
         }
     };
 
-    const onTitleClicked = async () => {
+    const onTitleClicked = async (e) => {
         dispatch('clicked', tab);
         if (isOpen) {
             if (isSelected) return;
 
-            if (isBookmark) {
+            if (e.metaKey) {
+                dispatch('updateSelection', tab);
+            } else if (e.shiftKey && !tab.active) {
+                dispatch('shiftClickTab', tab);
+            }
+            else if (isBookmark) {
                 const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
                 const newTab = await chrome.tabs.create({url: tab.url, index: activeTab.index + 1});
                 if (activeTab.groupId > -1) {
@@ -314,23 +333,14 @@
             if (!granted) return;
         }
 
-
         if (group && !workspace) {
             workspace = await getContext(groups[tab.groupId].workspaceId);
         }
-
-        console.log('saving tab to workspace');
-        console.log(tab);
-        console.log(workspace);
-        console.log(group);
-        
         
         if (tab.bookmarks && tab.bookmarks.length > 0) {
-            console.log('tab has bookmark');
-            
+
             showMore = true;
             showBookmarkDetails = true;
-        
             // else {
             //     const bookmark = tab.bookmarks[0];
             //     await chrome.bookmarks.remove(bookmark.id);
@@ -379,6 +389,7 @@
                 tab.bookmarks.push(bookmark);
 
                 dispatch('dataUpdated', {tab});
+                dispatch('bookmarkCreated');
 
                 
             }
@@ -417,22 +428,50 @@
     let showUpdateModal;
 
 
-    const onActionButtonClicked = (action) => {
+    const onActionButtonClicked = (e, action) => {
         
         if (action == actions.save) {
             saveTab(tab);
+        } else if (action.id == actions.pin.id) {
+            onPinTab();
+        } else if (action.id == actions.reload.id && e.metaKey) {
+            actions.duplicate.onClick(tab);
+        } else if (action.id == actions.moveToSpace.id) {
+            showMoveModal = true;
+            showMore = true;
         } else {
             action.onClick(tab);
         }
 
     };
+
+    const onDataUpdated = ({ detail }) => {
+
+        
+        if (detail.workspace) {
+            if (detail.workspace.pinnedTabs && !isPinned) {
+
+            }
+        }
+        dispatch('dataUpdated', detail);
+    };
+
+    let showMoveModal;
     
 </script>
 
 {#if showMore}
     <ModalContainer on:exit={exitModal}>
         {#if showBookmarkDetails}
-            <BookmarkDetails bind:tab on:exit={exitModal} {db} {user} on:dataUpdated on:exit={exitModal}/>
+            <BookmarkDetails 
+                bind:tab 
+                on:exit={exitModal} 
+                {db} {user} 
+                on:dataUpdated
+                on:bookmarkDeleted 
+            />
+        {:else if showMoveModal}
+            <MoveModal on:exit={exitModal} selectedTabs={[tab]} />
         {:else}
             <TabMenu 
                 {db} 
@@ -442,10 +481,10 @@
                 {workspace} 
                 {isOpen} 
                 {workspaces} 
-                on:pinTab 
+                on:pinTab={onPinTab}
                 on:exit={exitModal}
                 on:editBookmark={saveTab}
-                on:dataUpdated
+                on:dataUpdated={onDataUpdated}
             />
         {/if}
     </ModalContainer>
@@ -453,7 +492,7 @@
 
 {#if showUpdateModal}
     <ModalContainer on:exit={() => showUpdateModal = false} >
-        <UpdateModal {tab} />
+        <TabUpdateModal {tab} on:exit={() => showUpdateModal = false}/>
     </ModalContainer>
 {/if}
 
@@ -531,7 +570,6 @@
                     />
                 {/if}
 
-                {#if false}
                 {#if isSaved}
                     <WorkspaceIcon
                         icon={starIconFilled}
@@ -539,29 +577,27 @@
                         on:mousedown={onStarIconClicked}
                         size={16}
                     />
-                {:else if isInFocus}
-                    <WorkspaceIcon
-                        icon={starIcon}
-                        color={null}
-                        on:mousedown={saveTab}
-                        size={16}
-                    />
                 {/if}
-                {/if}
-
 
                 
                 {#if isInFocus && !isDragged}
-                    {#each $quickActions as action}
-                    {#if action}
-                    <img
-                        class="icon"
-                        src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
-                        alt={typeof action.title == 'string' ? action.title : action.title(tab)}
-                        on:mousedown={() => onActionButtonClicked(action)}
-                    />
-                    {/if}
-                    {/each}
+
+                    <div class="quick-actions" in:horizontalSlide={{delay: 500, duration: 200}}>
+
+                        {#each $quickActions as action}
+                            {#if (action.id == actions.pin.id && isPinned)}
+                            {:else if (action.id == actions.save.id && isSaved)}
+                            
+                            {:else if action}
+                            <img
+                                class="icon"
+                                src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
+                                alt={typeof action.title == 'string' ? action.title : action.title(tab)}
+                                on:mousedown={(e) => onActionButtonClicked(e, action)}
+                            />
+                            {/if}
+                        {/each}
+                    </div>
                     <img
                         src={menuIcon}
                         class="icon"
@@ -574,6 +610,7 @@
                         alt="Close"
                         on:mouseup={onCloseTab}
                     />
+                    
                 {/if}
 
                 {#if isAudible}
@@ -678,7 +715,7 @@
         white-space: nowrap;
         max-lines: 1;
         overflow: hidden;
-        margin-left: 8px;
+        margin-left: 5px;
         width: 100%;
     }
 
@@ -713,5 +750,12 @@
     .drop-zone {
         height: 20px;
         background-color: #444444;
+    }
+
+    .quick-actions { 
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        height: 100%;
     }
 </style>

@@ -85,11 +85,8 @@
         if (view == Views.search) {
             const tab = detail;
             if (tab.windowId == currentWindowId) {
-                if (tab.groupId > -1) {
-                    view = Views.workspace;
-                } else {
-                    view = Views.tabs;
-                }
+                view = Views.tabs;
+
                 
             } else {
                 chrome.windows.update(tab.windowId, { focused: true });

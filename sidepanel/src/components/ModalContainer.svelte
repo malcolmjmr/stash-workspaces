@@ -1,5 +1,5 @@
 <script>
-    import { fade } from "svelte/transition";
+    import { fade, slide } from "svelte/transition";
     import { createEventDispatcher } from "svelte";
 
     let dispatch = createEventDispatcher();
@@ -10,7 +10,6 @@
 </script>
 
 <div class="modal" in:fade>
-    
     <div class="background" on:mousedown={exitModal}></div>
     <div class="main-container">
         <slot></slot>

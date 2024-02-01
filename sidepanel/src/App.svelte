@@ -8,7 +8,7 @@
     import SignIn from "./signin/SignIn.svelte";
     import WorkspaceManager from "./WorkspaceManager.svelte";
     import WindowManager from "./WindowManager.svelte";
-    import { _authLoaded, allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
+    import { _authLoaded, _lastUpdatedTab, allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
     import { getTabInfo } from "./utilities/chrome.js";
     import { getTabsBookmarks } from "./utilities/helpers.js";
 
@@ -83,10 +83,7 @@
         }
 
         if (data.workspace) {
-            console.log('updating workspaces');
-            const index = workspaces.findIndex((w) => w.id = data.workspace.id); 
-            console.log(data);
-            console.log(index);
+            const index = workspaces.findIndex((w) => w.id == data.workspace.id); 
             if (index > -1) {
                 workspaces[index] = data.workspace;
                 workspaces = [...workspaces];
@@ -112,6 +109,8 @@
             matchingTab = await getTabsBookmarks(matchingTab);
             tabs[index] = matchingTab;
             lastUpdatedTab = matchingTab;
+            console.log('updating last tab');
+            _lastUpdatedTab.set(lastUpdatedTab);
             // if (tab.id == matchingTab.id) {
 
             // }
@@ -124,7 +123,6 @@
     let lastCreatedWorkspace;
     chrome.runtime.onMessage.addListener((msg, sender, response) => {
         if (msg.command == 'workspaceCreated') {
-            console.log('workspace created');
             lastCreatedWorkspace = msg.workspace;
         }
     });
@@ -174,6 +172,7 @@
         {activeTab}
         {lastUpdatedGroup}
         {lastCreatedWorkspace}
+        {authLoaded}
         bind:tabs
         bind:resources
         bind:user 

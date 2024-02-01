@@ -48,6 +48,7 @@ async function setInitialData() {
     const platformInfo = await chrome.runtime.getPlatformInfo();
     const date = new Date();
     const initialData = await getInitialData();
+
     await chrome.storage.local.set({
         openGroups: {},
         contextKeys: [],
@@ -280,10 +281,14 @@ async function onTabGroupCreated(group) {
     
     const workspaceToOpen = await get('workspaceToOpen');
     if (workspaceToOpen) {
+        
         const workspace = workspaceToOpen.workspace;
         if (Date.now() - workspaceToOpen.time < 10000) {
+            console.log('workspace opening');
             context = await getContext(workspace.id);
             if (!context) {
+
+                console.log('saving remote workspace');
                 context = workspace;
                 context.groupId = group.id;
                 
@@ -304,9 +309,11 @@ async function onTabGroupCreated(group) {
         await set({workspaceToOpen: null})
     } else {
 
+        console.log(' need to create context');
         setTimeout(async () => {
             group = await chrome.tabGroups.get(group.id);
 
+            console.log('creating context');
             const contexts = await getContexts();
             context = (
                 contexts.find((c) => group.id == c.groupId || (group.title != '' && c.title == group.title))
@@ -454,6 +461,8 @@ async function createContext(properties = {}, save = true) {
         ...properties,
     };
 
+    context.folderId = (await tryToGetWorkspaceFolder(context)).id;
+
     if (save) {
 
         const contextKey = getContextKey(context.id);
@@ -564,6 +573,14 @@ async function removeContext(context) {
 
     const collectionKey = getContextDataKey(context.id);
     await chrome.storage.local.remove(collectionKey);
+
+    const bookmarkFolder = await tryToGetBookmark(context.folderId);
+    if (bookmarkFolder) {
+        const extensionFolder = await getExtensionFolder();
+        if (extensionFolder.id == bookmarkFolder.parentId) {
+            await chrome.bookmarks.removeTree(context.folderId);
+        }
+    }
 
     chrome.runtime.sendMessage({
         command: 'workspaceRemoved',
@@ -685,17 +702,17 @@ async function onBrowserOpen() {
 
 
 async function checkOpenContexts() {
-    for (const [groupId, contextId] of Object.entries(await get('openGroups'))) {
+    let openGroups = await get('openGroups');
+    for (const [groupId, contextId] of Object.entries(openGroups)) {
         const group = await tryToGetTabGroup(groupId);
-        console.log('group');
-        console.log(group);
 
         if (group) continue;
 
         let context = await getContext(contextId);
         if (context) await closeContext(context);
-
     }
+
+
 }
 
 async function tryToGetTabGroup(groupId) {
@@ -724,6 +741,59 @@ async function onWindowCreated(window) {
 
 
 // Helpers
+
+export async function tryToGetBookmark(bookmarkId) {
+    if (!bookmarkId) return;
+
+    let bookmark;
+    try {
+        bookmark = (await chrome.bookmarks.get(bookmarkId))[0];
+    } catch (error) {
+
+    }
+    return bookmark;
+}
+
+export async function tryToGetWorkspaceFolder(workspace) {
+    let folder = await tryToGetBookmark(workspace.folderId);
+    if (!folder) {
+        // search for folders with the same name 
+        const searchResults = await chrome.bookmarks.search({title: workspace.title});
+        if (searchResults.length == 1) {
+            folder = searchResults[0];
+            
+        } 
+    }
+
+    if (!folder) {
+        // creat folder
+        folder = await chrome.bookmarks.create({
+            title: workspace.title,
+            parentId: await (getExtensionFolder()).id
+        });
+    }
+
+    if (folder.id != workspace.folderId) {
+        workspace.folderId = folder.id;
+        await saveContext(workspace);
+        // need to make sure that the context data is updated in sidepanel
+    }
+
+    return folder;
+}
+
+async function getExtensionFolder() {
+    const folderId = await get('folderId');
+    let folder = await tryToGetBookmark(folderId);
+    if (!folder) {
+        folder = await chrome.bookmarks.create({
+            index: 0,
+            title: 'Stash'
+        });
+        await set({ folderId: folder.id });
+    }
+    return folder;
+}
 
 export const get = async (key) => {
     const data = (await chrome.storage.local.get([key])) ?? {};

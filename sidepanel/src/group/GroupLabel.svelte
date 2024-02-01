@@ -241,7 +241,6 @@
 >
     <div
         class="container"
-        
     >
         
         {#if isEditingTitle}

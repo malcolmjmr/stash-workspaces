@@ -11,8 +11,10 @@ import starUnfilledIcon from "../icons/star.png";
 import reloadIcon from "../icons/refresh.png";
 import addDomainIcon from "../icons/domain-add.png";
 import removeDomainIcon from "../icons/domain-remove.png";
+import relatedIcon from "../icons/join-right.png";
 import closeTabIcon from "../icons/tab-close.png";
 import { createEventDispatcher } from "svelte";
+import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
 
 
 export const actions = {
@@ -21,6 +23,10 @@ export const actions = {
         id: 'pin',
         icon: (tab) => tab.pinned ? unpinIcon : pinIcon,
         onClick: (tab) =>  {
+
+            if (tab.groupId > -1) {
+
+            }
             chrome.tabs.update(tab.id, { pinned: !tab.pinned });
             return 'exit';
         }
@@ -88,7 +94,7 @@ export const actions = {
         id: 'moveToSpace',
         icon: moveToSpaceIcon,
         onClick: (tab) => {
-            
+            return ''
         }
     },
     saveForLater: {
@@ -96,10 +102,11 @@ export const actions = {
         id: 'saveForLater',
         icon: moveToInboxIcon,
         onClick: (tab) => {
-            
+            return 'saveForLater';
         }
     },
     favoriteDomain: {
+        
 
     },
     save: {
@@ -116,5 +123,26 @@ export const actions = {
             // I have no idea how to do this with firebase
             return ('editBookmark', tab);
         }
+    },
+    getRelated: {
+        title: 'Find Related Content',
+        id: 'getRelated',
+        icon: relatedIcon,
+        onClick: async (tab) => {
+
+            let url = defaultDomains.find((d) => d.title == 'Exa')
+                .searchTemplate?.replace(searchPlaceholder, encodeURIComponent(tab.url));
+
+            const newTab = await chrome.tabs.create({ 
+                url, 
+                index: tab.index + 1,
+            });
+
+            if (tab.groupId > -1) {
+                await chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
+            }
+            return 'exit';
+        }
+
     }
 }

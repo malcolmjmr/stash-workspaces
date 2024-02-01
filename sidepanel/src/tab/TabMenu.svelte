@@ -31,6 +31,7 @@
     import addDomainIcon from "../icons/domain-add.png";
     import removeDomainIcon from "../icons/domain-remove.png";
     import closeTabIcon from "../icons/tab-close.png";
+  import MenuDivider from "../components/MenuDivider.svelte";
 
 
     let dispatch = createEventDispatcher();
@@ -104,6 +105,8 @@
         } else {
             dispatch('pinTab', tab);
         }
+
+        dispatch('exit');
         
     };
     let linkCopied;
@@ -195,7 +198,7 @@
         </div>
     </div>
    
-    <div class="divider" />
+    <MenuDivider />
     {#if isOpen}
         <MenuItem 
             title={isPinned ? 'Unpin' : 'Pin'}
@@ -219,7 +222,8 @@
             {tab}
             canToggle={true}
         />
-        <div class="divider"></div>
+        
+        <MenuDivider />
 
         <MenuItem 
             title={isSaved ? 'Edit Bookmark': 'Save'} 
@@ -231,13 +235,15 @@
         />
 
         {#if user}
-        <MenuItem 
-            action={actions.saveForLater}
-            onClick={saveForLater}
-            icon={moveToInboxIcon}
-            {tab}
-            canToggle={true}
-        />
+            {#if workspace}
+            <MenuItem 
+                action={actions.saveForLater}
+                onClick={saveForLater}
+                icon={moveToInboxIcon}
+                {tab}
+                canToggle={true}
+            />
+            {/if}
 
         <MenuItem 
             title='Add to favorite domains',
@@ -249,7 +255,17 @@
         />
         {/if}
 
-        <div class="divider" />
+        <MenuDivider />
+
+        <MenuItem 
+            action={actions.getRelated}
+            {tab}
+            canToggle={true}
+            on:click={ () =>  dispatch('exit')}
+        />
+
+
+        <MenuDivider />
         
         <MenuItem 
             action={actions.moveToPopup}
@@ -279,7 +295,9 @@
             {tab}
             canToggle={true}
         />
-        <div class="divider" />
+        
+        <MenuDivider />
+
         <MenuItem 
             action={actions.close}
             onClick={closeTab} 

@@ -14,7 +14,6 @@ export const _lastUpdatedTab = writable(null);
 export const _openWorkspaces = writable({});
 export const allResources = writable({});
 
-
 export const settings = writable({});
 
 export const userData = writable(null);

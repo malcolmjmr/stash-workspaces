@@ -5,6 +5,7 @@
     import newWindowIcon from "../icons/new-window.png";
     import SelectionHeader from "../header/SelectionHeader.svelte";
 
+    export let tabs;
     export let searchText;
     export let selectedTabs;
     export let lastSelectionUpdate;
@@ -17,7 +18,7 @@
 <HeaderContainer>
     {#key lastSelectionUpdate}
         {#if selectedTabs.length > 0}
-            <SelectionHeader bind:selectedTabs />
+            <SelectionHeader bind:selectedTabs {tabs} />
         {:else}
             <SearchBox bind:searchText />
             <img

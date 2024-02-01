@@ -9,6 +9,7 @@
         getContextData,
         saveContextData,
         getOpenGroups,
+        findExistingContextForGroup,
     } from "./utilities/chrome";
 
     import {
@@ -25,7 +26,7 @@
     import { StorePaths } from "./utilities/storepaths.js";
     import { onDestroy, onMount } from "svelte";
     import { getWorkspaceData } from "./workspace/workspaceData";
-    import { _authLoaded, allWorkspaces } from "./stores";
+    import { _authLoaded, _groups, allWorkspaces } from "./stores";
 
 
     export let db;
@@ -40,6 +41,7 @@
     export let lastUpdatedGroup;
     export let lastCreatedWorkspace;
     export let resources;
+    export let authLoaded;
 
     //export let resourcesLoaded;
 
@@ -47,19 +49,15 @@
 
     onMount(() => {
         //getUserContexts();
-        authUnsubscribe = _authLoaded.subscribe((loaded) => {
-            getUserWorkspaces();
-        });
+
     });
 
-    onDestroy(() => {
-        authListener();
-    });
 
-    // $: {
-    //     authLoaded;
-        
-    // };
+
+    $: {
+        authLoaded;
+        getUserWorkspaces();
+    };
 
     let authUnsubscribe;
 
@@ -89,7 +87,6 @@
 
         if (lastUpdatedGroup == null || lastUpdatedGroup.id == null) return;
         
-        console.log('updating workspaces');
         let openGroups = await get('openGroups');
         let workspaceId = openGroups[lastUpdatedGroup?.id];
         const index = workspaces.findIndex((w) => workspaceId ? w?.id == workspaceId : w?.groupId == lastUpdatedGroup?.id);
@@ -112,7 +109,7 @@
             // allWorkspaces.set(workspaces);
             console.log('updating newly created group');
             console.log(lastUpdatedGroup);
-        } else if (lastCreatedWorkspace && Date.now() - lastCreatedWorkspace.created < 1500) {
+        } else if (lastCreatedWorkspace && (Date.now() - lastCreatedWorkspace.created) < 1500) {
             console.log('updating newly created workspace');
             console.log(lastCreatedWorkspace);
             workspaces = [lastCreatedWorkspace,...workspaces];
@@ -132,12 +129,26 @@
             tempWorkspaces = await getContexts();
         }
 
-        const data = await chrome.storage.local.get(null);
         await getResourcesForOpenWorkspaces();
 
         const currentWindow = await chrome.windows.get(await chrome.windows.WINDOW_ID_CURRENT);
         workspaces = tempWorkspaces.filter((w) => (w.isIncognito ?? false) == currentWindow.incognito);
         allWorkspaces.set(workspaces);
+        let tempGroups = groups;
+        let updateGroups;
+        for (const groupId in tempGroups) {
+            const group = tempGroups[groupId];
+            if (!group.workspaceId) {
+                tempGroups[groupId].workspaceId = await findExistingContextForGroup(group);
+                updateGroups = true;
+            }
+        }
+
+        if (updateGroups) {
+            groups = tempGroups;
+            _groups.set(groups);
+        }
+
         workspacesLoaded = Date.now();
     };
 
@@ -162,6 +173,8 @@
         //let config = await get('config');
         
         //if (!config.lastSync) lastSync = 0;
+
+        console.log('syncing workspaces');
 
         const now = Date.now();
         const aMonthAgo = now - (1000 * 60 * 60 * 24 * 30);
@@ -242,12 +255,15 @@
     };
 
     const updateServerContexts = async (contextsToUpdate) => {
+
         for (let context of contextsToUpdate) {
             await setDoc(doc(db, StorePaths.userContext(user.id, context.id)), context, { merge: true });
         }
     };
 
     const updateOpenWorkspaces = async (contextsToUpdate, openGroups) => {
+
+
 
         let contextToGroups = {};
 

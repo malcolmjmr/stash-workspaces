@@ -34,6 +34,9 @@
     import GroupLabel from "../group/GroupLabel.svelte";
     import { colorMap } from "../utilities/colors";
     import { _authLoaded, _groups, _openWorkspaces, _tabs, _workspacesLoaded } from "../stores";
+    import { slide } from "svelte/transition";
+    import NewFolderModal from "./NewFolderModal.svelte";
+    import folderCreateIcon from "../icons/create-folder.png";
 
     let dispatch = createEventDispatcher();
 
@@ -288,8 +291,6 @@
         loaded = true;
         await getWorkspace();
 
-        console.log('loading workspace widget');
-        console.log(getCache);
         if (getCache) {
             cachedData = $_openWorkspaces[workspace.id];
             sections = cachedData?.sections ?? [];
@@ -325,10 +326,11 @@
         if (cachedData) {
             bookmarkCount = cachedData.bookmarkCount;
             bookmarkTree = cachedData.bookmarkTree;
-            visibleSection = cachedData.visibleSelection;
+            visibleSection = cachedData.visibleSelection ?? SectionNames.tabs;
             
         } else {
             cachedData = {};
+            sections = [];
             if(workspace.tabs && workspace.tabs.length > 0) {
                 sections.push({
                     name: SectionNames.tabs,
@@ -337,27 +339,12 @@
                 if (!visibleSection) visibleSection = SectionNames.tabs;
             }
 
-            const folder = await tryToGetWorkspaceFolder(workspace);
-            if (folder) {
-                bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
-                bookmarkCount = 0;
-                const incrementBookmarkCount = (node) => {
-                    bookmarkCount += 1;
-                    for (const child of node.children ?? []) {
-                        incrementBookmarkCount(child);
-                    }
-                };
-                if (bookmarkTree) {
-                    for (const node of bookmarkTree) {
-                        incrementBookmarkCount(node);
-                    }
-                    if (bookmarkCount > 0) {
-                        sections.push({
-                            name: SectionNames.bookmarks,
-                        });
-                    }
-                }
-                
+            await refreshLocalBookmarks();
+
+            if (bookmarkCount > 0) {
+                sections.push({
+                    name: SectionNames.bookmarks,
+                });
             }
             sections = sections;
             cachedData.bookmarkCount = bookmarkCount;
@@ -381,6 +368,7 @@
         } else {
             let data = await getWorkspaceData({db, user, workspace});
             cachedData = {};
+            sections = [];
             resources = data.resources.filter((r) => !r.title?.startsWith('* ') && !r.isQueued);
             cachedData.resources = resources;
             queue = data.resources.filter((r) => r.title?.startsWith('* ') || r.isQueued);
@@ -476,17 +464,105 @@
         if (data.resource) {
             allResources[data.resource.url] = data.resource;
             updateVisibleTabs();
+            // see if resource is 
         }
         lastBookmarkUpdate = Date.now();
         dispatch('dataUpdated', data);
     };
 
     let bookmarkCount;
+
     const onReceiveBookmarkCount = ({ detail }) => {
+
+        const oldBookamrkCount = bookmarkCount;
         bookmarkCount = detail;
+
+        console.log('received bookmark count');
+        console.log(oldBookamrkCount);
+        console.log(bookmarkCount);
+        updateSectionsFromBookmarkUpdate(oldBookamrkCount);
         
     };
+
+    const checkBookmarkCounts = async ({ detail }) => {
+        console.log('bookmark updated from tab');
+        if (user) {
+
+        } else {
+            const oldBookamrkCount = bookmarkCount;
+            await refreshLocalBookmarks();
+            updateSectionsFromBookmarkUpdate(oldBookamrkCount);
+        }
+        
+    };
+
+    const updateSectionsFromBookmarkUpdate = (oldBookamrkCount) => {
+        let needToUpdateCachedData;
+        if (oldBookamrkCount > 0 && bookmarkCount == 0) {
+            if (visibleSection == SectionNames.bookmarks) {
+                const index = sections.findIndex((s) => s.name == SectionNames.bookmarks);
+                if (index > -1)  {
+                    sections.splice(index, 1);
+                    updateVisibleItems(SectionNames.tabs);
+                    needToUpdateCachedData = true;
+                }
+            }
+        } else if (oldBookamrkCount == 0 && bookmarkCount > 0) {
+            const index = sections.findIndex((s) => s.name == SectionNames.bookmarks);
+            if (index == -1)  {
+                sections.push({ name: SectionNames.bookmarks });
+                needToUpdateCachedData = true;
+            }
+        }
+
+        if (needToUpdateCachedData) {
+            sections = sections;
+            cachedData.sections = sections;
+            updateStoredData();
+        }
+    };
+
+    const refreshLocalBookmarks = async () => {
+        const folder = await tryToGetWorkspaceFolder(workspace);
+        let tempBookmarkCount = 0;
+        if (folder) {
+            bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
+            const incrementBookmarkCount = (node) => {
+                tempBookmarkCount += 1;
+                for (const child of node.children ?? []) {
+                    incrementBookmarkCount(child);
+                }
+            };
+            if (bookmarkTree) {
+                for (const node of bookmarkTree) {
+                    incrementBookmarkCount(node);
+                }
+            }
+        }
+        bookmarkCount = tempBookmarkCount;
+    }
+
+    const openFullScreenWorkspace = () => {
+        dispatch('showWorkspaceView', workspace);
+    };
+
+
+    let showNewFolderModal;
+
+    const onBookmarkFolderCreated = async () => {
+        lastBookmarkUpdate = Date.now();
+        showNewFolderModal = false;
+    };
+
+    
+
 </script>
+
+{#if showNewFolderModal}
+    <ModalContainer on:exit={() => showNewFolderModal = false}>
+        <NewFolderModal {workspace} on:bookmarkFolderCreated={onBookmarkFolderCreated} />
+    </ModalContainer>
+{/if}
 
 {#if showMenu}
     <ModalContainer on:exit={() => showMenu = false}>
@@ -548,14 +624,12 @@
 
         {#if isInfocus && !isDragged}
             <div class="actions">
-                <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openWorkspace}/>
-
+                <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openFullScreenWorkspace}/>
                 <img
                     src={moreIcon}
                     alt="More"
-                    on:mousedown={() => showMore = true}
+                    on:mousedown={() => showMenu = true}
                 />
-
                 <img src={closeIcon} alt="close" on:mouseup={onCloseClicked} />
             </div>
         {/if}
@@ -563,14 +637,6 @@
         
     </div>
 
-    <!--
-
-        build a tabs section
-
-        check context for list counts 
-
-
-    -->
     {#if !group.collapsed}
         <div class="divider"></div>
         {#if sections.length > 1}
@@ -598,6 +664,8 @@
                 {#each visibleItems ?? tabs as item (item)}
                     {#if visibleSection != SectionNames.folders}
                         <Tab 
+                            {db}
+                            {user}
                             tab={item} 
                             isOpen={visibleSection == SectionNames.tabs} 
                             isListItem={true}
@@ -605,7 +673,10 @@
                             {workspace}
                             on:clicked={visibleSection != SectionNames.tabs ? onClosedResourceClicked(item) : null}
                             on:dataUpdated={onTabDataUpdated}
-                            
+                            on:updateSelection
+                            on:bookmarkDeleted={checkBookmarkCounts}
+                            on:bookmarkCreated={checkBookmarkCounts}
+                            on:shiftClickTab
                         />
                     {:else}
                         <WorkspaceListItem 
@@ -621,24 +692,35 @@
                     {#if visibleSection == SectionNames.tabs}
                     {#each visibleItems ?? tabs as tab (tab)}
                         <Tab 
+                            {db}
+                            {user}
                             {tab} 
                             isOpen={true} 
                             isListItem={true} 
                             bind:selectedTabs
                             {workspace}
                             on:dataUpdated={onTabDataUpdated}
+                            on:updateSelection
+                            on:bookmarkDeleted={checkBookmarkCounts}
+                            on:bookmarkCreated={checkBookmarkCounts}
+                            on:shiftClickTab
+                            
                         />
                     {/each}
                     {:else if visibleSection == SectionNames.bookmarks}
                         <div class="bookmarks-container">
+                            <div class="create-folder" on:mousedown={() => showNewFolderModal = true}>
+                                <img src={folderCreateIcon} alt="Create Folder"/>
+                                <span>Create folder</span>
+                            </div>
                             {#key lastBookmarkUpdate}
                             <BookmarkTree 
-                                {bookmarkTree}
                                 {workspace} 
                                 {lastBookmarkUpdate} 
-                                bind:bookmarkCount
-                                on:bookmarkCount
+                                {bookmarkCount}
+                                on:bookmarkCount={onReceiveBookmarkCount}
                                 on:dataUpdated
+                                on:bookmarkDeleted={checkBookmarkCounts}
                             />
                             {/key}
                         </div>
@@ -663,7 +745,7 @@
         flex-direction: column;
         background-color: #333;
         border-radius: 8px;
-        margin: 5px;
+        margin: 2px 5px;
     }
 
     .collapsed {
@@ -703,11 +785,24 @@
         white-space: nowrap;
         overflow: hidden;
         margin-bottom: 5px;
+        
     }
 
     .header .title span {
         margin-left: 5px;
         overflow: scroll;
+    }
+
+    .title-input {
+        text-decoration: none;
+        box-shadow: none;
+        border-radius: 5px;
+        border: none;
+        outline: none;
+        background-color: transparent;
+        flex-grow: 1;
+        padding: 5px;
+        font-size: 16px;
     }
 
     .icon-button {
@@ -726,6 +821,7 @@
         flex-direction: row;
         align-items: center;
         height: 100%;;
+        margin-bottom: 5px;
     }
 
     .actions img {
@@ -765,7 +861,7 @@
         font-weight: 400;
         padding: 3px 5px;
         border-radius: 8px;
-        background-color: #333333;
+        background-color: #444;
         margin-right: 8px;
         opacity: 0.7;
     }
@@ -796,13 +892,36 @@
     }
 
     .bookmarks-container {
-       margin-left: -3px;
+       
     }
 
     .divider {
         width: 100%;
         height: 1px;
         background-color: #444444;
+    }
+
+
+    .create-folder {
+        width: calc(100% - 8px);
+        font-size: 14px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        opacity: 0.7;
+        padding: 5px 4px;
+    }
+
+    .create-folder:hover {
+        cursor: pointer;
+        opacity: 1;
+    }
+
+    .create-folder img {
+        height: 25px;
+        width: 25px;
+        filter: invert(1);
+        margin-right: 5px;
     }
 
 </style>

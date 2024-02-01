@@ -14,6 +14,7 @@
   import { quickActions } from "../stores";
   import { actions } from "../tab/actions";
   import WorkspaceWidget from "../workspace/WorkspaceWidget.svelte";
+  import { Views } from "../view";
 
 
     let dispatch = createEventDispatcher();
@@ -54,8 +55,6 @@
         groupStarts = {};
         groupEnds = {};
         tabs.sort((a, b) => a.index - b.index);
-        console.log('getting group starts');
-        console.log(groups);
 
         for (const tab of tabs) {
             if (tab.groupId > -1) {
@@ -69,8 +68,13 @@
 
     
     const getQuickActions = async () => {
-        quickActions.set(((await get('quickActions')) ?? [])
+
+        const storedQuickActions = await get('quickActions');
+
+        quickActions.set(((storedQuickActions) ?? [])
+            .filter((a) => a != null)
             .map((id) => actions[id]));
+
     };
 
     let lastGroupUpdate = Date.now();
@@ -203,7 +207,9 @@
                         tabs={tabs.filter((t) => t.groupId == tab.groupId)}
                         bind:selectedTabs
                         {workspacesLoaded}
-                    
+                        on:updateSelection
+                        on:shiftClickTab
+                        on:showWorkspaceView
                     />
                 {/key}
                 {/if}
@@ -214,13 +220,14 @@
                         {tab}
                         {groups}
                         {user}
-                        {selectedTabs}
+                        bind:selectedTabs
                         {lastSelectionUpdate}
                         {dragoverItem}
                         isStartingTab={tab.groupId > -1 && groupStarts[tab.groupId] == tab.index}
                         isEndingTab={tab.groupId > -1 && groupEnds[tab.groupId] == tab.index}
                         on:updateSelection
                         on:dataUpdated
+                        on:shiftClickTab
                     />
                 </div>
                 
