@@ -48,7 +48,7 @@ export const requestBookmarkPermssion = async () => {
     const granted = await chrome.permissions.request({
         permissions: ['bookmarks']
     });
-
+    return granted;
 }
 
 export const tryToSaveBookmark = async (tab, group) => {
@@ -161,10 +161,23 @@ export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
         newTab = (await chrome.tabs.query({windowId: window.id}))[0];
     }
     if (!workspace.tabs) workspace.tabs = [];
-    if (workspace.tabs.length == 0)  {
-        workspace.tabs.push({
-            url: 'chrome://newtab/'
-        });
+    if (workspace.tabs.length == 0)  { // if group modified 
+        let tabFolder;
+        if (workspace.folderId) {
+            tabFolder = await getWorkspaceTabFolder(workspace);
+            if (tabFolder) {
+                for (const bookmark of (await chrome.bookmarks.getChildren(tabFolder.id))) {
+                    workspace.tabs.push(getTabInfo(bookmark));
+                }
+            }
+        }
+
+        if (!tabFolder) {
+            workspace.tabs.push({
+                url: 'chrome://newtab/'
+            });
+        }
+    
     }
 
 
@@ -178,15 +191,18 @@ export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
         openedTabs.push(tab);
     }
 
-    await saveContext(workspace);
+    
 
-    const groupId = await chrome.tabs.group({
+    workspace.groupId = await chrome.tabs.group({
         tabIds: openedTabs.map((t) => t.id),
         createProperties: {
             windowId: window?.id
         },
     });
-    await chrome.tabGroups.update(groupId, {
+
+    await saveContext(workspace);
+
+    await chrome.tabGroups.update(workspace.groupId, {
         title: workspace.title, 
         color: workspace.color 
     });
@@ -195,7 +211,7 @@ export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
         await chrome.tabs.remove(newTab.id);
     }
     
-
+    return workspace;
 };
 
 export async function closeContext(context) {
@@ -399,7 +415,7 @@ export async function tryToGetTabGroup(groupId) {
     return group;
 }
 
-export async function tryToGetWorkspaceFolder(workspace) {
+export async function tryToGetWorkspaceFolder(workspace, createFolder) {
     let folder = await tryToGetBookmark(workspace.folderId);
     if (!folder) {
         // search for folders with the same name 
@@ -410,15 +426,15 @@ export async function tryToGetWorkspaceFolder(workspace) {
         } 
     }
 
-    if (!folder) {
+    if (!folder && createFolder) {
         // creat folder
         folder = await chrome.bookmarks.create({
             title: workspace.title,
-            parentId: await (getExtensionFolder()).id
+            parentId: (await getExtensionFolder()).id
         });
     }
 
-    if (folder.id != workspace.folderId) {
+    if (folder?.id != workspace.folderId) {
         workspace.folderId = folder.id;
         await saveContext(workspace);
         // need to make sure that the context data is updated in sidepanel
@@ -454,14 +470,6 @@ export async function createContext(properties = {}, save = true) {
 
 
     if (save) {
-
-        if (!context.folderId) {
-            const folder = await chrome.bookmarks.create({
-                title: workspace.title,
-                parentId: await (getExtensionFolder()).id
-            });
-            context.folderId = folder.id;
-        }
 
         const contextKey = getContextKey(context.id);
 
@@ -521,4 +529,67 @@ export function getTabInfo(tab, showAdditionalData = false) {
 export async function getFavoriteSpaces() {
     const data = (await chrome.storage.sync.get(['favoriteSpaces'])) ?? {};
     return data['favoriteSpaces'];
+}
+
+export const queueFolderTitle  = '_Queue_';
+export const tabFolderTitle = '_Tabs_';
+
+export const hiddenFolderTitles = [queueFolderTitle, tabFolderTitle];
+
+export async function getWorkspaceQueueFolder(workspace) {
+    let folder = (await chrome.bookmarks.getChildren(workspace.folderId))
+        .find((b) => !b.url && b.title == queueFolderTitle);
+
+    if (!folder) {
+        chrome.bookmarks.create({
+            title: queueFolderTitle,
+            parentId: workspace.folderId,
+        });
+    }
+    return folder;
+}
+
+export async function getWorkspaceTabFolder(workspace) {
+
+
+    let folder = (await chrome.bookmarks.getChildren(workspace.folderId))
+    .find((b) => !b.url && b.title == tabFolderTitle);
+
+    if (!folder) {
+        folder = await chrome.bookmarks.create({
+            title: tabFolderTitle,
+            parentId: workspace.folderId,
+        });
+    }
+    return folder;
+
+}
+
+export async function saveTabToFolder(tab, folderId) {
+    const children = await chrome.bookmarks.getChildren(folderId);
+    const existingBookmark = children.find((t) => tab.url == t.url);
+    if (existingBookmark) {
+        await chrome.bookmarks.update(existingBookmark.id, {
+            index: 0,
+        });
+    } else {
+        await chrome.bookmarks.create({
+            parentId: folderId,
+            index: 0,
+            url: tab.url,
+            title: tab.title,
+        });
+    }
+}
+
+export async function createAdjacentTab( props ) {
+    
+    const activeTab = await getActiveTab();
+    let tab = await chrome.tabs.create({...props, index: activeTab.index });
+    if (activeTab.groupId > -1) {
+        await chrome.tabs.group({ tabIds: tab.id, groupId: activeTab.groupId });
+        tab.groupId = activeTab.groupId;
+    }
+
+    return tab;
 }

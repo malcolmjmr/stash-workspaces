@@ -176,6 +176,9 @@ async function groupHighlightedTabs() {
 
 async function onTabCreated(tab) {
     // check if tab belongs to tab group
+
+    console.log('tab created');
+    console.log(tab);
     if (tab.groupId > -1) {
         const context = await getContextFromGroupId(tab.groupId);
         if (!context) return;
@@ -185,6 +188,8 @@ async function onTabCreated(tab) {
 
         
     }
+
+
 }
 
 async function onTabDetached(tabId, detachInfo) {
@@ -284,7 +289,7 @@ async function onTabGroupCreated(group) {
         
         const workspace = workspaceToOpen.workspace;
         if (Date.now() - workspaceToOpen.time < 10000) {
-            console.log('workspace opening');
+
             context = await getContext(workspace.id);
             if (!context) {
 
@@ -301,19 +306,18 @@ async function onTabGroupCreated(group) {
 
             await set({ openGroups });
             context.opened = Date.now();
+            
             await saveContext(context);
-            console.log('opened context');
-            console.log(context);
+            removeWorkspaceTabsFolder(context);
+
         } 
 
         await set({workspaceToOpen: null})
     } else {
 
-        console.log(' need to create context');
         setTimeout(async () => {
             group = await chrome.tabGroups.get(group.id);
 
-            console.log('creating context');
             const contexts = await getContexts();
             context = (
                 contexts.find((c) => group.id == c.groupId || (group.title != '' && c.title == group.title))
@@ -322,6 +326,9 @@ async function onTabGroupCreated(group) {
 
             context.deleted = null;
             context.opened = Date.now();
+            if (context.groupId != group.id) {
+                context.groupId = group.id;
+            }
             await saveContext(context);
             
             let openGroups = await get('openGroups');
@@ -332,7 +339,8 @@ async function onTabGroupCreated(group) {
                 command: 'workspacesCreated',
                 workspace: context,
             });
-            
+
+            removeWorkspaceTabsFolder(context);
         }, 500);
         
         
@@ -342,13 +350,56 @@ async function onTabGroupCreated(group) {
 async function onTabGroupUpdated(group) {
     // Update context data 
     var context = await getContextFromGroupId(group.id);
+    console.log('tab group updated');
+    console.log(context);
     if (!context) return;
 
     //const [collapsed, expanded] = await groupCollapsedHandler(group, context);
     const edited = await groupTitleHandler(group, context) || await groupColorHandler(group, context);
 
+    
     context = await getContext(context.id);
+    // console.log('collapsed: ' + collapsed);
+    // if (collapsed) saveWorkspaceTabsToFolder(context);
 
+}
+
+async function groupCollapsedHandler(group, context) {
+    if (!context) return;
+    const groupWasCollapsed = group.collapsed && !context.isCollapsed;
+    const groupWasExpanded = !group.collapsed && context.isCollapsed;
+    if (groupWasCollapsed) {
+        onTabGroupCollapsed(group, context);
+    }
+    else if (groupWasExpanded) onTabGroupExpanded(group, context);
+
+
+    return [groupWasCollapsed, groupWasExpanded];
+}
+
+async function onTabGroupCollapsed(group, context) {
+
+    if (!context.isCollapsed) {
+        context.isCollapsed = true;
+        await saveContext(context);
+    }
+
+}
+
+async function onTabGroupExpanded(group, context) {
+
+    // check that active tab is not within group
+
+    const activeTab = await getActiveTab();
+
+    if (activeTab.groupId != group.id) {
+        try {
+            await chrome.tabs.update(context.activeTabId ?? context.tabs[0].id, { active: true });
+        } catch (e) {
+
+            await chrome.tabs.update(context.tabs[0].id, { active: true });
+        }
+    }
 }
 
 async function groupTitleHandler(group, context) {
@@ -461,7 +512,7 @@ async function createContext(properties = {}, save = true) {
         ...properties,
     };
 
-    context.folderId = (await tryToGetWorkspaceFolder(context)).id;
+    //context.folderId = (await tryToGetWorkspaceFolder(context)).id;
 
     if (save) {
 
@@ -524,6 +575,7 @@ async function closeContext(context) {
     delete context.isCollapsed;
     delete context.groupId;
     await saveContext(context);
+    await saveWorkspaceTabsToFolder(context);
 
 }
 
@@ -542,7 +594,6 @@ async function saveRemoteContext(context) {
 }
 
 async function saveContext(context) {
-
     context.updated = Date.now();
     let record = {};
     record[getContextKey(context.id)] = context;
@@ -754,7 +805,74 @@ export async function tryToGetBookmark(bookmarkId) {
     return bookmark;
 }
 
-export async function tryToGetWorkspaceFolder(workspace) {
+async function saveWorkspaceTabsToFolder(workspace) {
+
+    console.log('saving workspace tabs');
+    const tabFolder = await getWorkspaceTabFolder(workspace, true);
+    const oldBookmarks = await chrome.bookmarks.getChildren(tabFolder.id);
+    if (oldBookmarks.length > 0) {
+        chrome.bookmarks.remove(oldBookmarks.map((b) => b.id));
+    }
+    
+    for (const tab of workspace.tabs) {
+        await chrome.bookmarks.create({
+            title: tab.title,
+            url: tab.url,
+            parentId: tabFolder.id
+        });
+    }
+}
+
+async function removeWorkspaceTabsFolder(workspace) {
+    const tabFolder = await getWorkspaceTabFolder(workspace);
+    if (tabFolder) {
+        chrome.bookmarks.removeTree(tabFolder.id);
+    }
+    
+}
+
+
+export const tabFolderTitle = '_Tabs_';
+
+async function getWorkspaceTabFolder(workspace, save = false) {
+
+
+    let folder;
+    
+    if (workspace.folderId) {
+        console.log('getting workspace tab folder');
+        console.log(workspace);
+        folder = (await chrome.bookmarks.getChildren(workspace.folderId))
+            .find((b) => !b.url && b.title == tabFolderTitle);
+    }
+
+    if (!folder && save) {
+        folder = await chrome.bookmarks.create({
+            title: tabFolderTitle,
+            parentId: (await tryToGetWorkspaceFolder(workspace, true)).id,
+        });
+    }
+    return folder;
+
+}
+
+export const queueFolderTitle  = '_Queue_';
+
+
+export async function getWorkspaceQueueFolder(workspace) {
+    let folder = (await chrome.bookmarks.getChildren(workspace.folderId))
+        .find((b) => !b.url && b.title == queueFolderTitle);
+
+    if (!folder) {
+        folder = chrome.bookmarks.create({
+            title: queueFolderTitle,
+            parentId: workspace.folderId,
+        });
+    }
+    return folder;
+}
+
+async function tryToGetWorkspaceFolder(workspace, createFolder = false) {
     let folder = await tryToGetBookmark(workspace.folderId);
     if (!folder) {
         // search for folders with the same name 
@@ -765,7 +883,7 @@ export async function tryToGetWorkspaceFolder(workspace) {
         } 
     }
 
-    if (!folder) {
+    if (!folder && createFolder) {
         // creat folder
         folder = await chrome.bookmarks.create({
             title: workspace.title,
@@ -773,7 +891,7 @@ export async function tryToGetWorkspaceFolder(workspace) {
         });
     }
 
-    if (folder.id != workspace.folderId) {
+    if (folder?.id != workspace.folderId) {
         workspace.folderId = folder.id;
         await saveContext(workspace);
         // need to make sure that the context data is updated in sidepanel
@@ -880,10 +998,4 @@ async function isAutoUpdate(id, update) {
 async function removeAutoUpdate(updateId) {
     await chrome.storage.local.remove(updateId);
 }
-
-
-
-
-
-
 

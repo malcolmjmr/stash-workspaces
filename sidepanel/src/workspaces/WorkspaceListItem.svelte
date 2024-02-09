@@ -122,7 +122,7 @@
     const openWorkspaceInNewWindow = async () => {
 
         if (!isOpen) {
-            openWorkspace({openInNewWindow: true});
+            await openWorkspace({openInNewWindow: true});
         } else if ((workspace.groupId ?? 0) > 0) {
             const tabs = await chrome.tabs.query({groupId: workspace.groupId});
             if (tabs.length > 0) {

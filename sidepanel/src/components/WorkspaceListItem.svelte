@@ -6,6 +6,7 @@
     export let db = null;
     export let onClick = null;
     export let showUpdateTime = null;
+    export let showQuickActions = true;
 
     
     import menuIcon from "../icons/more-vert.png";
@@ -21,7 +22,7 @@
     import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
     import { getTimeSinceString } from "../workspaces/helpers";
     import WorkspaceFolder from "./WorkspaceIcon.svelte";
-  import { closeTabGroup, openWorkspace, saveContext } from "../utilities/chrome";
+  import { closeTabGroup, openWorkspace, saveContext, tryToGetTabGroup } from "../utilities/chrome";
   import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
     
     let dispatch = createEventDispatcher();
@@ -65,9 +66,11 @@
 
 
     const onOpenClicked = async () => {
+        
 
         if (!isOpen) {
-            openWorkspace(workspace, {openInNewWindow: false});
+            workspace = await openWorkspace(workspace, {openInNewWindow: false});
+            dispatch('workspaceOpened', workspace);
         } else if ((workspace.groupId ?? 0) > 0) {
             navigateToWorkspace();
         }
@@ -91,11 +94,12 @@
     }
 
 
-    const onTitleClicked = () => {
+    const onTitleClicked = async () => {
         if (onClick) {
             onClick(workspace);
         } else {
-            if (isOpen) {
+            const group = await tryToGetTabGroup(workspace?.groupId);
+            if (group) {
                 navigateToWorkspace();
             } else {
                 showPreview = true;
@@ -125,7 +129,14 @@
 
 {#if showPreview}
     <ModalContainer on:exit={() => showPreview = false}>
-        <WorkspacePreview {db} {workspace} {user} on:exit={() => showPreview = false} on:dataUpdated/>
+        <WorkspacePreview 
+            {db} 
+            {user}
+            {workspace} 
+            on:exit={() => showPreview = false} 
+            on:dataUpdated 
+            on:workspaceOpened
+        />
     </ModalContainer>
 {/if}
 
@@ -137,6 +148,7 @@
             on:exit={exitModals}
             on:permenantlyDeleteWorkspace
             on:dataUpdated
+            on:workspaceOpened
         />
     </ModalContainer>
 {/if}
@@ -152,8 +164,15 @@
             <span>{workspace.title ?? 'Untitled'}</span>
         </div>
         <div class="spacer"></div>
-        {#if isInFocus && !onClick && !workspace.deleted}
-            {#if !isOpen}
+        {#if isInFocus && !workspace.deleted}
+            {#if isOpen}
+                <img 
+                    class="close icon" 
+                    alt="Close" 
+                    src={closeIcon} 
+                    on:mousedown={onCloseClicked}
+                />
+            {:else if showQuickActions}
                 <img src={menuIcon} alt="Menu" class="more button" on:mousedown={() => showMenu = true}/>
                 <img 
                     class="open-in-new-window icon" 
@@ -161,13 +180,7 @@
                     src={openIcon} 
                     on:mousedown={onOpenClicked}
                 />
-            {:else}
-                <img 
-                    class="close icon" 
-                    alt="Close" 
-                    src={closeIcon} 
-                    on:mousedown={onCloseClicked}
-                />
+                
             {/if}
         {/if}
 

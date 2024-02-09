@@ -16,7 +16,7 @@
     import ModalContainer from "../components/ModalContainer.svelte";
     import MoveModal from "./MoveModal.svelte";
     import Menu from "../header/Menu.svelte";
-    import { getTabFavIconUrl, saveContext } from "../utilities/chrome";
+    import { getTabFavIconUrl, getWorkspaceQueueFolder, saveContext, saveTabToFolder } from "../utilities/chrome";
 
     import pinIcon from "../icons/pin.png";
     import unpinIcon from "../icons/pin-filled.png";
@@ -145,7 +145,23 @@
         dispatch('editBookmark', tab);
     };
 
-    const saveForLater = () => {
+    const saveForLater = async () => {
+        if (user) {
+
+        } else {
+            const queueFolder = await getWorkspaceQueueFolder(workspace, true);
+            await saveTabToFolder(tab, queueFolder.id);
+            dispatch('tabStashed');
+            setTimeout(async () => {
+                const tabs = await chrome.tabs.query({ groupId: workspace.groupId });
+                if (tabs.length == 1) {
+                    const newTab = await chrome.tabs.create({ url: 'chrome://newtab/'});
+                    await chrome.tabs.group({ tabIds: newTab.id, groupId: workspace.groupId });
+                }
+                chrome.tabs.remove(tab.id);
+            }, 300);
+            
+        }
         
     };
 
@@ -159,7 +175,6 @@
             saveContext(workspace);
             dispatch('dataUpdated', { workspace });
         }
-        
     };
 
 
@@ -234,8 +249,7 @@
             canToggle={true}
         />
 
-        {#if user}
-            {#if workspace}
+        {#if workspace}
             <MenuItem 
                 action={actions.saveForLater}
                 onClick={saveForLater}
@@ -243,7 +257,10 @@
                 {tab}
                 canToggle={true}
             />
-            {/if}
+        {/if}
+
+        {#if user}
+
 
         <MenuItem 
             title='Add to favorite domains',

@@ -28,8 +28,9 @@
     <input 
         type="text" 
         bind:value={name} 
-        placeholder="Enter folder name..."
+        placeholder="Enter folder name"
         on:keydown={onInput}
+        autofocus="true"
     />
 </div>
 

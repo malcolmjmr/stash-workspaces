@@ -8,8 +8,13 @@
     import backIcon from "../icons/back.png";
     import toolbarIcon from "../icons/toolbar.png";
     import { tryToGetBookmark } from "../utilities/chrome";
+  import BookmarkTree from "../workspace/BookmarkTree.svelte";
+  import { colorMap } from "../utilities/colors";
+  import Workspace from "../workspace/Workspace.svelte";
 
-    
+    export let workspace = null;
+    export let addPadding = true;
+
     let dispatch = createEventDispatcher();
 
     let searchText = '';
@@ -25,7 +30,7 @@
     const updateSearchResults = async () => {
         const text = searchText.toLowerCase();
         let workspaces = $allWorkspaces.filter((w) => {
-            return !w.deleted && w.title?.toLowerCase().includes(text);
+            return !w.deleted && w.title?.toLowerCase().includes(text) && w.id != workspace?.id
         });
 
         workspaces.sort((a, b) => b.updated - a.updated);
@@ -55,7 +60,7 @@
 
 </script>
 
-<div class="location-selection">
+<div class="location-selection{addPadding ? ' padding' : ''}">
     <div class="header">
         <div class="back end" on:mousedown={() => dispatch('back')}>
             <img src={backIcon} alt="Back" />
@@ -89,16 +94,33 @@
                 </span>
             </div>
         {/if}
+        {#if workspace}
+        <div class="workspace-folders section">
+            <div class="heading" style="color: {colorMap[workspace.color ?? 'grey']}">
+                {workspace.title}
+            </div>
+            <div class="list">
+                <BookmarkTree
+                    {workspace}
+                    onlyShowFolders={true}
+                    on:locationSelected
+                />
+            </div>
+            
+        </div>
+            
+        {/if}
         {#if visibleWorkspaces.length > 0}
         <div class="spaces section">
             <div class="heading">
-                Spaces
+                {#if workspace}Other{/if} Spaces
             </div>
             <div class="list">
                 {#each visibleWorkspaces as workspace}
                     <WorkspaceListItem 
                         {workspace}
                         onClick={onWorkspaceClicked} 
+                        showQuickActions={false}
                     />
                 {/each}
             </div>
@@ -130,6 +152,11 @@
         width: 100%;
         display: flex;
         flex-direction: column;
+    }
+
+    .location-selection.padding {
+        padding: 0px 8px;
+        width: calc(100% - 16px);
     }
 
     .location-selection .container {

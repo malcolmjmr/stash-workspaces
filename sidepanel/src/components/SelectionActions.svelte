@@ -128,7 +128,7 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        width: calc(100% - 6px);
+        width: calc(100% - 16px);
         margin: 0px 8px;
         z-index: 3;
     }

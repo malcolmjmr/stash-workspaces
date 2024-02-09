@@ -23,7 +23,7 @@
   import { allWorkspaces } from "./stores";
   import ModalContainer from "./components/ModalContainer.svelte";
   import TabUpdateModal from "./tab/TabUpdateModal.svelte";
-  import { getActiveTab } from "./utilities/chrome";
+  import { getActiveTab, getContextFromGroupId } from "./utilities/chrome";
 
 
     export let user;
@@ -42,6 +42,7 @@
     export let lastUpdatedGroup;
     export let lastUpdatedWindow;
     export let lastWorkspaceUpdate;
+    export let lastCreatedWorkspace;
     export let hasBookmarkPermission;
     export let resources;
 
@@ -94,7 +95,37 @@
 
     onMount(() => {
         addEventListeners();
+        setInitialView();
     });
+
+    const setInitialView = async () => {
+        const tabs = await chrome.tabs.query({ currentWindow: true });
+        let showWorkspace;
+        let groupId;
+        for (const tab of tabs) {
+            if (tab.groupId > -1) {
+                if (!showWorkspace) showWorkspace = true;
+                if (!groupId) {
+                    groupId = tab.groupId;
+                } else if (groupId && groupId != tab.groupId) {
+                    showWorkspace = false;
+                    break;
+                }
+            } else if (!tab.url.includes('//newtab/')) {
+                showWorkspace = false;
+                break;
+            }
+        }
+    
+        if (showWorkspace && groupId) {
+            console.log('setting workspace view');
+            activeWorkspace = await getContextFromGroupId(groupId);
+            view = Views.workspace;
+        } else {
+            view = Views.tabs;
+        }
+
+    };
 
     onDestroy(() => {
         removeListeners();
@@ -121,7 +152,7 @@
     let isScrolling;
     let scrollListener;
     const addEventListeners = () => {
-        scrollListener = body.addEventListener("scroll", (e) => {
+        scrollListener = body?.addEventListener("scroll", (e) => {
             if (!isScrolling) {
                 isScrolling = true;
             }
@@ -244,6 +275,7 @@
     </ModalContainer>
 {/if}
 
+{#if view}
 <main>
     {#if true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
         <div class="container header">
@@ -271,7 +303,7 @@
             <SearchResults
                 bind:view
                 {tabs}
-                {searchText}
+                bind:searchText
                 {lastUpdate}
                 on:updateSelection
                 {lastSelectionUpdate}
@@ -327,6 +359,8 @@
                 {groups}
                 bind:selectedTabs
                 {lastUpdate}
+                {lastSelectionUpdate}
+
                 {workspaces}
                 bind:searchText
                 {searchResults}
@@ -354,6 +388,7 @@
             <Workspace
                 tabs={tabs.filter((t) => t.groupId == activeWorkspace.groupId)}
                 workspace={activeWorkspace}
+                isOpen={true}
                 {groups}
                 bind:workspaces
                 {db}
@@ -361,7 +396,6 @@
                 {lastUpdate} 
                 {lastUpdatedTab}
                 {lastSelectionUpdate}
-                bind:allResources={resources}
                 on:goBack={() => view = Views.tabs}
                 on:dataUpdated
                 on:foundDuplicates
@@ -421,6 +455,7 @@
         </div>
     {/if}
 </main>
+{/if}
 
 <style>
     main {

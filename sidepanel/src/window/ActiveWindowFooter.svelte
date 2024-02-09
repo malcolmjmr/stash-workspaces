@@ -40,6 +40,18 @@
         const activeTab = (
             await chrome.tabs.query({ active: true, currentWindow: true })
         )[0];
+
+        const existingNewTab = (await chrome.tabs.query({ 
+            groupId: activeTab.groupId, 
+            windowId: activeTab.windowId 
+        })).find((t) => t.url.includes('//newtab'));
+
+        if (existingNewTab) {
+            chrome.tabs.update(existingNewTab.id, { active: true });
+            dispatch('newTabCreated', existingNewTab);
+
+            return;
+        }
         
         let newTab;
         if (activeTab.groupId > -1) {

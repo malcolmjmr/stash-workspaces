@@ -8,6 +8,7 @@
   import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
   import FolderListItem from "../components/FolderListItem.svelte";
   import { Views } from "../view";
+  import { tryToGetTabGroup } from "../utilities/chrome";
     export let searchText;
 
     let searchResults = [];
@@ -82,17 +83,36 @@
     };
 
     const onTabClicked = ({ detail }) => {
-        if (view == Views.search) {
-            const tab = detail;
-            if (tab.windowId == currentWindowId) {
-                view = Views.tabs;
 
-                
-            } else {
-                chrome.windows.update(tab.windowId, { focused: true });
-            } 
+        const tab = detail;
+
+        view = Views.tabs;
+        searchText = '';
+
+        if (tab.windowId != currentWindowId) {
+            chrome.windows.update(tab.windowId, { focused: true });
+        } 
             
+    };
+
+    const onWorkspaceClicked = async ({ detail }) => {
+        const workspace = detail;
+        const group = await tryToGetTabGroup(workspace?.groupId);
+        if (group) {
+            const tabs = await chrome.tabs.query({ groupId: group.id });
+            tabs.sort((a, b) => b.index - a.index);
+            const tab = tabs[0]
+            chrome.tabs.update(tab.id, {
+                active: true,
+            });
+            if (tab.windowId != currentWindowId) {
+                chrome.windows.update(tab.windowId, { focused: true });
+            } else {
+                view = Views.tabs;
+                searchText = '';
+            }
         }
+
     };
 </script>
 
@@ -109,8 +129,8 @@
                     {lastSelectionUpdate}
                     on:updateSelection
                     isListItem={true}
+                    isSearchResult={true}
                     on:clicked={onTabClicked}
-                    
                 />
                 {#if i < visibleTabs.length - 1}
                     <div class="divider"></div>
@@ -121,7 +141,6 @@
             {#each visibleSpaces as workspace, i (workspace.id)}
                 <WorkspaceListItem
                     {workspace}
-                    isOpen={false}
                 />
                 {#if i < visibleSpaces.length - 1}
                     <div class="divider"></div>

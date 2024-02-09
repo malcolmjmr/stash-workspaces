@@ -9,12 +9,14 @@ import duplicateIcon from "../icons/tab-duplicate.png";
 import starFilledIcon from "../icons/star-filled.png";
 import starUnfilledIcon from "../icons/star.png";
 import reloadIcon from "../icons/refresh.png";
+import saveToFolderIcon from "../icons/folder-special.png";
 import addDomainIcon from "../icons/domain-add.png";
 import removeDomainIcon from "../icons/domain-remove.png";
 import relatedIcon from "../icons/join-right.png";
 import closeTabIcon from "../icons/tab-close.png";
 import { createEventDispatcher } from "svelte";
 import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
+import { getWorkspaceQueueFolder, saveTabToFolder } from "../utilities/chrome";
 
 
 export const actions = {
@@ -101,9 +103,33 @@ export const actions = {
         title: 'Save for later',
         id: 'saveForLater',
         icon: moveToInboxIcon,
-        onClick: (tab) => {
-            return 'saveForLater';
+        onClick: async (tab, workspace, dispatch) => {
+
+            const queueFolder = await getWorkspaceQueueFolder(workspace, true);
+            await saveTabToFolder(tab, queueFolder.id);
+            dispatch('tabStashed');
+
+            // setTimeout(async () => {
+                const tabs = await chrome.tabs.query({ groupId: workspace.groupId });
+                if (tabs.length == 1) {
+                    const newTab = await chrome.tabs.create({ url: 'chrome://newtab/'});
+                    await chrome.tabs.group({ tabIds: newTab.id, groupId: workspace.groupId });
+                }
+                chrome.tabs.remove(tab.id);
+            // }, 300);
+
+
+            //return 'tabStashed';
         }
+    },
+   saveToFolder: {
+        title: 'Save to folder',
+        id: 'saveToFolder',
+        icon: saveToFolderIcon,
+        onClick: (tab) => {
+            return 'saveToFolder'
+        }
+
     },
     favoriteDomain: {
         

@@ -52,10 +52,12 @@
                 .map((t) => t.id);
             const window = await chrome.windows.create({ focused: false });
             const newTab = (await chrome.tabs.query({windowId: window.id}))[0];
-            await chrome.tabs.move(looseTabs, {
-                windowId: window.id,
-                index: -1
-            });
+            if (looseTabs.length > 0) {
+                await chrome.tabs.move(looseTabs, {
+                    windowId: window.id,
+                    index: -1
+                });
+            }
             await chrome.tabs.remove(newTab.id);
         }
 

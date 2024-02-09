@@ -37,6 +37,8 @@
             bind:bookmarkCount
             on:bookmarkCount
             on:dataUpdated
+            on:bookmarkDeleted
+            on:locationSelected
         />
     </div>
 </div>

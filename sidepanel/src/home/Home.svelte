@@ -1,5 +1,5 @@
 <script>
-    import { onMount } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import  { closeTabGroup, get, tryToGetTabGroup } from "../utilities/chrome";
 
     import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
@@ -8,7 +8,7 @@
 
     import trashIcon from "../icons/delete.png";
     import GroupedWorkspaceSections from "../components/GroupedWorkspaceSections.svelte";
-  import { lastWorkspaceUpdate } from "../stores";
+  import { _groups, lastWorkspaceUpdate } from "../stores";
 
     export let db = null;
     export let user = null;
@@ -26,6 +26,8 @@
     let favoriteTags = [];
     let deletedSpaces = [];
 
+    let dispatch = createEventDispatcher();
+
 
     onMount(() => {
         
@@ -34,7 +36,7 @@
     });
 
     $: {
-        groups;
+        $_groups;
         $lastWorkspaceUpdate;
         refreshSpaces();
     }
@@ -44,7 +46,7 @@
     const now = Date.now();
     const refreshSpaces = async () => {
         if (workspaces.length == 0) return;
-        openSpaces = Object.values(groups).map((g) => workspaces.find((w) => g.workspaceId == w?.id)).filter((s) => s);
+        openSpaces = Object.values($_groups).map((g) => workspaces.find((w) => g.workspaceId == w?.id)).filter((s) => s);
         closedSpaces = [...workspaces.filter((w) => !w?.deleted && !openSpaces.find((openSpace) => w?.id == openSpace?.id))];
         closedSpaces.sort((a,b) => b.updated - a.updated);
         recentSpaces = closedSpaces.slice(0, 10);
@@ -54,6 +56,7 @@
     };
 
     const closeAllOpenSpaces = async () => {
+        
         for (const space of openSpaces) {
             await closeTabGroup(space.groupId);
         }
@@ -64,6 +67,7 @@
     };
 
     const onOpenWorkspaceClicked = async (workspace) => {
+
         const group = await tryToGetTabGroup(workspace.groupId);
 
         if (group.windowId == currentWindowId) {
@@ -81,7 +85,14 @@
             chrome.windows.update(tabs[0].windowId, { focused: true }); 
             chrome.tabs.update(tabs[0].id, { active: true });
         } 
-    }
+    };
+
+    const onWorkspaceOpened = async ({ detail }) => {
+        const workspace = detail;
+        console.log('workspace opened');
+        console.log(workspace);
+        onOpenWorkspaceClicked(workspace);
+    };
 
 
 </script>
@@ -89,7 +100,7 @@
 <div class="home">
     <div class="container">
         {#if false}
-            <RecentTabs {recentTabs} {groups}/>
+            <RecentTabs {recentTabs} groups={$_groups}/>
         {/if}
         {#if openSpaces.length > 0}
         <div class="open spaces section">
@@ -147,6 +158,7 @@
             {db}
             onShowMore={ closedSpaces.length > recentSpaces.length ? () => view = Views.history : null }
             on:dataUpdated
+            on:workspaceOpened={onWorkspaceOpened}
             
         />
     

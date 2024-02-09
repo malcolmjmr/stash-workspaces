@@ -1,26 +1,38 @@
 <script>
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
 import MenuItem from "../components/MenuItem.svelte";
-    import folderIcon from "../icons/folder-filled.png";
-    import tabGroupIcon from "../icons/tab-group.png";
-    import editIcon from "../icons/edit.png";
-    import deleteIcon from "../icons/delete.png";
+    import folderIcon from "../icons/folder.png";
   import MenuDivider from "../components/MenuDivider.svelte";
+  import { getTabFavIconUrl } from "../utilities/chrome";
   import ModalContainer from "../components/ModalContainer.svelte";
   import BookmarkDetails from "./BookmarkDetails.svelte";
-    
-    export let folder;
+    export let bookmark;
     export let workspace;
 
     let dispatch = createEventDispatcher();
 
+    let favIconUrl; 
+
+    let loaded;
+    onMount(() => {
+
+        load();
+        
+    });
+
+    const load = async () => {
+        if (bookmark.url) {
+            favIconUrl = await getTabFavIconUrl(bookmark);
+        }
+        loaded = true;
+    };
+
 
     const onDelete = () => {
 
-        chrome.bookmarks.remove(folder.id);
+        chrome.bookmarks.remove(bookmark.id);
 
-        dispatch('bookmarkDeleted', folder);
-        dispatch('exit');
+        dispatch('bookmarkDeleted', bookmark);
     };
 
     const openAllBookmarks = async () => {
@@ -33,66 +45,55 @@ import MenuItem from "../components/MenuItem.svelte";
             tabs.push(tab);
         }
 
-        chrome.tabs.group({tabIds: tabs.map((t) => t.id), groupId: workspace.groupId});
+        chrome.tabs.group({tabIds: tabs.map((t) = t.id), groupId: workspace.groupId});
 
         dispatch('bookmarksOpened', tabs);
-        dispatch('exit');
         
-    };
-
-    const onInputChange = () => {
-        chrome.bookmarks.update(folder.id, { title: folder.title });
     };
 
     let showBookmarkDetails;
 
-</script>
 
+</script>
+ 
 {#if showBookmarkDetails}
     <ModalContainer on:exit={() => showBookmarkDetails = false}>
         <BookmarkDetails 
-            resource={folder}
-            isNativeBookmark={true}
+            resource={bookmark} 
+            isNativeBookmark={true} 
+            on:exit={() => showBookmarkDetails = false}
             on:bookmarkUpdated
+            on:dataUpdated
         />
     </ModalContainer>
 {/if}
-
-<div class="bookmark-folder-menu">
+{#if loaded}
+<div class="bookmark-menu">
     <div class="header">
-        <img src={folderIcon} alt="Folder Icon">
+
+        <img src={favIconUrl} alt="Fav Icon">
         <input 
             type="text"
-            bind:value={folder.title}
-            on:input={onInputChange}
+            bind:value={bookmark.title}
         />
     </div>
-    <MenuDivider/>
-    <!--
-         <MenuItem 
-            title="Edit"
-            icon={editIcon}
-            onClick={() => showBookmarkDetails = true}
-        />
-    -->
-    
-    <MenuDivider/>
+
     <MenuItem 
-        title="Open all bookmarks"
-        icon={tabGroupIcon}
-        onClick={openAllBookmarks}
+        title="Edit"
+        on:click={() => showBookmarkDetails = false}
     />
     <MenuDivider/>
     <MenuItem 
         title="Delete"
-        icon={deleteIcon}
-        onDoubleClick={onDelete}
+        on:click={onDelete}
     />
 </div>
+{/if}
 
 <style>
 
-    .bookmark-folder-menu {
+    .bookmark-menu {
+        padding: 10px;
         display: flex;
         flex-direction: column;
     }
@@ -100,14 +101,12 @@ import MenuItem from "../components/MenuItem.svelte";
     .header {
         display: flex;
         flex-direction: row;
-        padding: 10px;
     }
 
 
     .header img {
-        height: 25px;
-        width: 25px;
-        filter: invert(1);
+        height: 20px;
+        width: 20px;
     }
 
     .header input {
@@ -124,8 +123,6 @@ import MenuItem from "../components/MenuItem.svelte";
         color: white;
         margin-left: 5px;
     }
-
-    
 
 
 </style>

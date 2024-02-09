@@ -19,7 +19,7 @@
 
     export let db = null;
     export let user = null;
-    export let tab;
+    export let tab = null;
     export let resource;
     export let isNativeBookmark = false;
 
@@ -118,7 +118,10 @@
            
             if (isNativeBookmark) {
                 if (titleChanged || urlChanged) {
+                    resource.title = title;
+                    resource.url = url;
                     await chrome.bookmarks.update(resource.id, {title, url});
+                    dispatch('bookmarkUpdated', resource);
                 }
             } else {
 
@@ -155,6 +158,7 @@
         console.log(resource);
         if (tab?.resource || (!isNativeBookmark && resource)) {
             if (!resource) resource = tab.resource;
+            console.log(resource);
             let ref = doc(db, StorePaths.userResource(user.id, resource.id)) ;
             deleteDoc(ref);
             resource.deleted = true;
@@ -168,19 +172,21 @@
                 
             }
             dispatch('dataUpdated', { resource } );
-            dispatch('bookmarkDeleted');
+            dispatch('bookmarkDeleted', resource.url);
             
         }
         
         if (tab?.bookmarks) {
+            let bookmarksRemoved = []
             for (const bookmark of tab.bookmarks) {
+                bookmarksRemoved.push(bookmark);
                 await chrome.bookmarks.remove(bookmark.id);
             }
 
             tab.bookmarks = null;
 
             dispatch('dataUpdated',{tab});
-            dispatch('bookmarkDeleted');
+            dispatch('bookmarkDeleted', tab.url);
 
         }
         
@@ -302,8 +308,10 @@
     {#if loaded}
     {#if showLocationSelection}
         <LocationSelection 
+            addPadding={false}
             on:back={() => showLocationSelection = false}
             on:locationSelected={addLocation}
+
         />
     {:else}
         <div class="header">
@@ -331,6 +339,7 @@
                     <input
                         bind:value={title}
                         on:change={onTitleChanged}
+
                     /> 
                 </div>
             </div>
@@ -377,10 +386,12 @@
                 </div>
             {/if}
         </div>
+        {#if !isFolder && (resource || tab.bookmarks?.length > 0 || tab.resource)}
         <div class="spacer"/>
         <div class="delete button" on:mousedown={() => showDeleteDialog = true}>
             <img src={trashIcon} alt='Delete'/>
         </div>
+        {/if}
     {/if}
     {/if}
 

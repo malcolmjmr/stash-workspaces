@@ -13,6 +13,7 @@
 
     import pinnedIcon from "../icons/pin-filled.png";
     import closeIcon from "../icons/close.png";
+    import closeAllIcon from "../icons/close-all.png";
     import menuIcon from "../icons/more-vert.png";
     import emptyBoxIcon from "../icons/empty-box.png";
     import checkedBoxIcon from "../icons/checked-box.png";
@@ -21,12 +22,13 @@
     import TabMenu from "./TabMenu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
-    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext, getActiveTab } from "../utilities/chrome";
+    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext, getActiveTab, getExtensionFolder, tryToGetWorkspaceFolder } from "../utilities/chrome";
 
     import soundIcon from "../icons/volume-up.png";
     import mutedIcon from "../icons/volume-off.png";
     import starIcon from "../icons/star.png";
     import starIconFilled from "../icons/star-filled.png";
+    import saveToFolderIcon from "../icons/folder-special.png";
   
     import ModalContainer from "../components/ModalContainer.svelte";
     import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
@@ -42,6 +44,8 @@
   import { horizontalSlide } from "../utilities/transitions";
   import MoveModal from "./MoveModal.svelte";
   import TabUpdateModal from "./TabUpdateModal.svelte";
+  import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
+  import { children } from "svelte/internal";
 
 
     export let db;
@@ -60,6 +64,7 @@
     export let canDrag = true;
     export let canSelect = true;
     export let isListItem = false;
+    export let isSearchResult = false;
 
 
     let el;
@@ -77,14 +82,14 @@
     let updated;
     $: {
 
-        // if ($_lastUpdatedTab && $_lastUpdatedTab.id == tab.id) {
-        //     //tab = {...lastUpdatedTab};
-        //     init();
+        if ($_lastUpdatedTab && $_lastUpdatedTab.id == tab.id) {
+            tab = {...$_lastUpdatedTab};
+            init();
 
-        //     if (tab.id && tab.active) {
-        //         scrollToTabIfActive();
-        //     }
-        // }
+            // if (tab.id && tab.active) {
+            //     scrollToTabIfActive();
+            // }
+        }
 
         if ((!tab.bookmarks && isSaved) || (tab.bookmarks && !isSaved)) {
             updateSavedState();
@@ -179,7 +184,7 @@
             }
             await saveContext(workspace);
             dispatch('dataUpdated', { workspace });
-            isPinned = tab.pinned ?? workspace?.pinnedTabs.find((t) => t.id == tab.id || t.url == tab.url);
+            isPinned = workspace?.pinnedTabs.find((t) => t.id == tab.id || t.url == tab.url);
         } else {
             chrome.tabs.update(tab.id, { pinned: !tab.pinned });
         } 
@@ -209,7 +214,12 @@
     };
 
     const onCloseTab = () => {
-        chrome.tabs.remove(tab.id);
+        if (showMultiselectActions) {
+            chrome.tabs.remove(selectedTabs.map((t) => t.id));
+        } else {
+            chrome.tabs.remove(tab.id);
+        }
+        
     };
 
     const toggleMute = () => {
@@ -321,7 +331,13 @@
 
     let showBookmarkDetails;
 
-    const saveTab = async () => {
+    const saveOptions = {
+        save: 'save',
+        saveToQueue: 'saveForQueue',
+        saveToFolder: 'saveToFolder'
+    }
+
+    const saveTab = async (tab, saveOption = saveOptions.save, location) => {
 
         const hasBookmarkPermission = await getPermissions();
 
@@ -357,32 +373,38 @@
                 let resource = createResource(tab);
                 resource.contexts = [workspace.id];
                 resource.updated = Date.now();
+                if (saveOption == saveOptions.saveToQueue) {
+                    resource.isQueued = true;
+                }
                 const ref = doc(db, StorePaths.userResource(user.id, resource.id));
                 await setDoc(ref, resource, {merge: true});
                 tab.resource = resource;
                 isSaved = true;
                 dispatch('dataUpdated', {resource});
-            } else {
-                let folder = await tryToGetBookmark(workspace.folderId);
-                if (!folder) {
-                    //const settings = await getSettings();
+            } else if (!workspace.isIncognito) {
 
-                    folder = await chrome.bookmarks.create({
-                        title: workspace.title, 
-                        index: 0,
-                        //parentId: settings.defaultFolderLocation 
-                    });
-
+                let folder = await tryToGetWorkspaceFolder(workspace, true);
+                if (folder?.id != workspace.folderId) {
                     workspace.folderId = folder.id;
                     dispatch('dataUpdated', { workspace });
 
-                    await saveContext(workspace);
+                    //await saveContext(workspace);
+                }
+
+                let bookmarkTitle = tab.title;
+                let parentId = folder.id;
+
+                if (saveOption == saveOptions.saveToQueue) {
+                    let queue = await getWorkspaceQueueFolder(workspace);
+                    parentId = queue.id;
+                } else if (saveOption == saveOptions.saveToFolder && location) {
+                    parentId = location;
                 }
 
                 const bookmark = await chrome.bookmarks.create({
-                    title: tab.title,
+                    title: bookmarkTitle,
                     url: tab.url,
-                    parentId: folder.id
+                    parentId: parentId
                 });
 
                 if (!tab.bookmarks) tab.bookmarks = [];
@@ -428,20 +450,41 @@
     let showUpdateModal;
 
 
-    const onActionButtonClicked = (e, action) => {
-        
-        if (action == actions.save) {
-            saveTab(tab);
-        } else if (action.id == actions.pin.id) {
-            onPinTab();
-        } else if (action.id == actions.reload.id && e.metaKey) {
-            actions.duplicate.onClick(tab);
-        } else if (action.id == actions.moveToSpace.id) {
-            showMoveModal = true;
-            showMore = true;
+    const onActionButtonClicked = async (e, action) => {
+
+        if (showMultiselectActions) {
+            if (action.id == actions.save.id) {
+                for (const t of selectedTabs) {
+                    saveTab(t);
+                }
+            } else if (action.id == actions.saveForLater.id) {
+                for (const t of selectedTabs) {
+                    saveTab(t, saveOptions.saveToQueue);
+                }
+            } else if (action.id == actions.saveToFolder.id) {
+                // show save modal
+                showSaveModal = true;
+            } else {
+                for (const t of selectedTabs) {
+                    action.onClick(t);
+                }
+            }
         } else {
-            action.onClick(tab);
+            if (action == actions.save) {
+                saveTab(tab);
+            } else if (action.id == actions.pin.id) {
+                onPinTab();
+            } else if (action.id == actions.reload.id && e.metaKey) {
+                actions.duplicate.onClick(tab);
+            } else if (action.id == actions.moveToSpace.id) {
+                showMoveModal = true;
+                showMore = true;
+            } else {
+                await action.onClick(tab, workspace, dispatch);
+
+            }
         }
+        
 
     };
 
@@ -457,8 +500,69 @@
     };
 
     let showMoveModal;
+
+    let showMultiselectActions;
+    $: {
+
+        // if (tab.groupId > -1 && isSelected && isInFocus) {
+        //     console.log('selected tab in focus');
+        //     console.log(showMultiselectActions);
+        //     console.log(multiSelectActions);
+        //     showMultiselectActions = true;
+        // } else {
+        //     console.log('lkdfald');
+        //     showMultiselectActions = false;
+        // }
+        
+    }
+    let multiSelectActions = [
+        actions.save,
+        actions.saveForLater,
+        actions.saveToFolder,
+    ];
+
+
+
+    /*
+        multi select option 
+        - save
+        - save for later
+        - save to folder
+        - closee
+
+    */
+
+    let showSaveModal;
+
+    const onLocaitonSelected = async ({ detail }) => {
+        const folder = detail.folder;
+        const children = await chrome.bookmarks.getChildren(folder.id);
+        let urlMap = {};
+        for (const child of children) {
+            urlMap[child.url] = child;
+        }
+
+        for (const tab of selectedTabs) {
+            if (urlMap[tab.url]) continue;
+
+            chrome.bookmarks.create({
+                title: tab.title,
+                url: tab.url,
+                parentId: folder.id
+            });
+        }
+    };
     
 </script>
+
+{#if showSaveModal}
+    <ModalContainer>
+        <LocationSelection 
+            on:back={() => showSaveModal  = false}
+            on:locationSelected={onLocaitonSelected}
+        />
+    </ModalContainer>
+{/if}
 
 {#if showMore}
     <ModalContainer on:exit={exitModal}>
@@ -485,6 +589,7 @@
                 on:exit={exitModal}
                 on:editBookmark={saveTab}
                 on:dataUpdated={onDataUpdated}
+                on:tabStashed
             />
         {/if}
     </ModalContainer>
@@ -503,7 +608,7 @@
     bind:this={el}
     class="tab{isSelected ? ' selected' : ''}{isInFocus
         ? ' focused'
-        : ''}{isDraggedOver ? ' dragged-over' : ''}{tab.active
+        : ''}{isDraggedOver ? ' dragged-over' : ''}{tab.active && !isSearchResult
         ? ' active'
         : ''}{group ? ' grouped' : ''}
         {isListItem ? ' list-item' : ''}
@@ -542,12 +647,13 @@
             {:else if favIconUrl && favIconUrl != ''}
                 <img class="favicon" src={favIconUrl} alt={tab.title ?? ''} />
             {/if}
-            {#if group && !workspace}
+            {#if (group || workspace) && isSearchResult}
                 <div
                     class="group-indicator"
-                    style="background-color: {colorMap[group.color]}"
+                    style="background-color: {colorMap[group?.color ?? workspace?.color ?? 'grey']}"
                 />
             {/if}
+            
         </div>
         <div 
             class="title" 
@@ -558,7 +664,7 @@
         </div>
         <div class="spacer" on:click={onTitleClicked} on:dblclick={onTitleDoubleClicked}/>
 
-        {#if !isSelected && !isDragged && isOpen}
+        {#if !isSelected && !isDragged && isOpen && !isSearchResult}
             <div class="actions">
 
                 {#if isPinned}
@@ -566,41 +672,46 @@
                         src={pinnedIcon}
                         class="icon"
                         alt="Pinned"
-                        on:mouseup={onPinTab}
+                        on:mousedown={onPinTab}
                     />
                 {/if}
 
                 {#if isSaved}
-                    <WorkspaceIcon
-                        icon={starIconFilled}
-                        color={null}
+                    <img
+                        src={starIconFilled}
                         on:mousedown={onStarIconClicked}
-                        size={16}
+                        class="icon"
+                        alt=""
                     />
                 {/if}
+
 
                 
                 {#if isInFocus && !isDragged}
 
-                    <div class="quick-actions" in:horizontalSlide={{delay: 500, duration: 200}}>
-
-                        {#each $quickActions as action}
-                            {#if (action.id == actions.pin.id && isPinned)}
-                            {:else if (action.id == actions.save.id && isSaved)}
-                            
-                            {:else if action}
-                            <img
-                                class="icon"
-                                src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
-                                alt={typeof action.title == 'string' ? action.title : action.title(tab)}
-                                on:mousedown={(e) => onActionButtonClicked(e, action)}
-                            />
-                            {/if}
-                        {/each}
+                    <div class="quick-actions" 
+                        in:horizontalSlide={{
+                            delay: showMultiselectActions ? 0 : 550, 
+                            duration: showMultiselectActions ? 0 : 200
+                        }}>
+                            {#each showMultiselectActions ? multiSelectActions : $quickActions as action}      
+                                {#if (action.id == actions.pin.id && isPinned)}
+                                {:else if (action.id == actions.save.id && isSaved)}
+                                
+                                {:else if action}
+                                <img
+                                    class="icon"
+                                    src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
+                                    alt={typeof action.title == 'string' ? action.title : action.title(tab)}
+                                    on:mousedown={(e) => onActionButtonClicked(e, action)}
+                                />
+                                {/if}
+                            {/each}
                     </div>
+
                     <img
                         src={menuIcon}
-                        class="icon"
+                        class="menu icon"
                         alt="Menu"
                         on:mousedown={onMenuOpen}
                     />
@@ -608,8 +719,9 @@
                         src={closeIcon}
                         class="icon"
                         alt="Close"
-                        on:mouseup={onCloseTab}
+                        on:mousedown={onCloseTab}
                     />
+
                     
                 {/if}
 
@@ -745,6 +857,11 @@
     .icon:hover {
         cursor: pointer;
         opacity: 1;
+    }
+
+    .menu.icon {
+        margin-right: -5px;
+        margin-left: -5px;
     }
 
     .drop-zone {

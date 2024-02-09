@@ -12,6 +12,10 @@
     import closeIcon from "../icons/close.png";
     import restoreIcon from "../icons/restore.png";
     import archiveIcon from "../icons/archive.png";
+    import moveFolderIcon from "../icons/move-to-folder.png";
+  import MenuDivider from "../components/MenuDivider.svelte";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
 
 
     export let group = null;
@@ -59,10 +63,6 @@
         }
     };
 
-    const openWorkspaceInNewWindow = () => {
-        dispatch('exit');
-        openWorkspace(workspace, {openInNewWindow: true});
-    };
 
     const closeWorkspace = () => {
         
@@ -121,14 +121,12 @@
             chrome.tabGroups.update(group.id, { title: workspace.title });
         }
 
-        if (!workspace.folderId) {
-            workspace.folderId = await tryToGetWorkspaceFolder(workspace);
+        if (workspace.folderId) {
+
+            chrome.bookmarks.update(workspace.folderId, {
+                title: workspace.title,
+            });
         }
-
-
-        chrome.bookmarks.update(workspace.folderId, {
-            title: workspace.title,
-        });
     
         dispatch('dataUpdated', {workspace, notify: true});
     }
@@ -141,8 +139,57 @@
 
     };
 
+    let showLocationSelection;
+    const onLocationSelected = ({ detail }) => {
+        
+        const folderId = detail.workspace?.folderId ?? detail.folder?.id;
+
+        if (!folderId) return;
+
+        chrome.bookmarks.move(workspace.folderId, {
+            parentId: folderId,
+            index: 0,
+        });
+
+
+        showLocationSelection = false;
+    };
+
+    const openWorkspaceInCurrentWindow = async () => {
+        workspace = await openWorkspace(workspace, {openInNewWindow: false});
+        dispatch('workspaceOpened', workspace);
+        dispatch('exit');
+    };
+
+    const openWorkspaceInNewWindow = async () => {
+        workspace = await openWorkspace(workspace, {openInNewWindow: true});
+
+        dispatch('workspaceOpened', workspace);
+        dispatch('exit');
+    };
+
+    const openDesktop = async () => {
+        const desktopUrl = await chrome.extension.getURL('desktop');
+        const existingTab = await chrome.tabs.query({ groupId: workspace.groupId })
+            .find((t) => t.url == desktopUrl);
+
+        if (existingTab) {
+            chrome.tabs.update(existingTab.id, { active: true });
+        } else {
+            
+        }
+    };
+
 </script>
 
+{#if showLocationSelection}
+<ModalContainer on:exit={() => showLocationSelection = false}>
+    <LocationSelection 
+        on:back={() => showLocationSelection = false}
+        on:locationSelected={onLocationSelected}
+    />
+</ModalContainer>
+{/if}
 
 {#if loaded}
 <div
@@ -175,16 +222,24 @@
         <MenuItem 
             title='Open'
             icon={openIcon}
-            onClick={() => openWorkspace(workspace, {openInNewWindow: false})} 
+            onClick={openWorkspaceInCurrentWindow} 
         />
         <MenuItem
             title='Open in New Window'
             icon={openInNewWindowIcon}
-            onClick={() => openWorkspace(workspace, {openInNewWindow: true})}
+            onClick={openWorkspaceInNewWindow}
         />
     {/if}
 
-       <!-- <div class="action" on:mousedown={showMoveMenu}>Add to Space</div> --> 
+       <!-- <div class="action" on:mousedown={showMoveMenu}>Move Folder</div> --> 
+
+    <MenuDivider/>
+
+    <MenuItem
+        title='Move Folder'
+        onClick={() => showLocationSelection = true}
+        icon={moveFolderIcon}
+    />
     {#if isOpen}
         <MenuItem 
             title='Move to New Window'

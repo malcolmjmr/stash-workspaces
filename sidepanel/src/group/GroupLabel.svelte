@@ -35,13 +35,16 @@
     let el;
 
     onMount(() => {
+
+        group = groups[groupId];
+        
         if (!group.title || group.title == '') {
             isEditingTitle = true;
             el?.scrollIntoView({
                 behavior: "smooth",
             });
         }
-        group = groups[groupId];
+        
 
         
     });

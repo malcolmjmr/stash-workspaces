@@ -36,6 +36,21 @@ export default [
             terser(),
         ]
     },
+    {
+        input: 'desktop/main.js',
+        output: {
+            file: 'desktop/bundle.js',
+            format: 'iife',
+            //format: 'cjs',
+            name: 'App',
+        },
+        plugins: [
+            svelte(),
+            css({ output: 'bundle.css' }),
+            resolve({ browser: true }),
+            terser(),
+        ]
+    },
 
 
 ];

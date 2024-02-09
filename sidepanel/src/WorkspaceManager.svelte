@@ -68,8 +68,10 @@
     }
 
     $: {
-        lastCreatedWorkspace;
-        setTimeout(() => updateWorkspaces(), 1000);
+        if (lastCreatedWorkspace) {
+            lastUpdatedGroup = {id: lastCreatedWorkspace?.groupId};
+            updateWorkspaces();
+        }
     }
 
 

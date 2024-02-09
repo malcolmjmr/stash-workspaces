@@ -22,6 +22,7 @@
     import { colorMap } from "../utilities/colors";
     import { StorePaths } from "../utilities/storepaths";
     import { getContext, get, tryToGetBookmark, openWorkspace, saveContext} from "../utilities/chrome";
+    import { closeAllTabs } from "./helpers";
 
 
     import {
@@ -55,6 +56,8 @@
   import BasicBookmarks from "./BasicBookmarks.svelte";
   import PremiumBookmarks from "./PremiumBookmarks.svelte";
   import SearchResults from "../search/SearchResults.svelte";
+  import { fade } from "svelte/transition";
+  import { allResources } from "../stores";
 
     
 
@@ -71,7 +74,7 @@
     export let isOpen = false;
     export let groups;
     export let workspaces;
-    export let allResources = null;
+    //export let allResources = null;
 
     export let workspace = null;
 
@@ -138,10 +141,6 @@
     const init = async () => {
 
         //tabs = tabs.filter((t) => t.groupId == group.id);
-        console.log('initializing workspace');
-        console.log(group);
-        console.log(workspace);
-        if (!group) isOpen = false;
         if (group?.workspaceId) {
             await loadWorkspace();
         } else if (workspace) {
@@ -339,7 +338,9 @@
     const onTabDataUpdated = ({detail}) => {
         const data = detail;
         if (data.resource) {
-            allResources[data.resource.url] = data.resource;
+            let resources = $allResources;
+            resources[data.resource.url] = data.resource;
+            allResources.set(resources);
             updateVisibleTabs();
         }
         lastBookmarkUpdate = Date.now();
@@ -380,12 +381,6 @@
         }
     };
 
-    const closeAllTabs = async () => {
-        const tabs = await chrome.tabs.query({ groupId: workspace.groupId });
-        const newTab = await chrome.tabs.create({});
-        await chrome.tabs.group({ tabIds: newTab.id, groupId: workspace.groupId });
-        await chrome.tabs.remove(tabs.map((t) => t.id));
-    };
 </script>
 
 {#if previewWorkspace}
@@ -403,7 +398,7 @@
 {/if}
 
 {#if loaded}
-    <div class="workspace">
+    <div class="workspace" in:fade>
         <div class="header" >
             <div class="top">
                 <BackButton onClick={onBackButtonClicked}/>
@@ -467,7 +462,7 @@
                     <div class="title">Tabs</div>
                     <div class="actions">
                         <div class="actions">
-                            <img class="action icon button" src={closeAllIcon} alt="" on:mousedown={closeAllTabs}/>
+                            <img class="action icon button" src={closeAllIcon} alt="" on:mousedown={() => closeAllTabs(workspace)}/>
                         </div>
                     </div>
                     <div class="spacer"></div>
@@ -527,6 +522,7 @@
                             {searchText} 
                             {workspace}
                             {lastBookmarkUpdate}
+                            on:bookmarkDeleted
                             on:bookmarkCount={onReceiveBookmarkCount}
                             on:dataUpdated 
                         />

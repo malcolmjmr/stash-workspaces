@@ -207,9 +207,11 @@
                         tabs={tabs.filter((t) => t.groupId == tab.groupId)}
                         bind:selectedTabs
                         {workspacesLoaded}
+                        {lastSelectionUpdate}
                         on:updateSelection
                         on:shiftClickTab
                         on:showWorkspaceView
+                        on:dataUpdated
                     />
                 {/key}
                 {/if}

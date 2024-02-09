@@ -18,12 +18,14 @@
     import { getWorkspaceData } from "./workspaceData";
     import { createEventDispatcher, onMount } from "svelte";
     import WorkspaceFolder from "../components/WorkspaceIcon.svelte";
-  import { openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
+  import { getWorkspaceQueueFolder, hiddenFolderTitles, openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
   import ModalContainer from "../components/ModalContainer.svelte";
   import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
     import WorkspacePreview from "./WorkspacePreview.svelte";
     import BasicBookmarks from "./BasicBookmarks.svelte";
     import BookmarkTree from "./BookmarkTree.svelte";
+  import { colorMap } from "../utilities/colors";
+  import Bookmark from "../components/Bookmark.svelte";
 
   let dispatch = createEventDispatcher();
 
@@ -43,7 +45,7 @@
         folders: 'Folders',
         tabs: 'Tabs',
         saved: 'Recent',
-        temporary: 'To Visit',
+        toVisit: 'To Visit',
         bookmarks: 'Bookmarks',
     };
 
@@ -89,6 +91,7 @@
             bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
             bookmarkCount = 0;
             const incrementBookmarkCount = (node) => {
+                if (!node.url && hiddenFolderTitles.includes(node.title)) return;
                 bookmarkCount += 1;
                 for (const child of node.children ?? []) {
                     incrementBookmarkCount(child);
@@ -102,9 +105,23 @@
                     sections.push({
                         name: SectionNames.bookmarks,
                     });
-                }
+                }  
+                if (!visibleSection) visibleSection = SectionNames.bookmarks;
+            }
+        }
+
+        const queueFolder = await getWorkspaceQueueFolder(workspace);
+            
+        if (queueFolder) {
+            queue = await chrome.bookmarks.getChildren(queueFolder.id);
+            if (queue.length > 0) {
+                sections.push({
+                    name: SectionNames.toVisit
+                });
             }
             
+        } else {
+            queue = []
         }
 
         updateVisibleItems(visibleSection);
@@ -169,26 +186,44 @@
 
 
 
-    const onOpenWorkspaceClicked = () => {
+    const onOpenWorkspaceClicked = async () => {
+        workspace = await openWorkspace(workspace, {openInNewWindow: false});
+        dispatch('workspaceOpened', workspace);
         dispatch('exit');
-        openWorkspace(workspace, {openInNewWindow: false})
     }
 
 
 
-    
+    const onTemporaryBookmarkClicked = async ({ detail }) => {
+        const bookmark = detail;
+
+        chrome.bookmarks.remove(bookmark.id);
+        queue = queue.filter((b) => b.id != bookmark.id);
+        if (queue.length == 0) {
+            chrome.bookmarks.remove((await getWorkspaceQueueFolder(workspace)).id);
+            sections = sections.filter((s) => s.name != SectionNames.toVisit);
+            visibleSection = SectionNames.tabs;
+        }
+
+        const tab = await chrome.tabs.create({
+            url: bookmark.url
+        });
+
+        //chrome.tabs.group({ tabIds: tab.id, groupId: workspace.groupId });
+        
+    }
 
 </script>
 
 {#if showMenu}
     <ModalContainer on:exit={() => showMenu = false}>
-        <WorkspaceMenu bind:workspace {isOpen} on:dataUpdated on:exit={() => showMenu = false}/>
+        <WorkspaceMenu bind:workspace {isOpen} on:dataUpdated on:exit={() => showMenu = false} on:workspaceOpened/>
     </ModalContainer>
 {/if}
 
 {#if openedSubWorkspace}
     <ModalContainer on:exit={() => openedSubWorkspace = null}>
-        <WorkspacePreview workspace={openedSubWorkspace} isOpen={false}/>
+        <WorkspacePreview workspace={openedSubWorkspace} isOpen={false} on:workspaceOpened/>
     </ModalContainer>
 {/if}
 
@@ -209,54 +244,69 @@
         />
     </div>
 
-    {#if sections.length > 1 ||  sections[0]?.name != SectionNames.tabs}
-        <div class="section-options">
-            
-            <div class="container">
-                <div class="padding"></div>
-                {#each sections as section (section.name)}
-                    <div class="section-option{visibleSection == section.name ? ' selected': ''}" 
-                        on:mousedown={() => updateVisibleItems(section.name)}
-                    >
-                        {section.name}
-                    </div>
-                {/each}
+    {#if visibleSection}
+        {#if sections.length > 1 ||  sections[0]?.name != SectionNames.tabs}
+            <div class="section-options">
+                
+                <div class="container">
+                    <div class="padding"></div>
+                    {#each sections as section (section.name)}
+                        <div 
+                            class="section-option{visibleSection == section.name ? ' selected': ''}" 
+                            on:mousedown={() => updateVisibleItems(section.name)}
+                        >
+                            {section.name}
+                        </div>
+                    {/each}
+                </div>
+                
             </div>
-            
+        {/if}
+
+        
+        <div class="section-items">
+            <div class="container">
+                {#if user} 
+                {#each visibleItems as item (item.id)}
+                    {#if visibleSection != SectionNames.folders}
+                        <Tab tab={item} isOpen={false} isListItem={true}/>
+                    {:else}
+                        <WorkspaceListItem 
+                            {user}
+                            {db}
+                            workspace={item} 
+                            isOpen={false} 
+                            onClick={openSubWorkspace}
+                        />
+                    {/if}
+                {/each}
+                {:else}
+                    {#if visibleSection == SectionNames.tabs}
+                    {#each visibleItems as tab (tab.id)}
+                        <Tab {tab} isOpen={false} isListItem={true} canSelect={false} canDrag={false}/>
+                    {/each}
+                    {:else if visibleSection == SectionNames.bookmarks}
+                        <div class="bookmarks-container">
+                            <BookmarkTree {workspace} {bookmarkTree}/>
+                        </div>
+                    {:else if visibleSection == SectionNames.toVisit}
+                        <div class="bookmarks-container">
+                            {#each queue as bookmark}
+                                <Bookmark 
+                                    {workspace} 
+                                    {bookmark} 
+                                    isListItem={true} 
+                                    isTemporary={true}
+                                    on:bookmarkClicked={onTemporaryBookmarkClicked}
+                                />
+                            {/each}
+                        </div> 
+                        
+                    {/if}
+                {/if}
+            </div>
         </div>
     {/if}
-
-    
-    <div class="section-items">
-        <div class="container">
-            {#if user} 
-            {#each visibleItems as item (item.id)}
-                {#if visibleSection != SectionNames.folders}
-                    <Tab tab={item} isOpen={false} isListItem={true}/>
-                {:else}
-                    <WorkspaceListItem 
-                        {user}
-                        {db}
-                        workspace={item} 
-                        isOpen={false} 
-                        onClick={openSubWorkspace}
-                    />
-                {/if}
-            {/each}
-            {:else}
-                {#if visibleSection == SectionNames.tabs}
-                {#each visibleItems as tab (tab.id)}
-                    <Tab {tab} isOpen={false} isListItem={true}/>
-                {/each}
-                {:else if visibleSection == SectionNames.bookmarks}
-                    <div class="bookmarks-container">
-                        <BookmarkTree {workspace} {bookmarkTree}/>
-                    </div>
-                    
-                {/if}
-            {/if}
-        </div>
-    </div>
    
 
 
@@ -306,9 +356,9 @@
     }
 
     .icon-button {
-        height: 20px;
-        width: 20px;
-        margin: 0px 0px 5px 5px;
+        height: 18px;
+        width: 18px;
+        margin: 0px 0px 5px 0px;
         filter: invert(1);
     }
 

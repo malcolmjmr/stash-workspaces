@@ -23,9 +23,6 @@
         dispatch('domainSelected', domain);
     };
 
-    const onClick = () => {
-        dispatch('click', domain);
-    };
 
 </script>
 
@@ -34,7 +31,7 @@
     class="domain-icon" 
     style="height: {size}px; width: {size}px;" 
     on:mouseenter={onHover}
-    on:mousedown={onClick}
+    on:mousedown
 >
     {#if loaded}
         <img src={favIconUrl} alt={domain.url} /> 

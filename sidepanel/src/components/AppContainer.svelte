@@ -20,7 +20,7 @@
     let isScrolling;
     let scrollListener;
     const addEventListeners = () => {
-        scrollListener = body.addEventListener("scroll", (e) => {
+        scrollListener = body?.addEventListener("scroll", (e) => {
             if (!isScrolling) {
                 isScrolling = true;
             }

@@ -12,7 +12,8 @@
   import { userData } from "../stores";
   import Bookmark from "../components/Bookmark.svelte";
   import FolderListItem from "../components/FolderListItem.svelte";
-  import { createContext, openWorkspace, saveContext, tryToGetTabGroup } from "../utilities/chrome";
+  import { createContext, getExtensionFolder, hiddenFolderTitles, openWorkspace, requestBookmarkPermssion, saveContext, tryToGetTabGroup } from "../utilities/chrome";
+  import MenuDivider from "../components/MenuDivider.svelte";
 
 
     export let selectedTabs = [];
@@ -36,8 +37,17 @@
         updateSearchResults();
     }
 
+    let hasBookmarkPermission;
+
     onMount(() => {
-        getFolders();
+
+        try {
+            getFolders();
+            hasBookmarkPermission = true;
+        } catch (e) {
+            hasBookmarkPermission = false;
+        }
+       
         getUngroupedTabs();
     });
 
@@ -48,16 +58,22 @@
     let visibleSpaces = [];
    
     const getFolders = async () => {
-       
+
+        const extensionFolder = await getExtensionFolder();
         let workspaceFolderIds = workspaces.map((s) => s.folderId);
-        let workspaceFoldderTitles = workspaces.map((s) => s.title);
+        let workspaceFolderTitles = workspaces.map((s) => s.title);
         folders = (await chrome.bookmarks.search({ url: null }))
             .filter((folder) => {
                 return (!folder.url 
                     && !workspaceFolderIds.includes(folder.id)
-                    && !workspaceFoldderTitles.includes(folder.title)
+                    && !workspaceFolderTitles.includes(folder.title)
+                    && !hiddenFolderTitles.includes(folder.title)
+                    && extensionFolder.id != folder.id
+                    && !workspaceFolderIds.includes(folder.parentId)
                 );
             });
+
+
         workspaces = workspaces.filter((w) => w?.id != workspace?.id);
         folders.sort((a, b) => b.dateGroupModified - a.dateGroupModified);
         updateSearchResults();
@@ -210,11 +226,12 @@
                 title: folder.title,
                 folderId: folder.id,
                 created: folder.dateAdded,
+                importedFolder: true,
                 updated: Date.now(), 
                 color: 'grey',
             });
 
-            openWorkspace(newWorkspace, { openInNewWindow: false });
+            await openWorkspace(newWorkspace, { openInNewWindow: false });
         }
         exitModal();
     };
@@ -234,7 +251,7 @@
                 await chrome.windows.update(firstTab.windowId, { focused: true });
                 view = Views.tabs;
             } else {
-                openWorkspace(selectedWorkspace, { openInNewWindow: false });
+                await openWorkspace(selectedWorkspace, { openInNewWindow: false });
             }
         }
 
@@ -263,6 +280,13 @@
         exitModal();
 
     };
+
+    const getBookmarkPermission = async () => {
+        const granted = await requestBookmarkPermssion();
+        if (granted) {
+            getFolders();
+        }
+    };
 </script>
 
 
@@ -275,7 +299,11 @@
                     bind:value={searchText}
                     on:blur={onTitleInputBlur}
                     on:keydown={onKeyDown}
-                    placeholder={placeholder}
+                    placeholder={
+                        visibleSpaces.length > 0 || showFolders || !hasBookmarkPermission 
+                        ? placeholder
+                        : 'Create new tab group...'
+                    }
                     autofocus="true"
                 />
                 <!--
@@ -287,6 +315,8 @@
                 -->
             </div>
         </div>
+
+
         
     
         <!--
@@ -305,20 +335,26 @@
 
         -->
             
-        
+
+
+            {#if visibleSpaces.length > 0 || showFolders || !hasBookmarkPermission || (searchText.length == 0 && ungroupedTabs.length > 0)}
+            <MenuDivider/>
             <div class="results">
+                {#if searchText.length == 0 && ungroupedTabs.length > 0}
+                
+                    <div class="create-space" on:mousedown={createNewGroup}> 
+                        <img src={createFolderIcon} alt="Create Space"/>
+                        <span>Group {ungroupedTabs.length} loose tab{ungroupedTabs.length > 1 ? 's' : '' }</span>
+                    </div>
+                {/if}
+
                 {#if searchText.length > 1}
                     <div class="create-space" on:mousedown={onCreateSpace}> 
                         <img src={createFolderIcon} alt="Create Space"/>
                         <span>Create {searchText.length > 0 ? '"'+searchText+'"' : ''}</span>
                     </div>
                 {/if}
-                {#if searchText.length == 0 && ungroupedTabs.length > 0}
-                    <div class="create-space" on:mousedown={createNewGroup}> 
-                        <img src={createFolderIcon} alt="Create Space"/>
-                        <span>Group {ungroupedTabs.length} loose tab{ungroupedTabs.length > 1 ? 's' : '' }</span>
-                    </div>
-                {/if}
+
                 {#if visibleSpaces.length > 0}
                     <div class="spaces section"> 
                         <div class="header">
@@ -360,8 +396,16 @@
                         </div>
                     </div>
                 {/if}
+
+                {#if hasBookmarkPermission  == false}
+                    <div class="bookmark-permission" on:mousedown={getBookmarkPermission}>
+                        Add bookmark permission to open existing bookmark folders as spaces
+                    </div>
+                {/if}
                 
             </div>
+            {/if}
+
 
         
     </div>
@@ -373,12 +417,11 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        height: 300px;
+        max-height: 500px;
     }
 
     .search-container {
         padding: 5px;
-        border-bottom: 1px solid #444444;
     }
 
     .search {
@@ -412,11 +455,13 @@
         overflow: scroll;
     }
 
+
+
     .results {
         display: flex;
         flex-direction: column;
         overflow-y: scroll;
-        padding: 0px 10px 0px 10px;
+        padding: 0px 10px 10px 10px;
     }
 
     .section .header {
@@ -439,7 +484,7 @@
     }
 
     .create-space {
-        padding: 3px;
+        padding: 5px 8px;
         min-height: 25px;
         border-radius: 8px;
         background-color: #333333;
@@ -454,7 +499,7 @@
         filter: invert(1);
         height: 20px;
         width: 20px;
-        padding: 0px 5px;
+        margin-right: 5px;
     }
 
     .create-space:hover {
@@ -503,6 +548,17 @@
     }
 
 
+    .bookmark-permission {
+        padding: 5px;
+        font-size: 16px;
+        opacity: 0.6;
+        letter-spacing: 1px;
+        text-align: center;
+    }
 
+    .bookmark-permission:hover {
+        cursor: pointer;
+        opacity: 1;
+    }
 
 </style>

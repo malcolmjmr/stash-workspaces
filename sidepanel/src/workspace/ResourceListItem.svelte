@@ -152,7 +152,7 @@
 
 {#if showMore}
     <ModalContainer on:exit={() => showMore = false}>
-        <BookmarkDetails {db} {workspace} {resource} isNativeBookmark={!user}/>
+        <BookmarkDetails {user} {db} {workspace} {resource} isNativeBookmark={!user}/>
     </ModalContainer>
 {/if}
 {#if loaded}

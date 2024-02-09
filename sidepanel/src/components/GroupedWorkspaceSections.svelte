@@ -111,7 +111,7 @@
                         bind:workspace={section.spaces[j]} 
                         on:permenantlyDeleteWorkspace 
                         on:dataUpdated
-                    
+                        on:workspaceOpened
                     />
                     {#if j < section.spaces.length - 1}
                         <div class="divider"/>

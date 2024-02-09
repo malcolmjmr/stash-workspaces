@@ -8,6 +8,13 @@
     import closeIcon from "../icons/close.png";
     import fullScreenIcon from "../icons/expand-content.png";
 
+    import closeAllIcon from "../icons/close-all.png";
+    import moveToFolderIcon from "../icons/move-to-folder.png";
+    import folderCreateIcon from "../icons/new-folder.png";
+    import queueIcon from "../icons/move-to-inbox.png";
+    import selectIcon from "../icons/checked-box.png";
+    import unselectIcon from "../icons/remove-selection.png";
+
     //import tabsIcon from "../icons/tabG"
     
     export let db = null;
@@ -16,6 +23,7 @@
     export let groupId;
     export let groups;
     export let workspacesLoaded;
+    export let lastSelectionUpdate;
     export let selectedTabs = [];
 
     let workspace;
@@ -25,7 +33,7 @@
     import { getWorkspaceData } from "./workspaceData";
     import { createEventDispatcher, onDestroy, onMount } from "svelte";
     import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
-    import { getContext, openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
+    import { findExistingContextForGroup, getContext, getContextFromGroupId, getWorkspaceQueueFolder, openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
     import ModalContainer from "../components/ModalContainer.svelte";
     import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
     import WorkspacePreview from "./WorkspacePreview.svelte";
@@ -33,12 +41,16 @@
     import BookmarkTree from "./BookmarkTree.svelte";
     import GroupLabel from "../group/GroupLabel.svelte";
     import { colorMap } from "../utilities/colors";
-    import { _authLoaded, _groups, _openWorkspaces, _tabs, _workspacesLoaded } from "../stores";
+    import { _authLoaded, _groups, _openWorkspaces, _tabs, _workspacesLoaded, allResources } from "../stores";
     import { slide } from "svelte/transition";
     import NewFolderModal from "./NewFolderModal.svelte";
-    import folderCreateIcon from "../icons/create-folder.png";
+    import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
+  import CircleDivider from "../components/CircleDivider.svelte";
+  import Bookmark from "../components/Bookmark.svelte";
 
     let dispatch = createEventDispatcher();
+
+    let inputElement;
 
 
     /*
@@ -164,7 +176,14 @@
         if (hasInputedText) setTitle();
     };
 
-    const setTitle = () => {
+    const setTitle = async () => {
+        if (!workspace) {
+            workspace = await getContextFromGroupId(group.id);
+            console.log('setting title for workspace');
+            console.log(workspace);
+            workspace.title = group.title;
+            dispatch('dataUpdated', { workspace });
+        }
         chrome.tabGroups.update(group.id, { title: group.title });
         isEditingTitle = false;
     };
@@ -267,22 +286,34 @@
 
     const getWorkspace = async () => {
         group = groups[groupId];
+        checkIfGroupTitleNeedsEditing();
+        const workspaceId = groups[groupId]?.workspaceId;
+        if (workspaceId) {
+            workspace = await getContext(workspaceId);
+        } else {
+
+            setTimeout(async () => {
+                workspace = await getContextFromGroupId(group.id);
+                groups[groupId].workspaceId = workspace.id;
+                _groups.set(groups);
+                checkIfGroupTitleNeedsEditing();
+            }, 1000);
+
+            
+        }
+        
+    }
+
+    const checkIfGroupTitleNeedsEditing = () => {
         if (!group.title || group.title == '') {
             isEditingTitle = true;
             el?.scrollIntoView({
                 behavior: "smooth",
             });
-        }
-        const workspaceId = groups[groupId]?.workspaceId;
-        if (workspaceId) {
-            workspace = await getContext(workspaceId);
-            
-
+            inputElement?.focus();
         } else {
-            console.log('need to find workspace');
-            workspace = {};
+            isEditingTitle = false;
         }
-        
     }
 
     let cachedData;
@@ -292,7 +323,7 @@
         await getWorkspace();
 
         if (getCache) {
-            cachedData = $_openWorkspaces[workspace.id];
+            cachedData = $_openWorkspaces[workspace?.id];
             sections = cachedData?.sections ?? [];
         } else {
             cachedData = null;
@@ -300,6 +331,7 @@
         }
         
         fetchData();
+
         
     };
 
@@ -326,12 +358,13 @@
         if (cachedData) {
             bookmarkCount = cachedData.bookmarkCount;
             bookmarkTree = cachedData.bookmarkTree;
+            queue = cachedData.queue ?? [];
             visibleSection = cachedData.visibleSelection ?? SectionNames.tabs;
             
         } else {
             cachedData = {};
             sections = [];
-            if(workspace.tabs && workspace.tabs.length > 0) {
+            if(workspace.tabs && workspace.tabs?.length > 0) {
                 sections.push({
                     name: SectionNames.tabs,
                     //icon: tabsIcon, 
@@ -339,14 +372,36 @@
                 if (!visibleSection) visibleSection = SectionNames.tabs;
             }
 
-            await refreshLocalBookmarks();
+            try {
+                await refreshLocalBookmarks();
+            } catch (e) {
+
+            }
+
+            
 
             if (bookmarkCount > 0) {
                 sections.push({
                     name: SectionNames.bookmarks,
                 });
             }
+
+            const queueFolder = await getWorkspaceQueueFolder(workspace);
+            
+            if (queueFolder) {
+                queue = await chrome.bookmarks.getChildren(queueFolder.id);
+                if (queue.length > 0) {
+                    sections.push({
+                        name: SectionNames.toVisit
+                    });
+                } 
+            } else {
+                queue = []
+            }
+
+
             sections = sections;
+            cachedData.queue = queue;
             cachedData.bookmarkCount = bookmarkCount;
             cachedData.bookmarkTree = bookmarkTree;
             cachedData.sections = sections;
@@ -375,7 +430,7 @@
             cachedData.queue = queue;
             folders = data.workspaces;
             cachedData.folders = folders;
-            if(workspace.tabs && workspace.tabs.length > 0) {
+            if(workspace.tabs && workspace.tabs?.length > 0) {
                 sections.push({
                     name: SectionNames.tabs,
                     //icon: tabsIcon, 
@@ -462,7 +517,9 @@
     const onTabDataUpdated = ({detail}) => {
         const data = detail;
         if (data.resource) {
-            allResources[data.resource.url] = data.resource;
+            let resources = $allResources;
+            resources[data.resource.url] = data.resource;
+            allResources.set(resources);
             updateVisibleTabs();
             // see if resource is 
         }
@@ -477,21 +534,25 @@
         const oldBookamrkCount = bookmarkCount;
         bookmarkCount = detail;
 
-        console.log('received bookmark count');
-        console.log(oldBookamrkCount);
-        console.log(bookmarkCount);
         updateSectionsFromBookmarkUpdate(oldBookamrkCount);
         
     };
 
     const checkBookmarkCounts = async ({ detail }) => {
-        console.log('bookmark updated from tab');
+
         if (user) {
 
         } else {
             const oldBookamrkCount = bookmarkCount;
-            await refreshLocalBookmarks();
-            updateSectionsFromBookmarkUpdate(oldBookamrkCount);
+            
+            try {
+                await refreshLocalBookmarks();
+                updateSectionsFromBookmarkUpdate(oldBookamrkCount);
+            } catch (e) {
+                
+            }
+
+            
         }
         
     };
@@ -554,13 +615,151 @@
         showNewFolderModal = false;
     };
 
-    
+    let showMultiSelectionHeader;
+
+    $: {
+        showMultiSelectionHeader = selectedTabs.some((t) => t.groupId == workspace?.groupId);
+    };
+
+
+    const selectAllTabs = () => {
+        if (selectedTabs == tabs) {
+            selectedTabs = [];
+        } else {
+            selectedTabs = tabs;
+        }
+    };
+
+    const closeSelectedTabs = async () => {
+
+
+        let tabsToClose = [];
+        let pinnedTabs = [];
+        for (const tab of selectedTabs.filter((t) => t.groupId == workspace.groupId)) {
+            if (workspace.pinnedTabs?.find((t) => t.url == tab.url || t.id == tab.id)) {
+                pinnedTabs.push(tab);
+            } else {
+                tabsToClose.push(tab);
+            }
+        }
+
+        if (pinnedTabs.length == 0) {
+            const newTab = await chrome.tabs.create({});
+            await chrome.tabs.group({ tabIds: newTab.id, groupId: workspace.groupId });
+        }
+        
+        await chrome.tabs.remove(tabsToClose.map((t) => t.id));
+        selectedTabs = [];
+    };
+
+    const stashAllTabs = async () => {
+        const queueFolder = await getWorkspaceQueueFolder(workspace, true);
+        const tabsToRemove = await saveSelectedTabsToFolder(queueFolder);
+        chrome.tabs.remove(tabsToRemove.map((t) => t.id));
+        queue = await chrome.bookmarks.getChildren(queueFolder.id);
+        if (queue.length > 0 && !sections.find((s) => s.name == SectionNames.toVisit)) {
+            sections = [...sections, { name: SectionNames.toVisit}];
+        }
+        selectedTabs = [];
+    };
+
+    const saveSelectedTabsToFolder = async (folder) => {
+        
+        const children = await chrome.bookmarks.getChildren(folder.id);
+        
+        const tabsToSave = selectedTabs.filter((t) => t.groupId == workspace.groupId);
+        for (const tab of tabsToSave) {
+            const existingBookmark = children.find((t) => tab.url == t.url);
+            if (existingBookmark) {
+                await chrome.bookmarks.update(existingBookmark.id, {
+                    index: 0,
+                });
+            } else {
+                await chrome.bookmarks.create({
+                    parentId: folder.id,
+                    index: 0,
+                    url: tab.url,
+                    title: tab.title,
+                });
+            }
+
+        }
+
+        return tabsToSave;
+    }
+
+    let showSaveModal;
+    const saveAllToFolder = () => {
+        showSaveModal = true;
+    };
+
+    const onLocationSelected = async ({ detail }) => {
+        const folder = detail.folder;
+        console.log('folder selected');
+        console.log(folder);
+        console.log(detail);
+        const tabsToRemove = await saveSelectedTabsToFolder(folder);
+
+        chrome.tabs.remove(tabsToRemove.map((t) => t.id));
+        showSaveModal = false;
+        selectedTabs = [];
+    };
+
+    const onBookmarkDeleted = async ({ detail }) => {
+        const url = detail;
+        if (!url) return;
+
+        let tabToUpdate = tabs.find((t) => t.url == url);
+        if (tabToUpdate) {
+            dispatch('dataUpdated', tabToUpdated);
+        }
+    };
+
+    const onTabStashed = async () => {
+        console.log('tab stashed!');
+        const queueFolder = await getWorkspaceQueueFolder(workspace);
+        queue = await chrome.bookmarks.getChildren(queueFolder.id);
+        if (queue.length > 0 && !sections.find((s) => s.name == SectionNames.toVisit)) {
+            sections = [...sections, { name: SectionNames.toVisit}];
+        }
+    };
+
+    const onTemporaryBookmarkClicked = async ({ detail }) => {
+        const bookmark = detail;
+
+        chrome.bookmarks.remove(bookmark.id);
+        queue = queue.filter((b) => b.id != bookmark.id);
+        if (queue.length == 0) {
+            chrome.bookmarks.remove((await getWorkspaceQueueFolder(workspace)).id);
+            sections = sections.filter((s) => s.name != SectionNames.toVisit);
+            visibleSection = SectionNames.tabs;
+            cachedData.visibleSection = visibleSection;
+        }
+        cachedData.queue = queue;
+        updateStoredData();
+        const tab = await chrome.tabs.create({
+            url: bookmark.url
+        });
+
+        chrome.tabs.group({ tabIds: tab.id, groupId: workspace.groupId });
+        
+    }
 
 </script>
 
 {#if showNewFolderModal}
     <ModalContainer on:exit={() => showNewFolderModal = false}>
         <NewFolderModal {workspace} on:bookmarkFolderCreated={onBookmarkFolderCreated} />
+    </ModalContainer>
+{/if}
+
+{#if showSaveModal}
+    <ModalContainer on:exit={() => showSaveModal = false}>
+        <LocationSelection 
+            {workspace} 
+            on:back={() => showSaveModal = false} 
+            on:locationSelected={onLocationSelected}
+        />
     </ModalContainer>
 {/if}
 
@@ -582,6 +781,38 @@
 
 >
 
+    {#if showMultiSelectionHeader}
+    <div class="selection header">
+
+            <img 
+                class="icon-button" 
+                src={selectedTabs == tabs ? unselectIcon : selectIcon} 
+                on:mousedown={selectAllTabs} 
+                alt="Select All"
+            />
+
+            <CircleDivider />
+            <img 
+                class="icon-button action" 
+                src={closeAllIcon} 
+                on:mousedown={closeSelectedTabs} 
+                alt="Close All"
+            />
+            <img 
+                class="icon-button action"
+                src={queueIcon} 
+                on:mousedown={stashAllTabs} 
+                alt="Move to Queue"
+            />
+            <img 
+                class="icon-button action" 
+                src={moveToFolderIcon} 
+                on:mousedown={saveAllToFolder} 
+                alt="Move to Folder" 
+
+            />
+    </div>
+    {:else }
     <div class="header"
         on:mouseenter={onMouseEnter}
         on:mouseleave={onMouseLeave}
@@ -603,7 +834,7 @@
                 bind:value={group.title}
                 on:blur={onTitleInputBlur}
                 on:keydown={onInput}
-                autofocus="true"
+                bind:this={inputElement}
             />
         {:else}
             <div class="title"on:mousedown={toggleCollapse} >
@@ -636,6 +867,7 @@
 
         
     </div>
+    {/if}
 
     {#if !group.collapsed}
         <div class="divider"></div>
@@ -645,7 +877,9 @@
                 <div class="container">
                     <div class="padding"></div>
                     {#each sections as section (section.name)}
-                        <div class="section-option{visibleSection == section.name ? ' selected': ''}" 
+                        <div 
+                            class="section-option{visibleSection == section.name ? ' selected': ''}"  
+                            
                             on:mousedown={() => updateVisibleItems(section.name)}
                         >
                             {section.name}
@@ -669,6 +903,7 @@
                             tab={item} 
                             isOpen={visibleSection == SectionNames.tabs} 
                             isListItem={true}
+                            {lastSelectionUpdate}
                             bind:selectedTabs
                             {workspace}
                             on:clicked={visibleSection != SectionNames.tabs ? onClosedResourceClicked(item) : null}
@@ -677,6 +912,7 @@
                             on:bookmarkDeleted={checkBookmarkCounts}
                             on:bookmarkCreated={checkBookmarkCounts}
                             on:shiftClickTab
+                            on:tabStashed={onTabStashed}
                         />
                     {:else}
                         <WorkspaceListItem 
@@ -697,13 +933,15 @@
                             {tab} 
                             isOpen={true} 
                             isListItem={true} 
+                            {lastSelectionUpdate}
                             bind:selectedTabs
                             {workspace}
                             on:dataUpdated={onTabDataUpdated}
                             on:updateSelection
-                            on:bookmarkDeleted={checkBookmarkCounts}
+                            on:bookmarkDeleted={onBookmarkDeleted}
                             on:bookmarkCreated={checkBookmarkCounts}
                             on:shiftClickTab
+                            on:tabStashed={onTabStashed}
                             
                         />
                     {/each}
@@ -720,11 +958,22 @@
                                 {bookmarkCount}
                                 on:bookmarkCount={onReceiveBookmarkCount}
                                 on:dataUpdated
-                                on:bookmarkDeleted={checkBookmarkCounts}
+                                on:bookmarkDeleted={onBookmarkDeleted}
                             />
                             {/key}
                         </div>
-                        
+                    {:else if visibleSection == SectionNames.toVisit}
+                        <div class="bookmarks-container">
+                            {#each queue as bookmark (bookmark.id)}
+                                <Bookmark 
+                                    {workspace} 
+                                    {bookmark} 
+                                    isListItem={true} 
+                                    isTemporary={true}
+                                    on:bookmarkClicked={onTemporaryBookmarkClicked}
+                                />
+                            {/each}
+                        </div> 
                     {/if}
                 {/if}
             </div>
@@ -805,6 +1054,29 @@
         font-size: 16px;
     }
 
+    .selection.header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: start;
+        padding: 5px;
+    }
+
+    .selection.header .icon-button {
+        margin: 3px;
+    }
+
+    .selection.header .icon-button.action {
+        margin-right: 15px;
+        margin-left: 5px;
+        opacity: 0.8;
+    }
+
+    .selection.header .icon-button.action:hover {
+        cursor: pointer;
+        opacity: 1;
+    }
+
     .icon-button {
         height: 20px;
         width: 20px;
@@ -814,6 +1086,7 @@
 
     .icon-button:hover {
         cursor: pointer;
+        opacity: 1;
     }
 
     .actions {
@@ -839,7 +1112,7 @@
 
     
     .section-options {
-        padding: 8px 0px;
+        padding: 6px 0px;
         border-bottom: 1px solid #444444;
     }
 
@@ -858,8 +1131,8 @@
 
     .section-option {
         font-size: 14px;
-        font-weight: 400;
-        padding: 3px 5px;
+        font-weight: 300;
+        padding: 2px 5px;
         border-radius: 8px;
         background-color: #444;
         margin-right: 8px;
@@ -872,8 +1145,9 @@
     }
 
     .section-option.selected {
-        background-color: #555555;
+        font-weight: 400;
         opacity: 1;
+        background-color: #555555;
     }
 
     .section-items {
@@ -918,10 +1192,10 @@
     }
 
     .create-folder img {
-        height: 25px;
-        width: 25px;
+        height: 22px;
+        width: 22px;
         filter: invert(1);
-        margin-right: 5px;
+        margin-right: 3px;
     }
 
 </style>

@@ -7,7 +7,10 @@
         set, 
         tryToGetBookmark, 
         tryToGetTab,
-        findExistingContextForGroup
+        findExistingContextForGroup,
+
+        saveContext
+
      } from "./utilities/chrome.js";
     import { Views } from "./view.js";
     import { _activeTab, _groups, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
@@ -21,6 +24,7 @@
     export let groups = {};
     export let windows = [];
     export let activeTab;
+    export let workspaces;
     
 
 
@@ -87,10 +91,10 @@
         let groupMap = await get('openGroups');
         
         let needToUpdateOpenGroups = false;
+        let updatedWorkspaces;
         let tempGroups = {};
         for (let group of groupsArray) {
             if (!tempGroups[group.id]) {
-     
                 group.workspaceId = groupMap[group.id];
                 if (!group.workspaceId) {
                     const workspace = await findExistingContextForGroup(group);
@@ -98,6 +102,20 @@
                         group.workspaceId = workspace.id;
                         groupMap[group.id] = workspace.id;
                         needToUpdateOpenGroups = true;
+                        // if (workspace.groupId != group.id) {
+                        //     console.log('updating workspace groupId');
+                        //     console.log(groupMap);
+                        //     workspace.groupId = group.id;
+                        //     saveContext(workspace);
+                        //     const index = workspaces.findIndex((w) => w.id == workspace.id);
+                        //     if (index) {
+                        //         workspaces[index] = workspace;
+                        //         if (!updatedWorkspaces) {
+                        //             updatedWorkspaces = true;
+                        //         }
+                        //     }
+                            
+                        // }
                     }
                     
                 }
@@ -130,6 +148,10 @@
 
         if (needToUpdateOpenGroups) {
             await set({ openGroups: groupMap });
+        }
+
+        if (updatedWorkspaces) {
+            workspaces = workspaces;
         }
 
         _tabs.set(tabs);

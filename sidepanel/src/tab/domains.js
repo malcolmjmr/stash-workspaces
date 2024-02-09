@@ -15,11 +15,18 @@ export const getSearchUrlFromQuery = (query, domain) => {
 };
 
 export const defaultDomains = [
+    // Add: wikipedia, 
     {
       url: 'www.google.com',
       searchTemplate: 'https://www.google.com/search?q=<|search|>',
       title: 'Google',
       favIconUrl: 'https://www.google.com/images/branding/product/1x/gsa_android_144dp.png'
+    },
+    {
+      url: 'https://en.wikipedia.org/',
+      searchTemplate: 'https://en.wikipedia.org/wiki/Special:Search?go=Go&search=<|search|>',
+      title: 'Wikipedia',
+      favIconUrl: 'https://en.wikipedia.org/static/favicon/wikipedia.ico'
     },
     {
       url: 'scholar.google.com',
@@ -39,6 +46,12 @@ export const defaultDomains = [
       url: 'https://duckduckgo.com',
       favIconUrl: 'https://duckduckgo.com/favicon.ico',
       searchTemplate: 'https://duckduckgo.com/?q=<|search|>',
+    },
+    {
+      title: 'Brave Search',
+      url: 'https://search.brave.com',
+      favIconUrl: 'https://cdn.search.brave.com/serp/v2/_app/immutable/assets/favicon.GnMcXrVh.ico',
+      searchTemplate: 'https://search.brave.com/search?q=<|search|>'
     },
     {
       title: 'Chat GPT',
@@ -96,7 +109,7 @@ export const defaultDomains = [
     },
     {
       title: 'Amazon',
-      url: 'amazon.com',
+      url: 'https://amazon.com',
       favIconUrl: 'https://www.amazon.com/favicon.ico',
       searchTemplate: 'https://www.amazon.com/s?k=<|search|>',
       type: 'shopping',
@@ -108,6 +121,7 @@ export const defaultDomains = [
       favIconUrl: 'https://substackcdn.com/icons/substack/favicon.ico',
       type: 'reading',
     },
+
     {
       title: 'New York Public Library',
       url: 'https://www.nypl.org',

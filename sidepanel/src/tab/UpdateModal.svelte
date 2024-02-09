@@ -81,7 +81,7 @@
         <div class="domains">
             {#each domains as domain}
                 <div class="domain-container">
-                    <DomainIcon {domain} size={24} on:click={onDomainClicked}/>
+                    <DomainIcon {domain} size={24} on:mousedown={onDomainClicked}/>
                 </div>
             {/each}
         </div>

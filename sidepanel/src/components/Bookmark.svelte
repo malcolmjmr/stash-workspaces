@@ -1,17 +1,23 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
-    import { getTabFavIconUrl, tryToGetBookmark } from "../utilities/chrome";
+    import { getTabFavIconUrl, hiddenFolderTitles, tryToGetBookmark } from "../utilities/chrome";
     export let bookmark;
 
     import Bookmark from "./Bookmark.svelte";
     import folderIcon from "../icons/folder-filled.png";
     import openFolderIcon from "../icons/folder-open-filled.png";
+    import openIcon from "../icons/open-in-new-window.png";
     import moreIcon from "../icons/more-vert.png";
   import ModalContainer from "./ModalContainer.svelte";
   import BookmarkDetails from "../edit_bookmark/BookmarkDetails.svelte";
   import Tab from "../tab/Tab.svelte";
+  import BookmarkMenu from "../edit_bookmark/BookmarkMenu.svelte";
+  import BookmarkFolderMenu from "../edit_bookmark/BookmarkFolderMenu.svelte";
+    export let onlyShowFolders = false;
     export let isOpen = false;
     export let isListItem = false;
+    export let workspace = null;
+    export let isTemporary = false;
 
 
     let isFolder = !bookmark.url;
@@ -30,6 +36,12 @@
 
     let favIconUrl;
     const load = async () => {
+        if (onlyShowFolders) {
+            bookmark.children = bookmark.children?.filter((b) => !b.url) ?? [];
+            if (bookmark.children.length > 0) {
+                isOpen = true;
+            }
+        }
         favIconUrl = getTabFavIconUrl(bookmark);
         loaded = true;
     };
@@ -40,16 +52,20 @@
         dispatch('bookmarkClicked', bookmark);
     };
 
+    let lastDragged;
     let isDragged;
     const onDragStart = (e) => {
         isDragged = true;
+        lastDragged = Date.now();
        if (isOpen) isOpen = false;
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("bookmarkId", bookmark.id);
     };
 
+    
     const onDragEnd = (e) => {
         isDragged = false;
+        lastDragged = Date.now();
     };
 
 
@@ -155,36 +171,75 @@
        
 
         if (isFolder) {
-            if (!isOpen) isOpen = true;
+            if (onlyShowFolders) {
+                dispatch('bookmarkClicked', bookmark);
+            } else if (!isOpen) {
+                isOpen = true;
+            }
         } else {
             setTimeout(() => {
-                if (isDragged) return;
+                if (lastDragged && Date.now() - lastDragged < 1000) return;
                 dispatch('bookmarkClicked', bookmark);
-            }, 500);
+            }, 200);
             
         }
     };
 
-    const openFolder = () => {
-        if (isDragged) return;
+    const openAllChildren = async () => {
+
+        let tabs = [];
+
+        const children = await chrome.bookmarks.getChildren(bookmark.id);
+        for (const bookmark of children) {
+            if (!bookmark.url) continue;
+            const tab = await chrome.tabs.create({url: bookmark.url}); 
+            tabs.push(tab);
+        }
+
+        chrome.tabs.group({tabIds: tabs.map((t) => t.id), groupId: workspace.groupId});
+
     };
 
-    let showBookmarkDetails;
+    let showBookmarkMenu;
     const openBookmarkDetails = () => {
         if (isDragged) return;
-        showBookmarkDetails = true;
-    }
+
+        showBookmarkMenu = true;
+    };
+
+    const onBookmarkDeleted = ({ detail }) => {
+        const bookmarksRemoved = detail.map((b) => b.id);
+        bookmark.children = bookmark.children.filter((b) => !bookmarksRemoved.includes(b.id) );
+    };
+
+    const onBookmarkUpdated = ({ detail }) => {
+        bookmark = detail;
+    };
+
+
 </script>
 
-{#if showBookmarkDetails}
-    <ModalContainer on:exit={() => showBookmarkDetails = false}>
-        <BookmarkDetails
-            resource={bookmark} 
-            isNativeBookmark={true} 
-            on:exit={() => showBookmarkDetails = false}
-            on:dataUpdated
-            on:bookmarkDeleted
-        />
+{#if showBookmarkMenu}
+    <ModalContainer on:exit={() => showBookmarkMenu = false}>
+        {#if bookmark.url}
+            <BookmarkDetails
+                resource={bookmark} 
+                isNativeBookmark={true} 
+                on:exit={() => showBookmarkMenu = false}
+                on:dataUpdated
+                on:bookmarkDeleted
+                on:bookmarkUpdated={onBookmarkUpdated}
+            />
+        {:else}
+            <BookmarkFolderMenu
+                folder={bookmark}
+                {workspace}
+                on:bookmarkDeleted
+                on:dataUpdated
+                on:bookmarkUpdated={onBookmarkUpdated}
+                on:exit={() => showBookmarkMenu = false}
+            />
+        {/if}
     </ModalContainer>
 {/if}
 
@@ -205,25 +260,27 @@
             
         >
             <img
-                on:mousedown={onclick}
+                on:mouseup={onclick}
                 src={isFolder ? (isOpen ? openFolderIcon : folderIcon) : favIconUrl}
                 class="icon{isFolder ? ' folder' : ''}"
                 alt=""
             />
-            <div class="title" on:mousedown={onBookmarkClicked}>
+            <div class="title" on:mouseup={onBookmarkClicked}>
                 {bookmark.title}
             </div>
-            <div class="spacer" on:mousedown={onBookmarkClicked}>
+            <div class="spacer" on:mouseup={onBookmarkClicked}>
 
             </div>
             
 
 
             {#if isInFocus}
-                {#if false}
-                    <img src={openFolderIcon} class="open button" on:mousedown={openFolder} alt="Open Folder"/>
+                {#if !bookmark.url}
+                    <img src={openIcon} class="open button" on:mousedown={openAllChildren} alt="Open Folder"/>
                 {/if}
+                {#if !isTemporary}
                 <img src={moreIcon} class="more button" on:mousedown={openBookmarkDetails} alt="Menu"/>
+                {/if}
             {/if}
 
             
@@ -232,8 +289,15 @@
 
         {#if isOpen}
             <div class="children">
-                {#each bookmark.children ?? [] as child (child.id)}
-                    <Bookmark bookmark={child} on:bookmarkClicked on:bookmarkMoved/>
+                {#each bookmark.children?.filter((b) => (onlyShowFolders ? !b.url : true) && !hiddenFolderTitles.includes(b.title)) ?? [] as child (child.id)}
+                    <Bookmark 
+                        {workspace}
+                        {onlyShowFolders}
+                        bookmark={child} 
+                        on:bookmarkClicked 
+                        on:bookmarkMoved 
+                        on:bookmarkDeleted
+                    />
                 {/each}
             </div>
         {/if}
@@ -307,11 +371,10 @@
     }
 
     img.button {
-        height: 20px;
-        width: 20px;
+        height: 15px;
+        width: 15px;
         filter: invert(1);
         opacity: 0.7;
-        padding: 0px 2px;
     }
 
     img.button:hover {
