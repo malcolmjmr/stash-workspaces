@@ -83,8 +83,9 @@
 
     const restoreWorkspace = async () => {
         workspace.deleted = null;
+        workspace.archived = null;
         await saveContext(workspace);
-        dispatch('dataUpdated', {workspace, notify: true });
+        dispatch('dataUpdated', { workspace, notify: true });
         dispatch('exit');
     };
 
@@ -258,12 +259,19 @@
     {#if !isOpen}
         <div class="divider"/>
         {#if !workspace?.deleted}
-
-            <MenuItem 
-                title='Archive'
-                icon={archiveIcon}
-                onClick={archiveWorkspace}
-            />
+            {#if workspace.archived}
+                <MenuItem 
+                    title='Restore'
+                    icon={restoreIcon}
+                    onClick={restoreWorkspace} 
+                />
+            {:else}
+                <MenuItem 
+                    title='Archive'
+                    icon={archiveIcon}
+                    onClick={archiveWorkspace}
+                />
+            {/if}
         
             <MenuItem 
                 title='Delete'

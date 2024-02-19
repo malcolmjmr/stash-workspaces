@@ -24,6 +24,7 @@
   import ModalContainer from "./components/ModalContainer.svelte";
   import TabUpdateModal from "./tab/TabUpdateModal.svelte";
   import { getActiveTab, getContextFromGroupId } from "./utilities/chrome";
+  import Archive from "./archive/Archive.svelte";
 
 
     export let user;
@@ -241,7 +242,7 @@
 
 
 
-    const fullScreenViews = [Views.workspace, Views.trash, Views.history];
+    const fullScreenViews = [Views.workspace, Views.trash, Views.history, Views.archive, Views.search];
 
     let newTab;
 
@@ -371,6 +372,7 @@
                 on:showWorkspaceView={showWorkspaceView}
                 on:dataUpdated
                 on:shiftClickTab={onShiftClickTab}
+                on:refreshTabs
             />
         {:else if view == Views.saved}
             <Workspaces 
@@ -402,6 +404,16 @@
             />
         {:else if view == Views.trash}
             <Trash
+                {db}
+                {user}
+                bind:view
+                on:goBack={() => view = Views.home}
+                bind:workspaces
+                on:refreshSpaces
+                on:dataUpdated
+            />
+        {:else if view == Views.archive}
+            <Archive
                 {db}
                 {user}
                 bind:view

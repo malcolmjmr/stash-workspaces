@@ -15,6 +15,7 @@
   import { actions } from "../tab/actions";
   import WorkspaceWidget from "../workspace/WorkspaceWidget.svelte";
   import { Views } from "../view";
+  import Favorites from "../components/Favorites.svelte";
 
 
     let dispatch = createEventDispatcher();
@@ -176,7 +177,7 @@
 
 <div class="padding"></div>
 {#if loaded}
-    
+        <Favorites /> 
         {#each tabs as tab (tab.id)}
             {#if tab.groupId > -1}
                 {#if groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
@@ -212,6 +213,7 @@
                         on:shiftClickTab
                         on:showWorkspaceView
                         on:dataUpdated
+                        on:refreshTabs
                     />
                 {/key}
                 {/if}
@@ -230,6 +232,7 @@
                         on:updateSelection
                         on:dataUpdated
                         on:shiftClickTab
+                        on:refreshTabs
                     />
                 </div>
                 

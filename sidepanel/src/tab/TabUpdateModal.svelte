@@ -4,7 +4,8 @@
     import settingsIcon from "../icons/settings.png";
     import ModalContainer from "../components/ModalContainer.svelte";
     import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
-  import { getActiveTab, getTabInfo } from "../utilities/chrome";
+  import { getActiveTab, getHistory, getTabFavIconUrl, getTabInfo } from "../utilities/chrome";
+  import Tab from "./Tab.svelte";
 
     export let tab = null;
 
@@ -34,10 +35,13 @@
                 tab = await getActiveTab();
             }
 
+            loadDefaultDomains();
             isNewTab = getTabInfo(tab).url.includes('//newtab');
             
             await checkForSearchQuery();
             await getDomains();
+
+            loadHistoryData();
             
 
             updateInputHeight();
@@ -85,18 +89,20 @@
 
     const getDomains = async () => {
 
-        if (isNewTab) {
-            domains = await getOpenApps();
-        }
+        // if (isNewTab) {
+        //     domains = await getOpenApps();
+        // }
 
-        if (searchDomain || isNewTab) {
+        // if (searchDomain || isNewTab) {
 
-            for (const domain of defaultDomains) {
-                if (domain.searchTemplate && !domains.find((d) => d.url == domain.url)) {
-                    domains.push(domain);
-                }
-            }
-        }
+        //     for (const domain of defaultDomains) {
+        //         if (domain.searchTemplate && !domains.find((d) => domain.url.includes(d.host))) {
+        //             domains.push(domain);
+        //         }
+        //     }
+        // }
+
+        domains = defaultDomains.filter((d) => d.isDefault);
 
         
         
@@ -112,14 +118,70 @@
         // default domains
 
         //domains = defaultDomains;
-        
-
-
-        
     };
 
-    const getOpenApps = async () => {
-        let defaultDomainMap = {};
+    let visibleHistory = [];
+    let hasHistoryPermission;
+    const loadHistoryData = async () => {
+
+
+        visibleHistory = await getHistory();
+
+        // let domainCounts = {}
+        // for (const item of results) {
+        //     const url = new URL(item.url);
+        //     const domain = url.host;
+        //     if (!domainCounts[domain]) {
+        //         let defaulDomainData = defaultDomainMap[domain] ?? {};
+        //         domainCounts[domain] = {
+        //             count: 0,
+        //             host: url.host,
+        //             url: url.host,
+        //             ...defaulDomainData
+        //         }
+        //     }
+        //     domainCounts[domain].count += 1;
+        // }
+
+        // let tempDomains = Object.entries(domainCounts).map(([hostname, domain]) => {
+        //     return {
+        //         ...domain,
+        //     };
+        // }).filter((d) => d.count > 10);
+
+        // tempDomains.sort((a, b) => b.count > a.count);
+
+        // console.log('got favorite domains');
+        // console.log(tempDomains);
+
+        // domains = [...domains, ...tempDomains]
+
+    }
+
+    const removeDuplicateHistoryItems = (historyItems) => {
+        let titles = [];
+        let result = [];
+        for (const historyItem of historyItems) {
+            if (titles.includes(historyItem.title)) continue;
+            titles.push(historyItem.title);
+            result.push(historyItem);
+        }
+        return result;
+    };
+
+    const requestHistoryPermssion = async () => {
+        const granted = await chrome.permissions.request({
+            permissions: ['history']
+        })
+        if (!granted) return;
+        
+        loadHistoryData();
+    }
+
+    let defaultDomainMap = {};
+
+    const loadDefaultDomains = () => {
+        defaultDomainMap = {};
         for (const domain of defaultDomains) {
             let url;
             try {
@@ -130,6 +192,10 @@
             
             defaultDomainMap[url.host] = domain;
         }
+    };
+
+    const getOpenApps = async () => {
+
         const otherTabs = await chrome.tabs.query({groupId: tab.groupId});
         let domainCounts = {}
         for (const t of otherTabs) {
@@ -172,6 +238,8 @@
         const inputIsNotUrl = inputText.length > 0 && !inputText.includes('.') && inputText.includes(' ');
         if (inputIsNotUrl || domain.canSearchUrl) {
             url = domain.searchTemplate?.replace(searchPlaceholder, encodeURIComponent(inputText));
+        } else if (!inputIsNotUrl && !url.includes('http')) {
+            url = 'https://' + url;
         }
 
         if (e.metaKey) {
@@ -221,6 +289,28 @@
         } 
         
     };
+
+    const onHistoryItemClicked = (historyItem) => {
+        chrome.tabs.update(tab.id, { url: historyItem.url });
+        dispatch('exit');
+    };
+
+    $: {
+        inputText;
+        updateSearchResults();
+    };
+
+    const updateSearchResults = () => {
+
+        const text = inputText.toLowerCase();
+
+        visibleHistory = history.filter((i) => {
+            const title = i.title.toLowerCase();
+            const url = i.url.toLowerCase();
+            return title.includes(text) || url.includes(text);
+        });
+    };
+
 </script>
 
 {#if showSettings}
@@ -234,7 +324,7 @@
             <textarea
                 bind:value={inputText}
                 on:keydown={onKeyDownInUrlField}
-                placeholder="Enter search or URL..."
+                placeholder="Enter search or URL"
                 bind:this={inputElement}
                 on:input={updateInputHeight}
                 on:keypress={updateInputHeight}
@@ -257,20 +347,34 @@
                     alt="Settings"
                     on:mousedown={() => null}
                 />
-
             -->
             
             <div class="spacer"></div>
         </div>
         {/if}
 
+        {#if !hasHistoryPermission}
+            <div class="history-permission-request" on:mousedown={requestHistoryPermssion}>
+                Add history permission to view history and recent web pages.
+            </div>
+        {/if}
 
-        {#if history.length > 0}
+        {#if true}
         <div class="divider"/>
         <div class="history">
-
+            {#each visibleHistory as historyItem}
+                <Tab 
+                    tab={historyItem} 
+                    isOpen={false} 
+                    isSearchResult={true} 
+                    isListItem={true} 
+                    on:clicked={() => onHistoryItemClicked(historyItem)}
+                    preventDefault={true}
+                />
+            {/each}
         </div>
         {/if}
+
 
         {#if suggestions.length > 0}
         <div class="divider"/>
@@ -304,6 +408,11 @@
         color: white;
         background-color: transparent;
         resize: none;
+        height: 18px;
+        display: flex;
+        overflow: scroll;
+        max-height: 75px;
+
     }
 
     .url-field img {
@@ -318,6 +427,8 @@
         flex-wrap: wrap;
         justify-content: space-between;
         padding: 5px 0px;
+        max-height: 68px;
+        overflow: scroll;
     }
 
     .divider {
@@ -343,4 +454,50 @@
         width: 20px;
         filter: invert(1);
     }
+
+    .history-permission-request {
+        padding: 10px;
+        opacity: 0.7;
+        color: white;
+    }
+
+    .history-permission-request:hover {
+        cursor: pointer;
+        opacity: 1;
+    }
+
+    .history {
+        display: flex;
+        flex-direction: column;
+        height: 150px;
+        overflow: scroll;
+    }
+
+    .history-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        opacity: 0.8;
+        padding: 3px 5px;
+        border-radius: 8px;
+        color: white;
+        background-color: #333;
+    }
+
+    .history-item:hover {
+        opacity: 1;
+        cursor: pointer;
+        background-color: #555;
+    }
+
+    .history-item img {
+        height: 15px;
+        width: 15px;
+    }
+
+    .history-item span {
+        font-size: 14px;
+    }
+
+
 </style>

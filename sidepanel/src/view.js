@@ -8,4 +8,5 @@ export const  Views = {
     workspace: "Workspace",
     signin: "Signin",
     trash: "Trash", 
+    archive: "Archive",
 };

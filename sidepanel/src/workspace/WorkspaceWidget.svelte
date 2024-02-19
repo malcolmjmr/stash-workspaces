@@ -861,7 +861,7 @@
                     alt="More"
                     on:mousedown={() => showMenu = true}
                 />
-                <img src={closeIcon} alt="close" on:mouseup={onCloseClicked} />
+                <img src={closeIcon} alt="close" on:mousedown={onCloseClicked} />
             </div>
         {/if}
 
@@ -913,6 +913,7 @@
                             on:bookmarkCreated={checkBookmarkCounts}
                             on:shiftClickTab
                             on:tabStashed={onTabStashed}
+                            on:refreshTabs
                         />
                     {:else}
                         <WorkspaceListItem 
@@ -942,6 +943,7 @@
                             on:bookmarkCreated={checkBookmarkCounts}
                             on:shiftClickTab
                             on:tabStashed={onTabStashed}
+                            on:refreshTabs
                             
                         />
                     {/each}
@@ -1005,7 +1007,7 @@
     }
 
     .collapsed:hover {
-        background-color: #333333;
+        background-color: #444444;
     }
 
     .dragged-over {

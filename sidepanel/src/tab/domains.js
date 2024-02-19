@@ -20,13 +20,15 @@ export const defaultDomains = [
       url: 'www.google.com',
       searchTemplate: 'https://www.google.com/search?q=<|search|>',
       title: 'Google',
-      favIconUrl: 'https://www.google.com/images/branding/product/1x/gsa_android_144dp.png'
+      favIconUrl: 'https://www.google.com/images/branding/product/1x/gsa_android_144dp.png',
+      isDefault: true,
     },
     {
       url: 'https://en.wikipedia.org/',
       searchTemplate: 'https://en.wikipedia.org/wiki/Special:Search?go=Go&search=<|search|>',
       title: 'Wikipedia',
-      favIconUrl: 'https://en.wikipedia.org/static/favicon/wikipedia.ico'
+      favIconUrl: 'https://en.wikipedia.org/static/favicon/wikipedia.ico',
+      isDefault: true,
     },
     {
       url: 'scholar.google.com',
@@ -57,11 +59,14 @@ export const defaultDomains = [
       title: 'Chat GPT',
       url: 'https://chatgpt.com',
       favIconUrl: 'https://cdn.oaistatic.com/_next/static/media/favicon-32x32.be48395e.png',
+      isDefault: true,
     },
     {
       title: 'Perplexity',
-      url: 'https://perplexity.ai',
+      url: 'https://www.perplexity.ai/',
       favIconUrl: 'https://www.perplexity.ai/favicon.ico',
+      searchTemplate: 'https://www.perplexity.ai/?q=<|search|>',
+      isDefault: true,
     },
     {
       title: 'Exa',
@@ -76,6 +81,7 @@ export const defaultDomains = [
       url: 'https://youtube.com',
       favIconUrl: "https://www.youtube.com/s/desktop/7ea5dfab/img/favicon_32x32.png",
       searchTemplate: 'https://www.youtube.com/results?search_query=<|search|>',
+      isDefault: true,
     },
     {
       title: 'Twitter',
@@ -83,6 +89,7 @@ export const defaultDomains = [
       favIconUrl: 'https://abs.twimg.com/favicons/twitter.3.ico',
       searchTemplate: 'https://twitter.com/search?q=<|search|>',
       type: 'social',
+      isDefault: true,
     },
     {
       title: 'Sublime',
@@ -97,7 +104,8 @@ export const defaultDomains = [
       url: 'https://www.reddit.com',
       favIconUrl: 'https://www.redditstatic.com/shreddit/assets/favicon/64x64.png',
       searchTemplate: 'https://www.reddit.com/search/?q=<|search|>',
-      type: 'social'
+      type: 'social',
+      isDefault: true,
     },
 
     {
@@ -113,6 +121,7 @@ export const defaultDomains = [
       favIconUrl: 'https://www.amazon.com/favicon.ico',
       searchTemplate: 'https://www.amazon.com/s?k=<|search|>',
       type: 'shopping',
+      isDefault: true,
     },
     {
       title: 'Substack',
@@ -139,7 +148,8 @@ export const defaultDomains = [
       url: 'https://www.quora.com',
       favIconUrl: 'https://qsf.fs.quoracdn.net/-4-ans_frontend_assets.favicon-new-badged.ico-26-7a2cda9b4acdaf19.ico',
       searchTemplate: 'https://www.quora.com/search?q=<|search|>',
-      type: 'social'
+      type: 'social',
+      isDefault: true,
     },
     {
       title: 'Hacker News',

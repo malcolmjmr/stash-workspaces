@@ -15,7 +15,12 @@
     });
 
     const loadFavIcon = async () => {
-        favIconUrl = domain.favIconUrl ??  getTabFavIconUrl({url: 'https://' + domain.url});
+
+        console.log('domain');
+        console.log(domain);
+        favIconUrl = domain.favIconUrl ??  getTabFavIconUrl({url: (domain.url?.includes('http') ? '' : 'https://') + domain.url});
+        console.log(favIconUrl);
+        
         loaded = true;
     };
 

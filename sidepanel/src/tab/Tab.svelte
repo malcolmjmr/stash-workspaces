@@ -65,6 +65,7 @@
     export let canSelect = true;
     export let isListItem = false;
     export let isSearchResult = false;
+    export let preventDefault = false;
 
 
     let el;
@@ -112,9 +113,9 @@
             if (t?.id == tab.id)  {
                 init();
 
-                if (tab.id && tab.active) {
-                    scrollToTabIfActive();
-                }
+                // if (tab.id && tab.active) {
+                //     scrollToTabIfActive();
+                // }
             }
 
             
@@ -296,6 +297,7 @@
 
     const onTitleClicked = async (e) => {
         dispatch('clicked', tab);
+        if (preventDefault) return;
         if (isOpen) {
             if (isSelected) return;
 
@@ -311,8 +313,15 @@
                     await chrome.tabs.group(({tabIds: newTab.id, groupId: activeTab.groupId}));
                 }
             } else {
-                chrome.tabs.update(tab.id, { active: true });
-                chrome.windows.update(tab.windowId, { focused: true });
+
+                try {
+                    chrome.tabs.update(tab.id, { active: true });
+                    chrome.windows.update(tab.windowId, { focused: true });
+                } catch (e) {
+                    console.log(e);
+                    dispatch('refreshTabs');
+                }
+                
             }
             
         } else {
@@ -829,6 +838,9 @@
         overflow: hidden;
         margin-left: 5px;
         width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
     }
 
     .title:hover {

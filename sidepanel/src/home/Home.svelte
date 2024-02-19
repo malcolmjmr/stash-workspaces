@@ -7,6 +7,7 @@
     import { Views } from "../view";
 
     import trashIcon from "../icons/delete.png";
+    import archiveIcon from "../icons/archive.png";
     import GroupedWorkspaceSections from "../components/GroupedWorkspaceSections.svelte";
   import { _groups, lastWorkspaceUpdate } from "../stores";
 
@@ -25,6 +26,7 @@
     let favoriteSpaces = [];
     let favoriteTags = [];
     let deletedSpaces = [];
+    let archivedSpaces = [];
 
     let dispatch = createEventDispatcher();
 
@@ -47,11 +49,12 @@
     const refreshSpaces = async () => {
         if (workspaces.length == 0) return;
         openSpaces = Object.values($_groups).map((g) => workspaces.find((w) => g.workspaceId == w?.id)).filter((s) => s);
-        closedSpaces = [...workspaces.filter((w) => !w?.deleted && !openSpaces.find((openSpace) => w?.id == openSpace?.id))];
+        closedSpaces = [...workspaces.filter((w) => !w?.deleted && !w?.archived && !openSpaces.find((openSpace) => w?.id == openSpace?.id))];
         closedSpaces.sort((a,b) => b.updated - a.updated);
         recentSpaces = closedSpaces.slice(0, 10);
         favoriteSpaces = ((await get('favoriteSpaces')) ?? []).map((favoriteSpaceId) => workspaces.find((s) => s?.id == favoriteSpaceId));
         deletedSpaces = workspaces.filter((w) => w?.deleted);
+        archivedSpaces = workspaces.filter((w) => w?.archived);
         loaded = true;
     };
 
@@ -161,16 +164,34 @@
             on:workspaceOpened={onWorkspaceOpened}
             
         />
-    
-        {#if deletedSpaces.length > 0}
-            <div class="trash button" on:mousedown={() => view = Views.trash}>
-                <div class="title">
-                    <img src={trashIcon} alt="Trash"/>
-                    <span>Trash</span>
+
+        {#if archivedSpaces.length > 0 || deletedSpaces.length > 0}
+            <div class="bottom-section">
+                {#if archivedSpaces.length > 0}
+                <div class="archive button" on:mousedown={() => view = Views.archive}>
+                    <div class="title">
+                        <img src={archiveIcon} alt="Archive"/>
+                        <span>Archive</span>
+                    </div>
+                    <div class="count">
+                        {archivedSpaces.length}
+                    </div>
                 </div>
-                <div class="count">
-                    {deletedSpaces.length}
+                {/if}
+                {#if deletedSpaces.length > 0}
+                {#if archivedSpaces.length > 0}
+                <div class="divider"></div>
+                {/if}
+                <div class="trash button" on:mousedown={() => view = Views.trash}>
+                    <div class="title">
+                        <img src={trashIcon} alt="Trash"/>
+                        <span>Trash</span>
+                    </div>
+                    <div class="count">
+                        {deletedSpaces.length}
+                    </div>
                 </div>
+                {/if}
             </div>
         {/if}
     </div>
@@ -216,18 +237,24 @@
         background-color: #555555;
     }
 
-    .trash {
+    .bottom-section {
+        display: flex;
+        flex-direction: column;
+        border-radius: 8px;
+        margin-top: 20px;
+        overflow: hidden;
+    }
+
+    .bottom-section .button {
         display: flex;
         flex-direction: row;
-        border-radius: 8px;
         background-color: #333333;
         padding: 8px;
         align-items: center;
-        justify-content: space-between;
-        margin-top: 20px;
+        justify-content: space-between; 
     }
 
-    .trash .title {
+    .bottom-section .button .title {
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -235,14 +262,14 @@
         font-weight: 300;
     }
 
-    .trash img {
+    .bottom-section .button img {
         filter: invert(0.6);
         height: 20px;
         width: 20px;
         margin-right: 8px;
     }
     
-    .button:hover {
+    .bottom-section .button:hover {
         cursor: pointer;
     }
 </style>

@@ -212,6 +212,7 @@
             on:tabMoved={() => lastRefresh = Date.now()}
             on:mergedWindows={() => lastRefresh = Date.now()}
             on:foundDuplicates={() => lastRefresh = Date.now()}
+            on:refreshTabs={() => lastRefresh = Date.now()}
             on:dataUpdated={onDataUpdated}
         />
     {/if}

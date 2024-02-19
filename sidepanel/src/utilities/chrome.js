@@ -593,3 +593,34 @@ export async function createAdjacentTab( props ) {
 
     return tab;
 }
+
+export async function getHistory() {
+    let history = [];
+    let hasHistoryPermission = await chrome.permissions.contains({
+        permissions: ['history']
+    });
+
+    if (!hasHistoryPermission) return;
+
+    const results = await chrome.history.search({
+        startTime: Date.now() - (30 * 24 * 60 * 60 * 1000),
+        text: '',
+        maxResults: 10000,
+
+    });
+
+    history = removeDuplicateHistoryItems(results);
+
+    return history;
+}
+
+const removeDuplicateHistoryItems = (historyItems) => {
+    let titles = [];
+    let result = [];
+    for (const historyItem of historyItems) {
+        if (titles.includes(historyItem.title)) continue;
+        titles.push(historyItem.title);
+        result.push(historyItem);
+    }
+    return result;
+};
