@@ -128,7 +128,6 @@
         const tab = await chrome.tabs.create({url: resource.url});
         
         if (group) {
-            console.log('grouping tab');
             chrome.tabs.group({tabIds: tab.id, groupId: group.id});
         } else {
             console.log('couldn\'t find group');

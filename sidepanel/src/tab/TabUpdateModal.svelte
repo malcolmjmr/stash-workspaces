@@ -14,7 +14,7 @@
     let dispatch = createEventDispatcher();
 
     let suggestions = [];
-    let history = [];
+    let history;
     let domains  = [];
 
     let searchDomain;
@@ -124,8 +124,8 @@
     let hasHistoryPermission;
     const loadHistoryData = async () => {
 
-
-        visibleHistory = await getHistory();
+        history = await getHistory();
+        visibleHistory = history;
 
         // let domainCounts = {}
         // for (const item of results) {
@@ -304,11 +304,12 @@
 
         const text = inputText.toLowerCase();
 
-        visibleHistory = history.filter((i) => {
+        visibleHistory = history?.filter((i) => {
             const title = i.title.toLowerCase();
             const url = i.url.toLowerCase();
             return title.includes(text) || url.includes(text);
-        });
+        }) ?? [];
+        console.log(visibleHistory);
     };
 
 </script>
@@ -353,15 +354,16 @@
         </div>
         {/if}
 
-        {#if !hasHistoryPermission}
-            <div class="history-permission-request" on:mousedown={requestHistoryPermssion}>
-                Add history permission to view history and recent web pages.
-            </div>
-        {/if}
+        
 
         {#if true}
         <div class="divider"/>
         <div class="history">
+            {#if !history}
+            <div class="history-permission-request" on:mousedown={requestHistoryPermssion}>
+                Add history permission to view history and recent web pages.
+            </div>
+            {:else if (visibleHistory?.length ?? 0) > 0}
             {#each visibleHistory as historyItem}
                 <Tab 
                     tab={historyItem} 
@@ -372,6 +374,11 @@
                     preventDefault={true}
                 />
             {/each}
+            {:else}
+                <div class="no-results">
+                    No matching history items
+                </div>
+            {/if}
         </div>
         {/if}
 

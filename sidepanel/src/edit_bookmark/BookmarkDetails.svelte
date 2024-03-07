@@ -126,7 +126,6 @@
             } else {
 
                 if (user) {
-                    console.log('saving to firebase');
                     const ref = doc(db, StorePaths.userResource(user.id, resource.id));
                     setDoc(ref, resource, { merge: true });
                 }  
@@ -154,11 +153,10 @@
     };
 
     const deleteBookmark = async ({ detail }) => {
-        console.log('is native bookmark: ' + isNativeBookmark);
-        console.log(resource);
+
         if (tab?.resource || (!isNativeBookmark && resource)) {
             if (!resource) resource = tab.resource;
-            console.log(resource);
+
             let ref = doc(db, StorePaths.userResource(user.id, resource.id)) ;
             deleteDoc(ref);
             resource.deleted = true;
@@ -204,8 +202,7 @@
             if (tab && !tab.bookmarks) {
                 tab.bookmarks = []
             }
-            console.log('adding folder');
-            console.log(location.folder);
+
             locations.push(location.folder);
             locationsAdded.push(location.folder);
 
@@ -244,9 +241,7 @@
     const removeLocation = async (location) => {
 
         const locationIndex = locations.findIndex((l) => l.id == location.id);
-        console.log('removing location ');
-        console.log(location);
-        console.log('location index: ' + locationIndex);
+
         if (locationIndex > -1) {
             canSave = true;
             locations = locations.filter((l) => l.id != location.id);
@@ -372,7 +367,7 @@
                 <div class="location-list">
                     {#each locations as workspace (workspace.id)}
                         <div class="list-item">
-                            <WorkspaceListItem {workspace} onClick={() => null}/>
+                            <WorkspaceListItem {workspace} onClick={() => null} showQuickActions={false}/>
                             <div class="remove" on:mousedown={() => removeLocation(workspace)}>
                                 <img src={removeIcon} alt="remove">
                             </div>

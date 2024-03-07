@@ -536,12 +536,12 @@ export const tabFolderTitle = '_Tabs_';
 
 export const hiddenFolderTitles = [queueFolderTitle, tabFolderTitle];
 
-export async function getWorkspaceQueueFolder(workspace) {
+export async function getWorkspaceQueueFolder(workspace, createFolder) {
     let folder = (await chrome.bookmarks.getChildren(workspace.folderId))
         .find((b) => !b.url && b.title == queueFolderTitle);
 
-    if (!folder) {
-        chrome.bookmarks.create({
+    if (!folder && createFolder) {
+        folder = await chrome.bookmarks.create({
             title: queueFolderTitle,
             parentId: workspace.folderId,
         });

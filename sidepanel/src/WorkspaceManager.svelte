@@ -109,15 +109,11 @@
             // const workspace = await getContext(workspaceId);
             // workspaces.push(workspace);
             // allWorkspaces.set(workspaces);
-            console.log('updating newly created group');
-            console.log(lastUpdatedGroup);
         } else if (lastCreatedWorkspace && (Date.now() - lastCreatedWorkspace.created) < 1500) {
-            console.log('updating newly created workspace');
-            console.log(lastCreatedWorkspace);
             workspaces = [lastCreatedWorkspace,...workspaces];
             allWorkspaces.set(workspaces);
         } else {
-            console.log('reloading workspaces');
+            //console.log('reloading workspaces');
             getUserWorkspaces();
         }
     };

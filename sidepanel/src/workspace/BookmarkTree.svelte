@@ -65,12 +65,10 @@
 
     let folder;
     const load = async (forceReload = false) => {
-        console.log('reloading boomkark tree');
         if (bookmarkTree && !forceReload) {
             loaded = true;
             return;
         }
-        console.log('cool');
 
         const folderFromId = await tryToGetBookmark(workspace.folderId);
         if (folderFromId?.title == workspace.title) folder = folderFromId;
@@ -194,7 +192,7 @@
     <div class="bookmark-tree">
         {#each (searchText.length > 0 ? searchResults : bookmarkTree) as bookmark (bookmark.id)}
 
-            {#if !(!bookmark.url  && hiddenFolderTitles.includes(bookmark.title))}
+            {#if !((bookmark.url && onlyShowFolders)  || hiddenFolderTitles.includes(bookmark.title))}
                 <Bookmark 
                     {workspace}
                     {bookmark}

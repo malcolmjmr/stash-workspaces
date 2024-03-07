@@ -11,6 +11,10 @@
   import BookmarkTree from "../workspace/BookmarkTree.svelte";
   import { colorMap } from "../utilities/colors";
   import Workspace from "../workspace/Workspace.svelte";
+  import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
+  import CreateFolderButton from "../components/CreateFolderButton.svelte";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import NewFolderModal from "../workspace/NewFolderModal.svelte";
 
     export let workspace = null;
     export let addPadding = true;
@@ -58,7 +62,25 @@
         dispatch('locationSelected', { folder });
     };
 
+    let showNewFolderModal;
+
+    const onBookmarkFolderCreated = async ({ detail }) => {
+        const folder = detail;
+        dispatch('locationSelected', { folder });
+        showNewFolderModal = false;
+    };
+
 </script>
+
+{#if showNewFolderModal}
+    <ModalContainer on:exit={() => showNewFolderModal = false}>
+        <NewFolderModal 
+            {workspace}
+            title={searchText} 
+            on:bookmarkFolderCreated={onBookmarkFolderCreated} 
+        />
+    </ModalContainer>
+{/if}
 
 <div class="location-selection{addPadding ? ' padding' : ''}">
     <div class="header">
@@ -97,9 +119,10 @@
         {#if workspace}
         <div class="workspace-folders section">
             <div class="heading" style="color: {colorMap[workspace.color ?? 'grey']}">
-                {workspace.title}
+                <WorkspaceIcon color={workspace.color}/> <span>{workspace.title}</span>
             </div>
             <div class="list">
+                <CreateFolderButton on:mousedown={() => showNewFolderModal = true}/>
                 <BookmarkTree
                     {workspace}
                     onlyShowFolders={true}
@@ -148,7 +171,7 @@
 <style>
 
     .location-selection {
-        height: 100%;
+        height: 400px;
         width: 100%;
         display: flex;
         flex-direction: column;
@@ -212,6 +235,13 @@
        margin: 0px 0px 5px 5px;
        font-size: 14px;
        font-weight: 400; 
+       display: flex;
+       flex-direction: row;
+       align-items: center;
+    }
+
+    .heading span {
+        margin-left: 3px;
     }
 
     .section .list {

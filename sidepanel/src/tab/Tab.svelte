@@ -315,8 +315,8 @@
             } else {
 
                 try {
-                    chrome.tabs.update(tab.id, { active: true });
-                    chrome.windows.update(tab.windowId, { focused: true });
+                    await chrome.tabs.update(tab.id, { active: true });
+                    await chrome.windows.update(tab.windowId, { focused: true });
                 } catch (e) {
                     console.log(e);
                     dispatch('refreshTabs');
@@ -841,6 +841,14 @@
         height: 100%;
         display: flex;
         align-items: center;
+        overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .title::-webkit-scrollbar {
+        display: none;
     }
 
     .title:hover {

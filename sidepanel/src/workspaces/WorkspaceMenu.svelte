@@ -196,7 +196,6 @@
 <div
     class="workspace-menu"
 >
-
     <div class="container">
         <div class="title">
             <input 
@@ -205,6 +204,8 @@
                 style="color: {colorMap[workspace?.color ?? 'grey']}"
                 bind:value={workspace.title}
                 on:input={onTitleInputChanged}
+                placeholder="Enter group name"
+                autofocus="true"
             />
         </div>
        

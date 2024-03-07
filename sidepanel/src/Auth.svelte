@@ -66,10 +66,10 @@
         firebaseConnected = true;
         
         // signOut(fbAuth);
-        console.log("firebase connected");
+        //console.log("firebase connected");
       } catch (error) {
-        console.log("could not connect to firebase");
-        console.log(error);
+        // console.log("could not connect to firebase");
+        // console.log(error);
       }
     };
   
@@ -78,11 +78,10 @@
         fbUser = newUser;
         if (fbUser) await loadUser();
         else {
-            console.log('checking stored auth');
             const auth = await get('auth');
             if (auth?.password) tryToSignInWithStoredCredentials(auth);
             else {
-                console.log('user not logged in');
+                //console.log('user not logged in');
             }
         }
     };

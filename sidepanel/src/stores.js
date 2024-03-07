@@ -13,6 +13,7 @@ export const _activeTab = writable(null);
 export const _lastUpdatedTab = writable(null);
 export const _openWorkspaces = writable({});
 export const allResources = writable({});
+export const _favorites = writable([]);
 
 export const settings = writable({});
 

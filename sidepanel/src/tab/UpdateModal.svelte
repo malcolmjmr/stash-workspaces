@@ -36,8 +36,6 @@
         // default domains
 
         domains = defaultDomains;
-        console.log('loading domains');
-        console.log(domains);
         
     }
 

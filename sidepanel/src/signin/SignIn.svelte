@@ -50,7 +50,7 @@
             try {
                 signInWithEmailAndPassword(auth, email, password)
                     .then((userCredential) => {
-                        console.log(userCredential);
+                        
                         set({auth: email, password });
                     });
             } catch (e) {
@@ -66,10 +66,8 @@
     };
 
     const onSigninWithGooglePressed = async () => {
-        console.log('sigining in with google');
-        console.log(auth);
+
         const token = await chrome.identity.getAuthToken();
-        console.log(token);
         //signInWithCredential()
         // signInWithPopup(auth, provider)
         //     .then((result) => {

@@ -47,6 +47,7 @@
     import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
   import CircleDivider from "../components/CircleDivider.svelte";
   import Bookmark from "../components/Bookmark.svelte";
+  import CreateFolderButton from "../components/CreateFolderButton.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -96,9 +97,7 @@
 
     $: {
         if (group != groups[groupId]) {
-            //console.log('updating group data');
             group = groups[groupId];
-            //console.log(group);
         }
     }
 
@@ -179,8 +178,6 @@
     const setTitle = async () => {
         if (!workspace) {
             workspace = await getContextFromGroupId(group.id);
-            console.log('setting title for workspace');
-            console.log(workspace);
             workspace.title = group.title;
             dispatch('dataUpdated', { workspace });
         }
@@ -695,9 +692,6 @@
 
     const onLocationSelected = async ({ detail }) => {
         const folder = detail.folder;
-        console.log('folder selected');
-        console.log(folder);
-        console.log(detail);
         const tabsToRemove = await saveSelectedTabsToFolder(folder);
 
         chrome.tabs.remove(tabsToRemove.map((t) => t.id));
@@ -716,8 +710,7 @@
     };
 
     const onTabStashed = async () => {
-        console.log('tab stashed!');
-        const queueFolder = await getWorkspaceQueueFolder(workspace);
+        const queueFolder = await getWorkspaceQueueFolder(workspace, true);
         queue = await chrome.bookmarks.getChildren(queueFolder.id);
         if (queue.length > 0 && !sections.find((s) => s.name == SectionNames.toVisit)) {
             sections = [...sections, { name: SectionNames.toVisit}];
@@ -949,10 +942,9 @@
                     {/each}
                     {:else if visibleSection == SectionNames.bookmarks}
                         <div class="bookmarks-container">
-                            <div class="create-folder" on:mousedown={() => showNewFolderModal = true}>
-                                <img src={folderCreateIcon} alt="Create Folder"/>
-                                <span>Create folder</span>
-                            </div>
+                            <CreateFolderButton 
+                                on:mousedown={() => showNewFolderModal = true}
+                            />
                             {#key lastBookmarkUpdate}
                             <BookmarkTree 
                                 {workspace} 
@@ -1080,8 +1072,8 @@
     }
 
     .icon-button {
-        height: 20px;
-        width: 20px;
+        height: 18px;
+        width: 18px;
         margin-left: 5px;
         filter: invert(1);
     }

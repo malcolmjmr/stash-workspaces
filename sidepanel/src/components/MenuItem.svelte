@@ -81,7 +81,7 @@
     {#if tab && (isQuickAction || isInFocus) && canToggle}
         <img 
             class="quick-action-toggle"
-            src={isQuickAction ? toggleOffIcon : toggleOnIcon } 
+            src={isQuickAction ? toggleOnIcon : toggleOffIcon } 
             alt="Toggle Quick Action" 
             on:mousedown={toggleQuickAction}
         />

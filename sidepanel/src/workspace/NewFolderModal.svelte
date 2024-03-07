@@ -8,16 +8,16 @@
 
     let dispatch = createEventDispatcher();
 
-    let name = '';
+    export let title = '';
 
     const onInput = async (e) => {
         if (e.key == "Enter") {
-            await chrome.bookmarks.create({ 
-                title: name,
+            const folder = await chrome.bookmarks.create({ 
+                title,
                 parentId: workspace.folderId,
                 index: 0,
             });
-            dispatch('bookmarkFolderCreated');
+            dispatch('bookmarkFolderCreated', folder);
         }
     };
     
@@ -27,7 +27,7 @@
     <img src={folderIcon} alt="" />
     <input 
         type="text" 
-        bind:value={name} 
+        bind:value={title} 
         placeholder="Enter folder name"
         on:keydown={onInput}
         autofocus="true"

@@ -6,15 +6,12 @@
     import collapseIcon from "../icons/collapse.png";
     import openIcon from "../icons/open-in-new-window.png";
     import { get, getContext, removeContext, set } from "../utilities/chrome";
-    import queueIcon from "../icons/inbox.png";
-    import folderIcon from "../icons/folder-special.png";
-    import GroupColors from "../group/GroupColors.svelte";
     import { slide } from "svelte/transition";
     import { createEventDispatcher, onMount } from "svelte";
     import { getTimeSinceString } from "./helpers";
     import Tab from "../tab/Tab.svelte";
-  import ModalContainer from "../components/ModalContainer.svelte";
-  import WorkspaceMenu from "./WorkspaceMenu.svelte";
+    import ModalContainer from "../components/ModalContainer.svelte";
+    import WorkspaceMenu from "./WorkspaceMenu.svelte";
     
 
     export let workspace;

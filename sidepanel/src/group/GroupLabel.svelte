@@ -37,7 +37,7 @@
     onMount(() => {
 
         group = groups[groupId];
-        
+
         if (!group.title || group.title == '') {
             isEditingTitle = true;
             el?.scrollIntoView({
@@ -51,9 +51,7 @@
 
     $: {
         if (group != groups[groupId]) {
-            console.log('updating group data');
             group = groups[groupId];
-            console.log(group);
         }
     }
 

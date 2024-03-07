@@ -81,10 +81,8 @@
     };
     
     const onDrop = async (e) => {
-        console.log('item dropped');
         if (isDraggedOver) isDraggedOver = false;
         const tabId = parseInt(e.dataTransfer.getData("tabId"));
-        console.log(tabId);
         const newWindow = await chrome.windows.create();
         await chrome.tabs.move(tabId, {
             index: -1,

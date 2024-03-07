@@ -24,8 +24,7 @@
     };
 
     onMount(() => {
-        console.log('building recent tabs');
-        console.log(recentTabs);
+
     });
 
 

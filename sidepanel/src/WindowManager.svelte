@@ -299,7 +299,7 @@
     };
 
     const onTabRemoved = (tabId) => {
-        console.log('tab removed');
+        
         //tabs = tabs.filter((t) => t.id != tabId);
         loadTabsGroupsAndWindows();
         // const index = tabs.findIndex((t) => t.id == tabId);
@@ -432,9 +432,7 @@
     };
 
     const updateTabsWithBookmark = async ({ id, bookmark, remove }) => {
-        console.log('updating tabs with bookmark');
-        console.log(bookmark);
-        console.log('id: ' + id);
+
         for (let i = 0; i < tabs.length; i++) {
             let tab = tabs[i];
             if (!remove && !bookmark?.url != tab.url) {
@@ -447,8 +445,7 @@
             });
 
             if (!remove && index == -1) {
-                console.log('adding bookmark to tab');
-                console.log(tab);
+
                 tabs[i].bookmarks.push(bookmark);
             } else if (remove && index > -1) {
                 tabs[i].bookmarks.splice(index, 1);

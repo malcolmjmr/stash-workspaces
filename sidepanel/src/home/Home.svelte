@@ -92,8 +92,6 @@
 
     const onWorkspaceOpened = async ({ detail }) => {
         const workspace = detail;
-        console.log('workspace opened');
-        console.log(workspace);
         onOpenWorkspaceClicked(workspace);
     };
 
@@ -264,8 +262,8 @@
 
     .bottom-section .button img {
         filter: invert(0.6);
-        height: 20px;
-        width: 20px;
+        height: 15px;
+        width: 15px;
         margin-right: 8px;
     }
     

@@ -16,7 +16,8 @@ import relatedIcon from "../icons/join-right.png";
 import closeTabIcon from "../icons/tab-close.png";
 import { createEventDispatcher } from "svelte";
 import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
-import { getWorkspaceQueueFolder, saveTabToFolder } from "../utilities/chrome";
+import { getContextFromGroupId, getWorkspaceQueueFolder, saveTabToFolder } from "../utilities/chrome";
+import { _favorites } from "../stores";
 
 
 export const actions = {
@@ -132,8 +133,52 @@ export const actions = {
 
     },
     favoriteDomain: {
-        
+        id: 'favoriteDomain',
+        title: async (tab) => {
+            let isFavoriteDomain = false;
 
+            const url = new URL(tab.url);
+            const domainUrl = url.protocol + '//' + url.host;
+
+     
+            if (tab.groupId > -1) {
+                const workspace = await getContextFromGroupId(tab.groupId);
+                
+                if (workspace.favorites.includes(domainUrl)) {
+                    isFavoriteDomain = true;
+                } 
+            } else {
+                if ($_favorites.find((d) => d.url == domainUrl)) {
+                    isFavoriteDomain = true;
+                }
+            }
+
+            return isFavoriteDomain ? 'Remove from favorite domains' : 'Add to favorite domains';
+        },
+        icon: async (tab) => {
+            let isFavoriteDomain = false;
+
+            const url = new URL(tab.url);
+            const domainUrl = url.protocol + '//' + url.host;
+
+     
+            if (tab.groupId > -1) {
+                const workspace = await getContextFromGroupId(tab.groupId);
+                
+                if (workspace.favorites.includes(domainUrl)) {
+                    isFavoriteDomain = true;
+                } 
+            } else {
+                if ($_favorites.find((d) => d.url == domainUrl)) {
+                    isFavoriteDomain = true;
+                }
+            }
+
+            return isFavoriteDomain ? removeDomainIcon : addDomainIcon;
+        },
+        onClick: async (tab) => {
+            //tab.isFavoriteDomain 
+        }
     },
     save: {
         title: (tab) => {
@@ -165,8 +210,12 @@ export const actions = {
             });
 
             if (tab.groupId > -1) {
-                await chrome.tabs.group({ groupId: tab.groupId, tabIds: newTab.id });
+                await chrome.tabs.group({ 
+                    groupId: tab.groupId, 
+                    tabIds: newTab.id
+                });
             }
+
             return 'exit';
         }
 

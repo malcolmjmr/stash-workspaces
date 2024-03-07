@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import DomainIcon from "./DomainIcon.svelte";
   import { getActiveTab, get, getHistory } from "../utilities/chrome";
+  import { _favorites } from "../stores";
 
     export let workspace = null;
 
@@ -14,14 +15,22 @@
 
     const load = async () => {
        
+        if ($_favorites.length == 0) {
+            await refreshFavorites();
+        } else {
+            favorites = $_favorites;
+        }
+
+        loaded = true;
+    };
+
+    const refreshFavorites = async () => {
         await getSavedFavorites();
         await getDomainsFromOpenTabs();
         await getDomainsFromHistory();
         await getDomainsFromBookmarks();
-        
-        
-        loaded = true;
-    };
+        _favorites.set(favorites);
+    }
 
     const getSavedFavorites = async () => {
         if (workspace) {
@@ -41,7 +50,7 @@
     const getDomainsFromHistory = async () => {
         if (workspace) return;
         const history = await getHistory();
-        favorites = [...favorites, ...getDomainsOrderedByCount(history, (d) => d.count > 10 && !favorites.find((f) => f.url == domain.url))];
+        favorites = [...favorites, ...getDomainsOrderedByCount(history, (d) => d.count > 10 && !favorites.find((f) => f.url == d.url))];
     };
 
     const getDomainsOrderedByCount = (resources, filter) => {

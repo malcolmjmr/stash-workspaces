@@ -119,7 +119,6 @@
         }
     
         if (showWorkspace && groupId) {
-            console.log('setting workspace view');
             activeWorkspace = await getContextFromGroupId(groupId);
             view = Views.workspace;
         } else {
@@ -242,7 +241,12 @@
 
 
 
-    const fullScreenViews = [Views.workspace, Views.trash, Views.history, Views.archive, Views.search];
+    const fullScreenViews = [
+        Views.workspace, 
+        Views.trash, 
+        Views.history, 
+        Views.archive, 
+    ];
 
     let newTab;
 
@@ -252,7 +256,7 @@
 
     const onShiftClickTab = async ({ detail }) => {
 
-        console.log('shfit click tab');
+   
         const tab = detail;
 
         const activTab = await getActiveTab();
@@ -401,6 +405,7 @@
                 on:goBack={() => view = Views.tabs}
                 on:dataUpdated
                 on:foundDuplicates
+                
             />
         {:else if view == Views.trash}
             <Trash

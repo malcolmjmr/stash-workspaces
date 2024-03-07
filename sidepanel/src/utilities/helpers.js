@@ -16,8 +16,6 @@ export async function getTabsBookmarks(tab, allResources) {
         const bookmarkResults = await chrome.bookmarks.search({
             url: url,
         });
-        console.log('getting tabs bookmarks');
-        console.log(bookmarkResults);
 
         // check that bookmark parent matches 
         if (bookmarkResults.length > 0) {

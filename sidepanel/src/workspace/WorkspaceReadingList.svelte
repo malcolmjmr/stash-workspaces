@@ -2,8 +2,7 @@
 
     import Bookmark from "../components/Bookmark.svelte";
     export let queue = [];
-    console.log(queue);
-    console.log(queue.length);
+
 
     let queueCount = 0;
 

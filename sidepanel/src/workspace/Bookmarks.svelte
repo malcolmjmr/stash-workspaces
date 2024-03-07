@@ -20,8 +20,7 @@
 
     let loaded;
     onMount(() => {
-        console.log('bookmarks');
-        console.log(bookmarks);
+
     });
 
     /*

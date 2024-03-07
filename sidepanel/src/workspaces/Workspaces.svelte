@@ -141,7 +141,6 @@
 
     const onWorkspaceUpdated = async ({detail}) => {
         const workspace = detail;
-        console.log('workspace updated');
         saveWorkspace(workspace);
     };
 

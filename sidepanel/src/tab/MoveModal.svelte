@@ -47,10 +47,16 @@
     };
 
     const moveToNewSpace = async () => {
-        await moveToNewWindow();
-        const group = await chrome.tabs.group({ 
-            tabIds: selectedTabs.map((t) => t.id) 
+        const window = await moveToNewWindow();
+        const groupId = await chrome.tabs.group({ 
+            tabIds: selectedTabs.map((t) => t.id),
+            createProperties: {
+                windowId: window.id,
+            } 
         });
+        if (searchText.length > 0) {
+            chrome.tabGroups.update(groupId, { title: searchText });
+        }
         dispatch('tabsMoved');
     };
 
@@ -62,6 +68,7 @@
         await chrome.tabs.move(tabIds, { windowId: window.id, index: -1});
         await chrome.tabs.remove(newTab.id);
         dispatch('tabsMoved');
+        return window;
     };
 
     $: {
@@ -116,14 +123,15 @@
                             <span>New Window</span>
                         </div>
                     {/if}
-                </div>
-                <div class="list">
                     {#if searchText.length > 0}
                     <div class="list-item" on:mousedown={moveToNewSpace}>
                         <img src={createFolderIcon} alt="New Space" />
                         <span>New Space</span>
                     </div>
                     {/if}
+                </div>
+                <div class="list">
+                    
                     {#each visibleSpaces as workspace}
                         <WorkspaceListItem {workspace} onClick={onWorkspaceClicked}/> 
                     {/each}
@@ -236,6 +244,7 @@
         font-weight: 400;
         height: 30px;
         opacity: 0.7;
+        font-size: 14px;
     }
 
 

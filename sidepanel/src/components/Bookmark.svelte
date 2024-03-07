@@ -173,8 +173,8 @@
         if (isFolder) {
             if (onlyShowFolders) {
                 dispatch('bookmarkClicked', bookmark);
-            } else if (!isOpen) {
-                isOpen = true;
+            } else  {
+                isOpen = !isOpen;
             }
         } else {
             setTimeout(() => {
@@ -260,15 +260,15 @@
             
         >
             <img
-                on:mouseup={onclick}
+                on:mousedown={onclick}
                 src={isFolder ? (isOpen ? openFolderIcon : folderIcon) : favIconUrl}
                 class="icon{isFolder ? ' folder' : ''}"
                 alt=""
             />
-            <div class="title" on:mouseup={onBookmarkClicked}>
+            <div class="title" on:mousedown={onBookmarkClicked}>
                 {bookmark.title}
             </div>
-            <div class="spacer" on:mouseup={onBookmarkClicked}>
+            <div class="spacer" on:mousedown={onBookmarkClicked}>
 
             </div>
             
@@ -350,8 +350,8 @@
     }
 
     .icon.folder {
-        height: 22px;
-        width: 22px;
+        height: 20px;
+        width: 20px;
         filter: invert(1);
     }
 
@@ -374,7 +374,6 @@
         height: 15px;
         width: 15px;
         filter: invert(1);
-        opacity: 0.7;
     }
 
     img.button:hover {
