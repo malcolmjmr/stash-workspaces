@@ -364,7 +364,7 @@
                 Add history permission to view history and recent web pages.
             </div>
             {:else if (visibleHistory?.length ?? 0) > 0}
-            {#each visibleHistory as historyItem}
+            {#each visibleHistory as historyItem (historyItem.url)}
                 <Tab 
                     tab={historyItem} 
                     isOpen={false} 
