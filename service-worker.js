@@ -29,6 +29,22 @@ chrome.tabGroups.onRemoved.addListener((group) => onTabGroupClosed(group)); // 1
 // Commands
 chrome.commands.onCommand.addListener((command, tab) => onCommand(command, tab));
 
+// Web Request
+// Listen for response headers and modify them
+chrome.webRequest.onHeadersReceived.addListener(
+    modifyResponseHeaders,
+    {urls: ["<all_urls>"], types: ["sub_frame"]},
+    ["blocking", "responseHeaders", "extraHeaders"]
+);
+
+// Listen for request headers to modify User-Agent for mobile preview
+chrome.webRequest.onBeforeSendHeaders.addListener(
+    modifyRequestHeadersForMobilePreview,
+    {urls: ["<all_urls>"], types: ["sub_frame"]},
+    ["blocking", "requestHeaders"]
+);
+
+
 async function onInstalled(details) {
 
     if (details.reason !== 'install') return;
@@ -998,4 +1014,36 @@ async function isAutoUpdate(id, update) {
 async function removeAutoUpdate(updateId) {
     await chrome.storage.local.remove(updateId);
 }
+
+
+
+// Function to modify response headers
+async function modifyResponseHeaders(details) {
+    const tab = await chrome.tabs.get(details.tabId);
+    const isDesktopTab = tab.url.includes(await chrome.runtime.getURL('desktop/index.html'))
+    if (!isDesktopTab) return {};
+    let responseHeaders = details.responseHeaders.filter(header => {
+      let name = header.name.toLowerCase();
+      return name !== "x-frame-options" && name !== "content-security-policy";
+    });
+  
+    return {responseHeaders};
+  }
+  
+  // Function to modify request headers for mobile preview
+  async function modifyRequestHeadersForMobilePreview(details) {
+    const tab = await chrome.tabs.get(details.tabId);
+    const isDesktopTab = tab.url.includes(await chrome.runtime.getURL('desktop/index.html'))
+    if (!isDesktopTab) return {};
+    let requestHeaders = details.requestHeaders;
+    requestHeaders.forEach(header => {
+      if (header.name.toLowerCase() === "user-agent") {
+        // Modify the User-Agent header to a mobile User-Agent
+        header.value = "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1";
+      }
+    });
+  
+    return {requestHeaders};
+  }
+  
 

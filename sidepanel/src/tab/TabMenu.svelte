@@ -298,10 +298,11 @@
             {tab}
             canToggle={true}
         />
-        {#if false}
+        {#if user && tab.groupId > -1}
             <MenuItem
-                title="Move Group to New Window"
-                onClick={moveGroupToNewWindow}
+                action={actions.moveToDesktop}
+                on:moveToDesktop
+                
             />
         {/if}
         <MenuItem 

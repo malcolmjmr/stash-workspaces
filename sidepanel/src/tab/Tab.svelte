@@ -599,6 +599,7 @@
                 on:editBookmark={saveTab}
                 on:dataUpdated={onDataUpdated}
                 on:tabStashed
+                on:moveToDesktop
             />
         {/if}
     </ModalContainer>

@@ -14,10 +14,12 @@ import addDomainIcon from "../icons/domain-add.png";
 import removeDomainIcon from "../icons/domain-remove.png";
 import relatedIcon from "../icons/join-right.png";
 import closeTabIcon from "../icons/tab-close.png";
+import moveToDesktopIcon from "../icons/place-item.png";
 import { createEventDispatcher } from "svelte";
 import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
-import { getContextFromGroupId, getWorkspaceQueueFolder, saveTabToFolder } from "../utilities/chrome";
+import { getContextData, getContextFromGroupId, getWorkspaceQueueFolder, saveContext, saveContextData, saveTabToFolder } from "../utilities/chrome";
 import { _favorites } from "../stores";
+import { createResource } from "../utilities/firebase";
 
 
 export const actions = {
@@ -98,6 +100,35 @@ export const actions = {
         icon: moveToSpaceIcon,
         onClick: (tab) => {
             return ''
+        }
+    },
+    moveToDesktop: {
+        title: 'Move to desktop',
+        id: 'moveToDesktop',
+        icon: moveToDesktopIcon,
+        onClick: async (tab) => {
+
+
+            const workspace = await getContextFromGroupId(tab.groupId);
+            const workspaceData = await getContextData(workspace.id);
+            if (!workspaceData.desktop) workspaceData.desktop = {
+                resources: [],
+                activities: [],
+            };
+            
+            const resource = tab.resource ? tab.resource : createResource({url });
+            workspaceData.desktop.resources.push(resource);
+
+            await saveContextData(workspaceData);
+            chrome.tabs.remove(tab.id);
+
+            chrome.runtime.sendMessage({
+                command: 'resourceMovedToDesktop',
+                workspace,
+                resource,
+            });
+
+            return ''; //'moveToDesktop'
         }
     },
     saveForLater: {

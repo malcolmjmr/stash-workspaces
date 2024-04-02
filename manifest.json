@@ -12,6 +12,7 @@
     "web_accessible_resources": [
         {
             "resources": [
+                "desktop/*",
                 "sidepanel/*"
             ],
             "matches": [
@@ -37,7 +38,9 @@
     },
     "optional_permissions": [
         "bookmarks",
-        "history"
+        "history",
+        "webRequest",
+        "webRequestBlocking"
     ],
     "permissions": [
         "identity",

@@ -269,6 +269,8 @@
         }
     };
 
+    const onMoveTa
+
 </script>
 
 {#if newTab}
@@ -365,7 +367,6 @@
                 bind:selectedTabs
                 {lastUpdate}
                 {lastSelectionUpdate}
-
                 {workspaces}
                 bind:searchText
                 {searchResults}
@@ -377,6 +378,7 @@
                 on:dataUpdated
                 on:shiftClickTab={onShiftClickTab}
                 on:refreshTabs
+
             />
         {:else if view == Views.saved}
             <Workspaces 

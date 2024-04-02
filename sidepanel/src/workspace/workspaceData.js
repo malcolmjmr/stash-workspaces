@@ -61,6 +61,8 @@ export async function getWorkspaceData({db, user, workspace, group}) {
             directory = tree[0];
         }
 
+        
+
         // for ()
         // resources.map((resource) => {
         //     // add folder

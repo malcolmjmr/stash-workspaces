@@ -214,6 +214,7 @@
                         on:showWorkspaceView
                         on:dataUpdated
                         on:refreshTabs
+                        on:moveToDesktop
                     />
                 {/key}
                 {/if}
@@ -233,6 +234,7 @@
                         on:dataUpdated
                         on:shiftClickTab
                         on:refreshTabs
+                        on:moveToDesktop
                     />
                 </div>
                 

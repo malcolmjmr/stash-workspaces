@@ -907,6 +907,7 @@
                             on:shiftClickTab
                             on:tabStashed={onTabStashed}
                             on:refreshTabs
+                            on:moveToDesktop
                         />
                     {:else}
                         <WorkspaceListItem 
@@ -937,6 +938,7 @@
                             on:shiftClickTab
                             on:tabStashed={onTabStashed}
                             on:refreshTabs
+                            on:moveToDesktop
                             
                         />
                     {/each}

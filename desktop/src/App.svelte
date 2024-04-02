@@ -1,166 +1,205 @@
-<!-- App.svelte -->
 <script>
-    import { onMount } from 'svelte';
-    import * as THREE from 'three';
-    import { CSS3DRenderer, CSS3DObject, } from 'three/addons/renderers/CSS3DRenderer.js';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { onMount } from "svelte";
+    import { getActiveTab, getContextData, getContextFromGroupId } from "../../sidepanel/src/utilities/chrome";
+    import { getWorkspaceData } from "../../sidepanel/src/workspace/workspaceData";
+    import CreateMenu from "./create_menu/CreateMenu.svelte";
+    import Launcher from "./launcher/Launcher.svelte";
+    import Finder from "./finder/Finder.svelte";
+    import Note from "./note/Note.svelte";
+    import ResourceContainer from "./resource_container/ResourceContainer.svelte";
+    import Tab from "../../sidepanel/src/tab/Tab.svelte";
+    import Chat from "./chat/Chat.svelte";
+    import { createResource } from "../../sidepanel/src/utilities/firebase";
+    import Window from "./window/Window.svelte";
 
-  
-    let scene, camera, webGLRenderer, css3DRenderer;
-
-    let canvas;
-  
 
     onMount(() => {
-        initThree();
-        addEventListeners();
-        animate();
+        load();
     });
 
-    function initThree() {
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
-        camera.position.set(0, 0, 1000);
-
-        scene = new THREE.Scene();
-        var cube = new THREE.Mesh(
-            new THREE.BoxGeometry(50,50,50),
-            new THREE.MeshBasicMaterial({ color: 0xff0000 })
-        );
-        scene.add(cube);
-
-        // Light (with specified intensity and color)
-        const light = new THREE.SpotLight(0xffffff, 1); // White light with full intensity
-        light.position.set(170, 330, -160);
-        scene.add(light);
+    let workspace;
+    let workspaceData = {}; // desktop.resources and desktop.activities
 
 
-        var planeGeo = new THREE.PlaneGeometry(400, 200, 10, 10);
-        var planeMat = new THREE.MeshLambertMaterial({color: 'lightgray'} );
-        var plane = new THREE.Mesh(planeGeo, planeMat);
-        plane.rotation.x = -Math.PI/2;
-        plane.position.y = -25;
-        plane.receiveShadow = true;
-        scene.add(plane);
+    /*
+        desktop has 
+            resources
+            activies
+    */
 
-  
-        // Set up the camera
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 1000;
-    
-        webGLRenderer = new THREE.WebGLRenderer();
-        webGLRenderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(webGLRenderer.domElement);
-    
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+    const load = async () => {
+        // get web request permisison 
+
+        const hasPermission = await checkPermissions();
+        if (hasPermission) {
+            reloadData();
+        } else {
+            // tell user that it won't work without the permission
+        }
+
+        
+    };
+
+    const checkPermissions = async () => {
+        let permissionGranted = await chrome.permissions.contains({
+            permissions: ["webRequest","webRequestBlocking"],
+
         });
 
-        const controls = new OrbitControls(camera, webGLRenderer.domElement);
-        controls.addEventListener('change', webGLRenderer); // use if there is no animation loop
-        controls.minDistance = 100;
-        controls.maxDistance = 500;
-        controls.enablePan = true;
-
-
-        css3DRenderer = new CSS3DRenderer();
-        css3DRenderer.setSize(window.innerWidth, window.innerHeight);
-        css3DRenderer.domElement.style.position = 'absolute';
-        css3DRenderer.domElement.style.top = '0px';
-        document.body.appendChild(css3DRenderer.domElement);
-
-
-    }
-
-    function animate() {
-        requestAnimationFrame(animate);
-        css3DRenderer.render(scene, camera);
-        webGLRenderer.render(scene, camera);
-    }
-
-    function addIframe() {
-
-        console.log('adding iframe');
-        const iframe = document.createElement('iframe');
-        iframe.src = 'https://exa.ai';
-        iframe.style.width = '640px';
-        iframe.style.height = '360px';
-        iframe.style.border = '0px';
-        const object = new CSS3DObject(iframe);
-        object.position.set(0, 0, 0);
-        scene.add(object);
-
-        // Make the iframe draggable (simple example)
-        iframe.draggable = true;
-        iframe.ondragstart = (event) => {
-            event.dataTransfer.setData('text/plain', null); // Required for Firefox
-        };
-    }
-
-    let selectedObject = null;
-
-    function onDocumentMouseDown(event) {
-        event.preventDefault();
-
-        const rect = webGLRenderer.domElement.getBoundingClientRect();
-        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-        const vector = new THREE.Vector3(x, y, 0.5);
-        vector.unproject(camera);
-
-        const ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
-
-        const intersects = ray.intersectObjects(scene.children, true);
-
-        if (intersects.length > 0) {
-            selectedObject = intersects[0].object;
-            console.log('object selected');
-            console.log(selectedObject);
-            // Add logic to mark the object as selected or to start dragging
+        if (!permissionGranted) {
+            permissionGranted = await chrome.permissions.request({
+                permissions: ["webRequest","webRequestBlocking"],
+                origins: ['*://*/*']
+            });
         }
-    }
+        return permissionGranted;
+    };  
 
-    function onDocumentMouseMove(event) {
-        if (selectedObject) {
-            const rect = webGLRenderer.domElement.getBoundingClientRect();
-            const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-            const vector = new THREE.Vector3(x, y, selectedObject.position.z);
-            vector.unproject(camera);
-            selectedObject.position.copy(vector);
-            // Update the position of the selectedObject based on the mouse movement
+    const reloadData = async () => {
+        const activeTab = await getActiveTab();
+        workspace = await getContextFromGroupId(activeTab.groupId);
+        if (workspace) {
+            workspaceData = await getContextData(workspace.id);
+            if (!workspaceData.desktop) {
+                workspaceData.desktop = {
+                    resources: [],
+                    activities: [],
+                }
+            }
         }
-    }
-
-    function onDocumentMouseUp(event) {
-        selectedObject = null; // Deselect the object when mouse is released
-    }
-    const addEventListeners = () => {
-        document.addEventListener('mousedown', onDocumentMouseDown, false);
-        document.addEventListener('mousemove', onDocumentMouseMove, false);
-        document.addEventListener('mouseup', onDocumentMouseUp, false);
     };
-   
-  </script>
 
-<button on:click={addIframe}>Add Draggable Iframe</button>
+    
+
+    chrome.runtime.onMessage.addListener((msg, sender, response) => {
+        if (msg.command == 'resourceMovedToDesktop' && msg.workspace.id == workspace.id) {
+            reloadData();
+        }
+    });
+
+
+    let longPressTimeout;
+    let mouseDownStart;
+    const onMouseDown = (e) => {
+        // start long press timer 
+        longPressTimeout = setTimeout(() => {
+            createLastResource();
+        }, 1500);
+
+        mouseDownStart = { x: e.pageX, y: e.pageY }
+    };
+
+    const onMouseMove = (e) => {
+        if (longPressTimeout) {
+            const movedBeyondThreshold = Math.abs(e.pageX - mouseDownStart.x) > 5 && Math.abs(e.pageY - mouseDownStart.y) > 5;
+            if (movedBeyondThreshold) {
+                longPressTimeout = clearTimeout(longPressTimeout);
+            }
+        }
+    };
+
+    const onMouseUp = (e) => {
+
+        if (longPressTimeout) {
+            longPressTimeout = clearTimeout(longPressTimeout);
+
+            showCreateMenu = true;
+        } else {
+        
+            createDefaultResource();
+        }
+        
+    };
+
+    let showLauncher;
+    let showCreateMenu;
+
+    const createDefaultResource = () => {
+        lastResource = {
+            ...createResource(),
+            type: 'note',
+        }
+    };
+
+
+    let lastResource;
+    const createLastResource = () => {
+        lastResource = {
+            ...lastResource,
+            ...createResource(),
+        };
+        workspaceData.desktop.resources = [
+            ...workspaceData.desktop.resources,
+            lastResource,
+        ];
+    };
+
+    
+    const onCreateResource = ({ detail, resource }) => {
+        const resourceData = resource ?? detail;
+        lastResource = {
+            ...createResource(),
+            ...resourceData,
+        };
+        workspaceData.desktop.resources = [
+            ...workspaceData.desktop.resources,
+            lastResource,
+        ];
+    };
+
+    const onActionClicked = ({ detail }) => {
+        const text = window.getSelection().toString();
+        const action = detail;
+
+        if (action.id == 'createNote') {
+
+        } else if (action.id == 'createHighlight') {
+            // create highlight ??
+            
+        } else if (action.id == 'search') {
+            // 
+        } else if (action.id == 'copy') {
+            // add to clipboard
+        } else if (action.id == 'cut') {
+            // add to clipboard
+            // remove 
+        }
+    };
+
+
+
+
+
+</script>
+
+<div 
+    class="desktop" 
+    on:mousedown={onMouseDown}
+    on:mouseup={onMouseUp}
+>   
+    {#each workspaceData?.desktop?.resources ?? [] as resource (resource)}
+        <Window {resource} on:actionClicked={onActionClicked}/>
+    {/each}
+
+    {#if showCreateMenu}
+        <CreateMenu on:createResource={onCreateResource}/>
+    {/if}
+    
+    {#if showLauncher}
+        <Launcher />
+    {/if}
+
+
+</div>
   
-  <style>
-    canvas {
-      display: block;
-      position: relative;
-      width: 100%;
-      height: 100%;
+<style>
+
+    .desktop {
+        height: 100%;
+        width: 100%;
+        background-color: black;
     }
 
-    button {
-        z-index: 900000;
-        position: fixed;
-    }
-  </style>
+</style>
   
