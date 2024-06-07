@@ -243,13 +243,13 @@
             <span>{workspace.title}</span>
         </div>
         <div class="spacer"></div>
-
-        <img class="icon-button" src={openIcon} alt="Open in New Window" 
-            on:mousedown={onOpenWorkspaceClicked}
-        />
         <img class="icon-button" src={moreIcon} alt="Workspace Menu"
             on:mousedown={() => showMenu = true} 
         />
+        <img class="icon-button" src={openIcon} alt="Open in New Window" 
+            on:mousedown={onOpenWorkspaceClicked}
+        />
+        
     </div>
 
     {#if visibleSection}

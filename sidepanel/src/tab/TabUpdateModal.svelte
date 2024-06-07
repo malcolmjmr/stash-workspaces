@@ -672,7 +672,6 @@
     }
 
     .permission-request {
-        padding: 10px;
         opacity: 0.7;
         color: white;
         font-size: 22px;
