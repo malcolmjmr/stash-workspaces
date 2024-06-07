@@ -12,7 +12,7 @@
   import { userData } from "../stores";
   import Bookmark from "../components/Bookmark.svelte";
   import FolderListItem from "../components/FolderListItem.svelte";
-  import { createContext, getExtensionFolder, hiddenFolderTitles, openWorkspace, requestBookmarkPermssion, saveContext, tryToGetTabGroup } from "../utilities/chrome";
+  import { createAdjacentTab, createContext, getExtensionFolder, hiddenFolderTitles, openWorkspace, requestBookmarkPermssion, saveContext, tryToGetTabGroup } from "../utilities/chrome";
   import MenuDivider from "../components/MenuDivider.svelte";
 
 
@@ -106,24 +106,28 @@
             await chrome.tabs.query({ active: true, currentWindow: true })
         )[0];
         return await chrome.tabs.create({ index: activeTab.index + 1 });
-    }
+    };
 
     const onKeyDown = async (e) => {
         if (e.key == 'Enter') {
+            const shouldCreatNewGroup = searchText.length > 0 && visibleFolders.length == 0 && visibleSpaces.length == 0;
             if (workspace) {
+                
                 if ($userData) {
 
                 } else {
                     await createNewFolder();
                 }
-            } else if (view == Views.tabs) {
+            } else if (shouldCreatNewGroup) {
+                createNewGroup();
+            } else if (selectedTabs.length > 0) {
                 let tabIds = selectedTabs.map((t) => t.id);
                 if (tabIds.length == 0) tabIds[(await createNewTab()).id];
                 const groupId = await chrome.tabs.group({tabIds: tabIds});
                 await chrome.tabGroups.update(groupId, {title: searchText});
+            
             }
             
-
             dispatch('exitModal');
         }
         // search contexts and bookmark folders
@@ -193,7 +197,7 @@
 
     let dispatch = createEventDispatcher();
     const exitModal = () => {
-        dispatch('exit');
+        dispatch('exitModal');
     };
 
     const setColor = (color) => {
@@ -206,7 +210,7 @@
             // create folder 
             createNewFolder();
         } else { 
-            
+            createNewGroup();
         }
         
     }
@@ -259,23 +263,17 @@
     };
 
     const createNewGroup = async () => {
-        /*
-            
-        */
 
-        let tabIds = ungroupedTabs.map((t) => t.id);
-        await chrome.tabs.update(tabIds[0], {active:true});
-        const group = await chrome.tabs.group({tabIds});
+        if (searchText.length > 0) {
+            const workspace = await createContext({title: searchText});
+            await openWorkspace(workspace, { openInNewWindow: false });
+        } else if (selectedTabs.length > 0) {
 
-        // const newWorkspace = await createContext({ 
-        //     title: folder.title,
-        //     folderId: folder.id,
-        //     created: folder.dateAdded,
-        //     updated: Date.now(), 
-        //     color: 'grey',
-        // });
-
-        // openWorkspace(newWorkspace, { openInNewWindow: false });
+        } else {
+            let tabIds = ungroupedTabs.map((t) => t.id);
+            await chrome.tabs.update(tabIds[0], {active:true});
+            const group = await chrome.tabs.group({tabIds});
+        }
 
         exitModal();
 
@@ -337,7 +335,7 @@
             
 
 
-            {#if visibleSpaces.length > 0 || showFolders || !hasBookmarkPermission || (searchText.length == 0 && ungroupedTabs.length > 0)}
+            
             <MenuDivider/>
             <div class="results">
                 {#if searchText.length == 0 && ungroupedTabs.length > 0}
@@ -404,7 +402,7 @@
                 {/if}
                 
             </div>
-            {/if}
+            
 
 
         

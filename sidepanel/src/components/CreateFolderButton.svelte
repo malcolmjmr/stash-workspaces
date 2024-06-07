@@ -26,9 +26,9 @@
     }
 
     .create-folder img {
+        filter: invert();
         height: 22px;
         width: 22px;
-        filter: invert(1);
         margin-right: 3px;
     }
 

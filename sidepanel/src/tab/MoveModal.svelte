@@ -114,7 +114,7 @@
             <div class="move-options">
                 
                 <div class="search-container">
-                    <SearchBox bind:searchText placeholderText="Search or create..."/>
+                    <SearchBox bind:searchText placeholderText="Search or create..." autofocus={true} />
                 </div>
                 <div class="list new-window">
                     {#if searchText.length == 0}

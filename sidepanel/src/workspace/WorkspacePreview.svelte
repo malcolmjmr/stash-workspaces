@@ -18,7 +18,7 @@
     import { getWorkspaceData } from "./workspaceData";
     import { createEventDispatcher, onMount } from "svelte";
     import WorkspaceFolder from "../components/WorkspaceIcon.svelte";
-  import { getWorkspaceQueueFolder, hiddenFolderTitles, openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
+  import { getWorkspaceQueueFolder, hiddenFolderTitles, openWorkspace, saveContext, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
   import ModalContainer from "../components/ModalContainer.svelte";
   import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
     import WorkspacePreview from "./WorkspacePreview.svelte";
@@ -213,6 +213,14 @@
         
     }
 
+    const onRemoveTab = ({ detail }) => {
+        const tab = detail;
+        workspace.tabs = workspace.tabs.filter((t) => t.id != tab.id);
+        saveContext(workspace);
+        updateVisibleItems(visibleSection);
+      
+    };
+
 </script>
 
 {#if showMenu}
@@ -269,7 +277,7 @@
                 {#if user} 
                 {#each visibleItems as item (item.id)}
                     {#if visibleSection != SectionNames.folders}
-                        <Tab tab={item} isOpen={false} isListItem={true}/>
+                        <Tab tab={item} isOpen={false} isListItem={true} on:removeTab={onRemoveTab}/>
                     {:else}
                         <WorkspaceListItem 
                             {user}

@@ -10,8 +10,8 @@ export const options = [
         icon: noteIcon,
     },
     {
-        title: 'Tab',
-        type: 'tab',
+        title: 'Web',
+        type: 'web',
         icon: webIcon,
     },
     {

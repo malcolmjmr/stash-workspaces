@@ -5,6 +5,7 @@
     export let searchText = "";
     export let backgroundColor = null;
     export let placeholderText = 'Search';
+    export let autofocus = false;
 
     const onClearTextClicked = () => {
         searchText = "";
@@ -16,7 +17,7 @@
     style={backgroundColor ? "background-color: " + backgroundColor : ""}
 >
     <img src={searchIcon} alt="Search" />
-    <input type="text" bind:value={searchText} placeholder={placeholderText} />
+    <input type="text" bind:value={searchText} placeholder={placeholderText} autofocus={autofocus}/>
     {#if searchText.length > 0}
         <img
             class="clear button"

@@ -9,7 +9,6 @@
     let body;
 
     onMount(() => {
-        console.log(header?.height);
         addEventListeners();
     });
 
@@ -32,7 +31,6 @@
             } else {
                 if (scrollChange > 0) {
                     scrollingUp = true;
-                    console.log(scrollingUp);
                 }
             }
             lastScrollPosition = body.scrollTop;

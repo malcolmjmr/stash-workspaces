@@ -1,11 +1,12 @@
 <script>
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import DomainIcon from "./DomainIcon.svelte";
   import { getActiveTab, get, getHistory } from "../utilities/chrome";
   import { _favorites } from "../stores";
 
     export let workspace = null;
 
+    let unsubscribeToTabUpdates;
     let favorites = [];
 
     let loaded;
@@ -14,6 +15,10 @@
     });
 
     const load = async () => {
+
+        // unsubscribeToTabUpdates = _favorites.subscribe((value) => {
+        //     favorites = value;
+        // });
        
         if ($_favorites.length == 0) {
             await refreshFavorites();
@@ -24,18 +29,21 @@
         loaded = true;
     };
 
+    onDestroy(() => {
+        //unsubscribeToTabUpdates();
+    });
+
     const refreshFavorites = async () => {
         await getSavedFavorites();
         await getDomainsFromOpenTabs();
         await getDomainsFromHistory();
         await getDomainsFromBookmarks();
         _favorites.set(favorites);
-    }
+    };
 
     const getSavedFavorites = async () => {
         if (workspace) {
             favorites = workspace.favorites ?? [];
-            
         } else {
             favorites = (await get('favorites')) ?? [];
         }
@@ -44,7 +52,7 @@
     const getDomainsFromOpenTabs = async () => {
         const tab = await getActiveTab();
         const otherTabs = await chrome.tabs.query({groupId: tab.groupId});
-        favorites = [...favorites, ...getDomainsOrderedByCount(otherTabs)];
+        favorites = [...favorites, ...getDomainsOrderedByCount(otherTabs, (d) => d.count > 10 && !favorites.find((f) => f.url == d.url))];
     };
 
     const getDomainsFromHistory = async () => {

@@ -42,6 +42,9 @@
         "webRequest",
         "webRequestBlocking"
     ],
+    "host_permissions": [
+      "<all_urls>"
+    ],
     "permissions": [
         "identity",
         "tabs",
@@ -50,6 +53,7 @@
         "storage",
         "unlimitedStorage",
         "favicon"
+        
     ],
     "incognito": "spanning",
     "commands": {
@@ -67,22 +71,19 @@
               "default": "Alt+G"
             }
           },
-          "03undoGroup": {
-            "description": "UNDO GROUP - ungroups all tabs in active group"
+          "03tabAbove": {
+            "description": "GO TO TAB ABOVE - navigate to the tab above the active tab"
           },
-          "04closeGroup": {
-            "description": "CLOSE GROUP - closes the active group"
+          "04tabBelow": {
+            "description": "GO TO TAB BELOW - navigate to the tab below the active tab"
           },
-          "05shutdown": {
-            "description": "CLOSE ALL GROUPS - closes all open groups"
+          "05lastTab": {
+            "description": "GO TO LAST TAB - navigate to the last active tab"
           },
-          "06openTabs": {
-            "description": "OPEN TAB IN WINDOW - open active tab in pop-up window"
-          },
-          "07saveTab": {
+          "06saveTab": {
             "description": "SAVE TAB - save tab to active group's bookmark folder"
           },
-          "08stashTab": {
+          "07stashTab": {
             "description": "STASH TAB - closes active tab and saves it to the active group's bookmark folder",
             "suggested_key": {
               "default": "Alt+S"

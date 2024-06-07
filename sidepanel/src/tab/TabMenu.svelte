@@ -16,7 +16,7 @@
     import ModalContainer from "../components/ModalContainer.svelte";
     import MoveModal from "./MoveModal.svelte";
     import Menu from "../header/Menu.svelte";
-    import { getTabFavIconUrl, getWorkspaceQueueFolder, saveContext, saveTabToFolder } from "../utilities/chrome";
+    import { getTabFavIconUrl, getWorkspaceQueueFolder, saveContext, saveTabToFolder, set } from "../utilities/chrome";
 
     import pinIcon from "../icons/pin.png";
     import unpinIcon from "../icons/pin-filled.png";
@@ -32,6 +32,7 @@
     import removeDomainIcon from "../icons/domain-remove.png";
     import closeTabIcon from "../icons/tab-close.png";
   import MenuDivider from "../components/MenuDivider.svelte";
+  import { get } from "svelte/store";
 
 
     let dispatch = createEventDispatcher();
@@ -165,16 +166,34 @@
         
     };
 
-    const addToFavoriteDomains = () => {
-        if (!workspace.domains) workspace.domains = [];
-        const domain = (new URL(tab.url)).hostname;
-        
-        const index = workspace.domains.findIndex((d) => d == domain);
-        if (index == -1) {
-            workspace.domains.push(domain);
-            saveContext(workspace);
-            dispatch('dataUpdated', { workspace });
+    const addToFavoriteDomains = async () => {
+        if (user && workspace) {
+            if (!workspace.domains) workspace.domains = [];
+            const url = new URL(tab.url);
+            const domain = url.protocol + '//' + url.hostname;
+            
+            const index = workspace.domains.findIndex((d) => d == domain);
+            if (index == -1) {
+                workspace.domains.push(domain);
+                await saveContext(workspace);
+                dispatch('dataUpdated', { workspace });
+            }
+        } else {
+            let favorites = (await get('favorites')) ?? [];
+
+            const index = favorites.findIndex((d) => d.url == domain);
+            if (index > -1) {
+                favorites.push({
+                    url: domain,
+                    favIconUrl: tab.favIconUrl,
+                });
+            } 
+
+            await set({favorites});
+
+            
         }
+        
     };
 
 
@@ -259,9 +278,6 @@
             />
         {/if}
 
-        {#if user}
-
-
         <MenuItem 
             title='Add to favorite domains',
             action={actions.favoriteDomain}
@@ -270,7 +286,6 @@
             {tab}
             canToggle={true}
         />
-        {/if}
 
         <MenuDivider />
 
@@ -301,8 +316,8 @@
         {#if user && tab.groupId > -1}
             <MenuItem
                 action={actions.moveToDesktop}
+                {tab}
                 on:moveToDesktop
-                
             />
         {/if}
         <MenuItem 

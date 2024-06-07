@@ -116,17 +116,27 @@ export const actions = {
                 activities: [],
             };
             
-            const resource = tab.resource ? tab.resource : createResource({url });
+            const resource = tab.resource ? tab.resource : createResource(tab);
             workspaceData.desktop.resources.push(resource);
 
-            await saveContextData(workspaceData);
-            chrome.tabs.remove(tab.id);
+            await saveContextData(workspace, workspaceData);
+            await chrome.tabs.remove(tab.id);
 
-            chrome.runtime.sendMessage({
-                command: 'resourceMovedToDesktop',
-                workspace,
-                resource,
-            });
+            const desktopUrl = await chrome.runtime.getURL('desktop/index.html');
+            let desktopTab = (await chrome.tabs.query({ groupId: tab.groupId }))
+                .find((t) => t.url.includes(desktopUrl));
+
+            if (!desktopTab) {
+                desktopTab = await chrome.tabs.create({ url: desktopUrl });
+                await chrome.tabs.group({ groupId: tab.groupId, tabIds: desktopTab.id });
+            } else {
+                await chrome.tabs.update(desktopTab.id, { active: true });
+                chrome.tabs.sendMessage(desktopTab.id, {
+                    command: 'resourceMovedToDesktop',
+                    workspace,
+                    resource,
+                });
+            }
 
             return ''; //'moveToDesktop'
         }

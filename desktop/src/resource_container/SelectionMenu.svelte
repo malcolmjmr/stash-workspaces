@@ -8,7 +8,7 @@
 
 
     const onActionClicked = (action) => {
-      dispatch('actionClicked', action);)
+      dispatch('actionClicked', action);
     };
 </script>
 

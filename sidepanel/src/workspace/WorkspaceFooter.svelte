@@ -5,8 +5,8 @@
     import SelectionFooter from "../components/SelectionActions.svelte";
 
     import checkboxIcon from "../icons/empty-box.png";
-    import newTabIcon from "../icons/add-box.png";
-    import createGroupIcon from "../icons/create-folder.png";
+    import newTabIcon from "../icons/add-box-filled.png";
+    import createGroupIcon from "../icons/new-folder.png";
     
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
@@ -86,7 +86,7 @@
                 {/if}
             </div>
         </div>
-        <div class="action" on:mousedown={createNewTab}>
+        <div class="action" style="filter:invert(1)" on:mousedown={createNewTab}>
             <img src={newTabIcon} alt="Create new tab" />
         </div>
     </div>
@@ -101,12 +101,11 @@
         align-items: center;
         padding: 0px 5px;
         width: calc(100% - 10px);
-        height: 30px;
+        height: 35px;
         z-index: 100;
         color: white;
         justify-content: space-between;
-        background-color: black;
-        border-top: 1px solid #333333;
+        border-top: 1px solid #555555;
     }
 
     .counts {

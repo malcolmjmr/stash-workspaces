@@ -174,7 +174,7 @@
     .home-footer {
         padding: 0px 5px;
         width: calc(100% - 10px);
-        height: 100%;
+        height: 25px;
         display: flex;
         flex-direction: row;
         z-index: 2;

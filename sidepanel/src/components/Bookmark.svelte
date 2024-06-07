@@ -77,7 +77,6 @@
         let draggedBookmark = await tryToGetBookmark(bookmarkId);
         let draggedTab = tabId ? await chrome.tabs.get(parseInt(tabId)) : null;
         if (!draggedBookmark && !draggedTab) {
-            console.log('no dragged bookmark data');
             return;
         }
 

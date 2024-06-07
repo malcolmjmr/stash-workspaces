@@ -1,7 +1,7 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
-    import newTabIcon from "../icons/add-box.png";
-    import createGroupIcon from "../icons/create-folder.png";
+    import newTabIcon from "../icons/add-box-filled.png";
+    import createGroupIcon from "../icons/new-folder.png";
     
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
@@ -69,7 +69,7 @@
 {#key lastSelectionUpdate}
 
     <div class="main-container">
-        <div class="action" on:mousedown={() => showCreateGroupModal = true}>
+        <div class="action" style="filter:invert(1);" on:mousedown={() => showCreateGroupModal = true}>
             <img src={createGroupIcon} alt="Create New Group" />
         </div>
         
@@ -86,14 +86,14 @@
         align-items: center;
         padding: 0px 5px;
         width: calc(100% - 10px);
-        height: 100%;
+        height: 25px;
         z-index: 100;
         color: white;
         justify-content: space-between;
     }
 
     .action img {
-        filter: invert(1);
+        
         height: 24px;
         width: 24px;
     }

@@ -246,7 +246,7 @@
         let tabIndex = tabs.findIndex((t) => t.id == tab.id);
 
         if (!tab){
-            console.log('tab couldnt be found');
+            console.log('tab couldn\'t be found');
             console.log(tabId);
         } 
 
@@ -282,7 +282,6 @@
         const tabIndex = tabs.findIndex((t) => t.id == tabId);
         const tab = await chrome.tabs.get(tabId);
         if (tabIndex == -1) {
-            console.log("could not find tab");
             loadTabsGroupsAndWindows();
         }
 

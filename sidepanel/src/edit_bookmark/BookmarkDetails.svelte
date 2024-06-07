@@ -8,7 +8,7 @@
     import removeIcon from "../icons/remove.png";
     import folderIcon from "../icons/folder-filled.svg";
     import trashIcon from "../icons/delete.png";
-    import { getTabFavIconUrl, tryToGetBookmark } from "../utilities/chrome";
+    import { getActiveTab, getTabFavIconUrl, tryToGetBookmark } from "../utilities/chrome";
     import { allWorkspaces, userData } from "../stores";
     import { deleteDoc, doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
@@ -284,7 +284,20 @@
 
     const onTitleChanged = () => {
         if (!canSave) canSave = true;
-    }
+    };
+
+    const onWorkspaceClicked = async (workspace) => {
+        const activeTab = await getActiveTab();
+        const tab = await chrome.tabs.create({ 
+            url: 'chrome://bookmarks/?id=' + (workspace.folderId ?? workspace.id) , 
+        });
+
+        if (activeTab.groupId > -1) {
+            await chrome.tabs.group({ tabIds: tab.id, groupId: activeTab.groupId});
+        }
+
+        await chrome.tabs.update(tab.id, { index: activeTab.index + 1 });
+    };
 
 </script>
 
@@ -367,7 +380,7 @@
                 <div class="location-list">
                     {#each locations as workspace (workspace.id)}
                         <div class="list-item">
-                            <WorkspaceListItem {workspace} onClick={() => null} showQuickActions={false}/>
+                            <WorkspaceListItem {workspace} onClick={() => onWorkspaceClicked(workspace)} showQuickActions={false}/>
                             <div class="remove" on:mousedown={() => removeLocation(workspace)}>
                                 <img src={removeIcon} alt="remove">
                             </div>

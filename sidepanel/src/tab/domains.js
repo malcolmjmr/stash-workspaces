@@ -17,7 +17,7 @@ export const getSearchUrlFromQuery = (query, domain) => {
 export const defaultDomains = [
     // Add: wikipedia, 
     {
-      url: 'www.google.com',
+      url: 'https://www.google.com',
       searchTemplate: 'https://www.google.com/search?q=<|search|>',
       title: 'Google',
       favIconUrl: 'https://www.google.com/images/branding/product/1x/gsa_android_144dp.png',
@@ -26,13 +26,15 @@ export const defaultDomains = [
     {
       url: 'https://en.wikipedia.org/',
       searchTemplate: 'https://en.wikipedia.org/wiki/Special:Search?go=Go&search=<|search|>',
+      queryParam: 'search',
       title: 'Wikipedia',
       favIconUrl: 'https://en.wikipedia.org/static/favicon/wikipedia.ico',
       isDefault: true,
     },
     {
-      url: 'scholar.google.com',
+      url: 'https://scholar.google.com',
       searchTemplate: 'https://scholar.google.com/scholar?q=<|search|>',
+      queryParam: 'q',
       title: 'Google Scholar',
       favIconUrl: 'https://scholar.google.com/favicon.ico',
       canSearchUrl: true,
@@ -42,18 +44,21 @@ export const defaultDomains = [
       url: 'https://www.bing.com',
       favIconUrl: 'https://www.bing.com/sa/simg/favicon-trans-bg-blue-mg.ico',
       searchTemplate: "https://www.bing.com/search?q=<|search|>",
+      queryParam: 'q',
     },
     {
       title: 'DuckDuckGo',
       url: 'https://duckduckgo.com',
       favIconUrl: 'https://duckduckgo.com/favicon.ico',
       searchTemplate: 'https://duckduckgo.com/?q=<|search|>',
+      queryParam: 'q',
     },
     {
       title: 'Brave Search',
       url: 'https://search.brave.com',
       favIconUrl: 'https://cdn.search.brave.com/serp/v2/_app/immutable/assets/favicon.GnMcXrVh.ico',
-      searchTemplate: 'https://search.brave.com/search?q=<|search|>'
+      searchTemplate: 'https://search.brave.com/search?q=<|search|>',
+      queryParam: 'q',
     },
     {
       title: 'Chat GPT',
@@ -66,6 +71,7 @@ export const defaultDomains = [
       url: 'https://www.perplexity.ai/',
       favIconUrl: 'https://www.perplexity.ai/favicon.ico',
       searchTemplate: 'https://www.perplexity.ai/?q=<|search|>',
+      queryParam: 'q',
       isDefault: true,
     },
     {
@@ -73,6 +79,7 @@ export const defaultDomains = [
       favIconUrl: 'https://exa.ai/favicon.png',
       url: 'https://exa.ai/',
       searchTemplate: 'https://exa.ai/search?q=<|search|>',
+      queryParam: 'q',
       type: 'ai',
       canSearchUrl: true,
     },

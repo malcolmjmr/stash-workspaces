@@ -426,8 +426,8 @@
                 tabsToClose.push(tab);
             }
         }
-
-        if (pinnedTabs.length == 0) {
+        
+        if (pinnedTabs.length == 0 && tabs.length == 0) {
             const newTab = await chrome.tabs.create({});
             await chrome.tabs.group({ tabIds: newTab.id, groupId: workspace.groupId });
         }
@@ -718,7 +718,7 @@
         width: 100%;
         top: 0px;
         left: 0px;
-        background-color: black;
+        
         overflow-y: scroll;
     }
 

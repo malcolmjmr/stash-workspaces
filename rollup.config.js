@@ -34,6 +34,7 @@ export default [
             css({ output: 'bundle.css' }),
             resolve({ browser: true }),
             terser(),
+            image(),
         ]
     },
     {
@@ -49,6 +50,7 @@ export default [
             css({ output: 'bundle.css' }),
             resolve({ browser: true }),
             terser(),
+            image(),
         ]
     },
 

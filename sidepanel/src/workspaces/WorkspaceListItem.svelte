@@ -138,7 +138,11 @@
     const restoreWorkspace = async () => {
         workspace.deleted = null;
         dispatch('workspaceUpdated', workspace);
-    }
+    }; 
+
+    const onTitleClicked = () => {
+
+    };
 
 
 </script>

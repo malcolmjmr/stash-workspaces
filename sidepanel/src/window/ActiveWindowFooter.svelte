@@ -5,11 +5,12 @@
     import SelectionFooter from "../components/SelectionActions.svelte";
 
     import checkboxIcon from "../icons/empty-box.png";
-    import newTabIcon from "../icons/add-box.png";
-    import createGroupIcon from "../icons/create-folder.png";
+    import newTabIcon from "../icons/add-box-filled.png";
+    import createGroupIcon from "../icons/new-folder.png";
     
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
+  import TabUpdateModal from "../tab/TabUpdateModal.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -22,6 +23,7 @@
 
     onMount(() => {
         getGroupCount();
+        addListeners();
     });
 
     let groupCount = 0;
@@ -37,41 +39,7 @@
     };
 
     const createNewTab = async () => {
-        const activeTab = (
-            await chrome.tabs.query({ active: true, currentWindow: true })
-        )[0];
-
-        const existingNewTab = (await chrome.tabs.query({ 
-            groupId: activeTab.groupId, 
-            windowId: activeTab.windowId 
-        })).find((t) => t.url.includes('//newtab'));
-
-        if (existingNewTab) {
-            chrome.tabs.update(existingNewTab.id, { active: true });
-            dispatch('newTabCreated', existingNewTab);
-
-            return;
-        }
-        
-        let newTab;
-        if (activeTab.groupId > -1) {
-            const group = await chrome.tabGroups.get(activeTab.groupId); 
-            if (!group.collapsed) {
-                newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
-                await chrome.tabs.group({tabIds: newTab.id, groupId: activeTab.groupId });
-            } else {
-                newTab = await chrome.tabs.create({});
-            }
-        }
-
-        if (!newTab) {
-            newTab = await chrome.tabs.create({ index: activeTab.index + 1 });
-        }
-
-
-        dispatch('newTabCreated', newTab);
-
-        
+        showNewTabModal = true;
     };
 
     const selectAll = async () => {
@@ -83,6 +51,25 @@
 
     let showCreateGroupModal;
 
+    let showNewTabModal;
+
+    const addListeners = () => {
+        document.addEventListener('keydown', onKeyDown);
+    };
+
+    const onKeyDown = (e) => {
+
+        if (document.activeElement != document.body) return;
+
+        if (e.key == 't') {
+            showNewTabModal = true;
+        } else if (e.key == 'i') {
+            chrome.windows.create({ focused: true, incognito: true });
+        } else if (e.key == 'n') {
+            chrome.windows.create({ focused: true });
+        }
+    };
+
 
 </script>
 
@@ -91,11 +78,17 @@
     <CreateGroup {groups} {workspaces} {tabs} on:exit={() => showCreateGroupModal = false}/>
 </ModalContainer>
 {/if}
+
+{#if showNewTabModal} 
+<ModalContainer on:exit={() => showNewTabModal = false}>
+    <TabUpdateModal on:exit={() => showNewTabModal = false}/>
+</ModalContainer>
+{/if}
 {#key lastSelectionUpdate}
 
     <div class="main-container">
-        <div class="action" on:mousedown={() => showCreateGroupModal = true}>
-            <img src={createGroupIcon} alt="Select All" />
+        <div class="action" style="filter:invert(1)" on:mousedown={() => showCreateGroupModal = true}>
+            <img src={createGroupIcon} alt="Add Group" />
         </div>
         <div class="counts">
             <div class="container">
@@ -129,7 +122,7 @@
         align-items: center;
         padding: 0px 5px;
         width: calc(100% - 10px);
-        height: 100%;
+        height: 25px;
         z-index: 100;
         color: white;
         justify-content: space-between;
@@ -152,7 +145,7 @@
     }
 
     .action img {
-        filter: invert(1);
+        
         height: 24px;
         width: 24px;
     }

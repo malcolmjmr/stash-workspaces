@@ -14,7 +14,7 @@ chrome.windows.onCreated.addListener((window) => onWindowCreated(window));
 
 // Tabs
 chrome.tabs.onCreated.addListener((tab) => onTabCreated(tab));
-//chrome.tabs.onActivated.addListener((activeInfo) => onTabActivated(activeInfo.tabId))
+chrome.tabs.onActivated.addListener((activeInfo) => onTabActivated(activeInfo.tabId))
 chrome.tabs.onMoved.addListener((tabId, moveInfo) => onTabMoved(tabId, moveInfo));
 chrome.tabs.onDetached.addListener((tabId, detachInfo) => onTabDetached(tabId, detachInfo));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => onTabUpdated(tabId, changeInfo));
@@ -156,12 +156,50 @@ async function onCommand(command, tab) {
 
     if (command == '01newTab') createNewTab(tab);
     else if (command == '02groupTabs') groupHighlightedTabs();
-    // else if (command == '03undoGroup') undoGroup(context, tab);
-    // else if (command == '04closeGroup') closeTabGroup(context.groupId);
-    // else if (command == '05shutdown') shutdown(tab);
-    // else if (command == '06openTabs') openHighlightedTabs(context, tab);
-    // else if (command == '07saveTab') saveHighlightedTabs(context, tab);
-    // else if (command == '08stashTab') stashHighlightedTabs(context, tab);
+    else if (command == '03tabAbove') goToTabAbove();
+    else if (command == '04tabBelow') goToTabBelow();
+    else if (command == '05lastTab') goToLastTab();
+
+}
+
+async function goToTabAbove() {
+    const activeTab = await getActiveTab();
+    let aboveTab; 
+    if (activeTab.index == 0) {
+        // should loop around to last tab
+        const tabs = await chrome.tabs.query({windowId: activeTab.windowId});
+        tabs.sort((a, b) => b.index - a.index);
+        aboveTab = tabs[0];
+    } else {
+        aboveTab = (await chrome.tabs.query({index: activeTab.index - 1, windowId: activeTab.windowId }))[0];
+    }
+
+    await chrome.tabs.update(aboveTab.id, { active: true });
+    
+}
+
+async function goToTabBelow() {
+    const activeTab = await getActiveTab();
+    const tabs = await chrome.tabs.query({ windowId: activeTab.windowId});
+    tabs.sort((a, b) => a.index - b.index);
+    let aboveTab; 
+    if (activeTab.index == tabs.length - 1) {
+        // should loop around to last tab
+        aboveTab = tabs[0];
+    } else {
+        aboveTab = (await chrome.tabs.query({index: activeTab.index + 1, windowId: activeTab.windowId }))[0];
+    }
+
+    await chrome.tabs.update(aboveTab.id, { active: true });
+    
+}
+
+async function goToLastTab() {
+    const tabIds = (await get('lastActiveTabIds')) ?? [];
+
+    if (tabIds.length < 2) return;
+
+    await chrome.tabs.update(tabIds[1], { active: true });
 }
 
 async function createNewTab(activeTab) {
@@ -192,9 +230,6 @@ async function groupHighlightedTabs() {
 
 async function onTabCreated(tab) {
     // check if tab belongs to tab group
-
-    console.log('tab created');
-    console.log(tab);
     if (tab.groupId > -1) {
         const context = await getContextFromGroupId(tab.groupId);
         if (!context) return;
@@ -256,6 +291,15 @@ async function onResourceLoading(tabId) {
   
 }
 
+async function onTabActivated(tabId) {
+    let tabIds =(await get('lastActiveTabIds')) ?? [];
+    tabIds.splice(0, 0, tabId);
+    if (tabIds.length > 2) {
+        tabIds = tabIds.slice(0, 2);
+    }
+    set({lastActiveTabIds: tabIds});
+}
+
 async function onTabsHighlighted(tabIds) {
     // 
     
@@ -309,7 +353,6 @@ async function onTabGroupCreated(group) {
             context = await getContext(workspace.id);
             if (!context) {
 
-                console.log('saving remote workspace');
                 context = workspace;
                 context.groupId = group.id;
                 
@@ -366,8 +409,6 @@ async function onTabGroupCreated(group) {
 async function onTabGroupUpdated(group) {
     // Update context data 
     var context = await getContextFromGroupId(group.id);
-    console.log('tab group updated');
-    console.log(context);
     if (!context) return;
 
     //const [collapsed, expanded] = await groupCollapsedHandler(group, context);
@@ -571,9 +612,6 @@ async function updateOpenContexts(context) {
 }
 
 async function closeContext(context) {
-
-    console.log('closing context:');
-    console.log(context);
 
     chrome.runtime.sendMessage(null, {
         command: 'contextClosed',
@@ -804,6 +842,8 @@ async function onWindowCreated(window) {
     const windows = await chrome.windows.getAll();
     const windowCount = windows.length;
     if (windowCount == 1) await onBrowserOpen();
+
+    chrome.sidePanel.open({ windowId: window.id });
 }
 
 
@@ -823,7 +863,6 @@ export async function tryToGetBookmark(bookmarkId) {
 
 async function saveWorkspaceTabsToFolder(workspace) {
 
-    console.log('saving workspace tabs');
     const tabFolder = await getWorkspaceTabFolder(workspace, true);
     const oldBookmarks = await chrome.bookmarks.getChildren(tabFolder.id);
     if (oldBookmarks.length > 0) {
@@ -856,8 +895,7 @@ async function getWorkspaceTabFolder(workspace, save = false) {
     let folder;
     
     if (workspace.folderId) {
-        console.log('getting workspace tab folder');
-        console.log(workspace);
+
         folder = (await chrome.bookmarks.getChildren(workspace.folderId))
             .find((b) => !b.url && b.title == tabFolderTitle);
     }
@@ -1020,7 +1058,7 @@ async function removeAutoUpdate(updateId) {
 // Function to modify response headers
 async function modifyResponseHeaders(details) {
     const tab = await chrome.tabs.get(details.tabId);
-    const isDesktopTab = tab.url.includes(await chrome.runtime.getURL('desktop/index.html'))
+    const isDesktopTab = tab.url.includes(await chrome.runtime.getURL('desktop/index.html'));
     if (!isDesktopTab) return {};
     let responseHeaders = details.responseHeaders.filter(header => {
       let name = header.name.toLowerCase();
@@ -1033,15 +1071,15 @@ async function modifyResponseHeaders(details) {
   // Function to modify request headers for mobile preview
   async function modifyRequestHeadersForMobilePreview(details) {
     const tab = await chrome.tabs.get(details.tabId);
-    const isDesktopTab = tab.url.includes(await chrome.runtime.getURL('desktop/index.html'))
+    const isDesktopTab = tab.url.includes(await chrome.runtime.getURL('desktop/index.html'));
     if (!isDesktopTab) return {};
     let requestHeaders = details.requestHeaders;
-    requestHeaders.forEach(header => {
-      if (header.name.toLowerCase() === "user-agent") {
-        // Modify the User-Agent header to a mobile User-Agent
-        header.value = "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1";
-      }
-    });
+    // requestHeaders.forEach(header => {
+    //   if (header.name.toLowerCase() === "user-agent") {
+    //     // Modify the User-Agent header to a mobile User-Agent
+    //     header.value = "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1";
+    //   }
+    // });
   
     return {requestHeaders};
   }

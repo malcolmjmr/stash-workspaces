@@ -23,7 +23,7 @@
     export let db;
     export let userRef;
     export let fbApp;
-    export let view;
+    export let view = null;
     export let authLoaded;
 
   

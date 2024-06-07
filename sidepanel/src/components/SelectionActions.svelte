@@ -23,6 +23,7 @@
     let groupCount = 0;
     onMount(() => {
         getGroupCount();
+        document.addEventListener('keydown', onKeyDown);
     });
 
     $: {
@@ -90,6 +91,19 @@
         selectedTabs = [];
     };
 
+    const onKeyDown = (e) => {
+
+        if (document.activeElement != document.body) return;
+
+        if (e.key == 'g') {
+            groupTabs();
+        } else if (e.key == 'm') {
+            showMoveModal = true;
+        } else if (e.key == 'c') {
+            closeTabs();
+        }
+    };
+
 </script>
 
 
@@ -102,24 +116,24 @@
 
 <div class="actions">
     {#if groupCount != 1}
-        <div class="action" on:mousedown={groupTabs}>Group</div>
+        <div class="action" on:mousedown={groupTabs}><u>G</u>roup</div>
     {/if}
 
     {#if view == Views.workspace}
         <div class="action" on:mousedown={saveTabs}>
-            Save
+            <u>S</u>ave
         </div>
         <div class="action" on:mousedown={stashTabs}>
-            Stash
+            Stas<u>h</u>
         </div>
     {:else}
         <div class="action" on:mousedown={() => showMoveModal = true}>
-            Move
+            <u>M</u>ove
         </div>
     {/if}
     
 
-    <div class="action" on:mousedown={closeTabs}>Close</div>
+    <div class="action" on:mousedown={closeTabs}><u>C</u>lose</div>
 </div>
 
 <style>
@@ -131,6 +145,8 @@
         width: calc(100% - 16px);
         margin: 0px 8px;
         z-index: 3;
+        height: 25px;
+        letter-spacing: 1.5px;
     }
 
     .action {

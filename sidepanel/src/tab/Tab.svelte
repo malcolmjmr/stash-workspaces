@@ -22,7 +22,7 @@
     import TabMenu from "./TabMenu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
-    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext, getActiveTab, getExtensionFolder, tryToGetWorkspaceFolder } from "../utilities/chrome";
+    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext, getActiveTab, getExtensionFolder, tryToGetWorkspaceFolder, set } from "../utilities/chrome";
 
     import soundIcon from "../icons/volume-up.png";
     import mutedIcon from "../icons/volume-off.png";
@@ -46,6 +46,7 @@
   import TabUpdateModal from "./TabUpdateModal.svelte";
   import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
   import { children } from "svelte/internal";
+  import { LLM } from "../../../desktop/src/services/llm";
 
 
     export let db;
@@ -215,11 +216,17 @@
     };
 
     const onCloseTab = () => {
-        if (showMultiselectActions) {
-            chrome.tabs.remove(selectedTabs.map((t) => t.id));
+
+        if (isOpen) {
+            if (showMultiselectActions) {
+                chrome.tabs.remove(selectedTabs.map((t) => t.id));
+            } else {
+                chrome.tabs.remove(tab.id);
+            }
         } else {
-            chrome.tabs.remove(tab.id);
+            dispatch('removeTab', tab);
         }
+       
         
     };
 
@@ -230,7 +237,9 @@
     };
 
     const onSelectionUpdated = () => {
+        if (!isSelected && selectedTabs.length == 0) mouseDownOnSelection = Date.now();
         dispatch("updateSelection", tab);
+        
     };
 
     let isDragged;
@@ -301,28 +310,34 @@
         if (isOpen) {
             if (isSelected) return;
 
-            if (e.metaKey) {
-                dispatch('updateSelection', tab);
-            } else if (e.shiftKey && !tab.active) {
-                dispatch('shiftClickTab', tab);
-            }
-            else if (isBookmark) {
-                const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
-                const newTab = await chrome.tabs.create({url: tab.url, index: activeTab.index + 1});
-                if (activeTab.groupId > -1) {
-                    await chrome.tabs.group(({tabIds: newTab.id, groupId: activeTab.groupId}));
-                }
+            if (tab.active) {
+                if (!showUpdateModal) showUpdateModal = true;
             } else {
-
-                try {
-                    await chrome.tabs.update(tab.id, { active: true });
-                    await chrome.windows.update(tab.windowId, { focused: true });
-                } catch (e) {
-                    console.log(e);
-                    dispatch('refreshTabs');
+                if (e.metaKey) {
+                    dispatch('updateSelection', tab);
+                } else if (e.shiftKey && !tab.active) {
+                    dispatch('shiftClickTab', tab);
                 }
-                
+                else if (isBookmark) {
+                    const activeTab = (await chrome.tabs.query({active:true, currentWindow: true}))[0];
+                    const newTab = await chrome.tabs.create({url: tab.url, index: activeTab.index + 1});
+                    if (activeTab.groupId > -1) {
+                        await chrome.tabs.group(({tabIds: newTab.id, groupId: activeTab.groupId}));
+                    }
+                } else {
+
+                    try {
+                        await chrome.tabs.update(tab.id, { active: true });
+                        await chrome.windows.update(tab.windowId, { focused: true });
+                    } catch (e) {
+                        console.log(e);
+                        dispatch('refreshTabs');
+                    }
+                    
+                }
             }
+
+            
             
         } else {
             
@@ -561,6 +576,73 @@
             });
         }
     };
+
+    let mouseDownOnSelection;
+
+    const onMouseUpAfterSelection = async () => {
+        console.log('mouse up');
+        if (!isSelected || selectedTabs.length > 1) return;
+        const end = Date.now();
+        const isLongPress = end - mouseDownOnSelection > 1500;
+        if (false) {
+            const tabs = (await chrome.tabs.query({ windowId: tab.windowId }))
+                .filter((t) => t.id != tab.id)
+                .map((t) => {
+                    return {
+                        //openerId: t.openrTabId,
+                        id: t.id,
+                        title: t.title,
+                        url: t.url,
+                    }
+                });
+            
+            let prompt = 'I have selected the following tab:\n' + JSON.stringify({title: tab.title, url: tab.url}) + '\n';
+            prompt += 'Here are a list of tabs:\n' + JSON.stringify(tabs) + '\n';
+            prompt += `First identify the subject of the tab, then select from the list of tabs only those that are most relevant to the selected tab, and give the selected group a short, two to three  word title. Output your response as JSON object that looks as follows:
+            {
+                "title": "group title",
+                "tabs": [
+                    {
+                        "id": "tab id",
+                        "title": "tab title",
+                        "url": "tab url"
+                    },
+                    ...
+                ]
+            }
+
+            Output:
+            `;
+
+
+            const response = await (new LLM()).openAiChatCompletion({
+                prompt,
+                maxTokens: 4000,
+            });
+
+            console.log('got response');
+            console.log(response);
+            let normResponse = response.trim();
+            if (!normResponse.startsWith('{')) {
+                const start = normResponse.indexOf('{');
+                normResponse = normResponse.slice(start, normResponse.length -1);
+            }
+            if (!normResponse.endsWith('}')) {
+                const end = normResponse.lastIndexOf('}');
+                normResponse = normResponse.slice(0, end + 1);
+            }
+            console.log(normResponse);
+            const suggestedGroup = JSON.parse(normResponse);
+            await set({
+                suggestedGroupTitle: {
+                    title: suggestedGroup.title,
+                    time: Date.now()
+                }
+            });
+
+            dispatch('updateSelection', suggestedGroup.tabs);
+        }
+    };
     
 </script>
 
@@ -646,6 +728,7 @@
                     src={checkedBoxIcon}
                     alt="Unselect"
                     on:mousedown={onSelectionUpdated}
+                    on:mouseup={onMouseUpAfterSelection}
                 />
             {:else if favIconInFocus}
                 <img
@@ -653,6 +736,7 @@
                     src={emptyBoxIcon}
                     alt="Select"
                     on:mousedown={onSelectionUpdated}
+                    
                 />
             {:else if favIconUrl && favIconUrl != ''}
                 <img class="favicon" src={favIconUrl} alt={tab.title ?? ''} />
@@ -668,23 +752,43 @@
         <div 
             class="title" 
             on:click={onTitleClicked}
-            on:dblclick={onTitleDoubleClicked}
+            
         >
             {tab.title}
         </div>
         <div class="spacer" on:click={onTitleClicked} on:dblclick={onTitleDoubleClicked}/>
 
-        {#if !isSelected && !isDragged && isOpen && !isSearchResult}
+        
             <div class="actions">
+                {#if !isSelected && !isDragged && !isSearchResult}
+                    {#if isInFocus && !isDragged}
 
-                {#if isPinned}
-                    <img
-                        src={pinnedIcon}
-                        class="icon"
-                        alt="Pinned"
-                        on:mousedown={onPinTab}
-                    />
+                        {#if isOpen}
+                        <div class="quick-actions" 
+                            in:horizontalSlide={{
+                                delay: showMultiselectActions ? 0 : 550, 
+                                duration: showMultiselectActions ? 0 : 200
+                            }}>
+                                {#each showMultiselectActions ? multiSelectActions : $quickActions as action}      
+                                    {#if (action.id == actions.pin.id && isPinned)}
+                                    {:else if (action.id == actions.save.id && isSaved)}
+                                    
+                                    {:else if action}
+                                    <img
+                                        class="icon"
+                                        src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
+                                        alt={typeof action.title == 'string' ? action.title : action.title(tab)}
+                                        on:mousedown={(e) => onActionButtonClicked(e, action)}
+                                    />
+                                    {/if}
+                                {/each}
+                        </div>
+                    {/if}
+
                 {/if}
+
+
+                
 
                 {#if isSaved}
                     <img
@@ -695,46 +799,6 @@
                     />
                 {/if}
 
-
-                
-                {#if isInFocus && !isDragged}
-
-                    <div class="quick-actions" 
-                        in:horizontalSlide={{
-                            delay: showMultiselectActions ? 0 : 550, 
-                            duration: showMultiselectActions ? 0 : 200
-                        }}>
-                            {#each showMultiselectActions ? multiSelectActions : $quickActions as action}      
-                                {#if (action.id == actions.pin.id && isPinned)}
-                                {:else if (action.id == actions.save.id && isSaved)}
-                                
-                                {:else if action}
-                                <img
-                                    class="icon"
-                                    src={typeof action.icon == 'string' ? action.icon : action.icon(tab)}
-                                    alt={typeof action.title == 'string' ? action.title : action.title(tab)}
-                                    on:mousedown={(e) => onActionButtonClicked(e, action)}
-                                />
-                                {/if}
-                            {/each}
-                    </div>
-
-                    <img
-                        src={menuIcon}
-                        class="menu icon"
-                        alt="Menu"
-                        on:mousedown={onMenuOpen}
-                    />
-                    <img
-                        src={closeIcon}
-                        class="icon"
-                        alt="Close"
-                        on:mousedown={onCloseTab}
-                    />
-
-                    
-                {/if}
-
                 {#if isAudible}
                     <img
                         src={tab.mutedInfo.muted ? mutedIcon : soundIcon}
@@ -743,8 +807,39 @@
                         on:mousedown={toggleMute}
                     />
                 {/if}
+                {#if isPinned}
+                    <img
+                        src={pinnedIcon}
+                        class="icon"
+                        alt="Pinned"
+                        on:mousedown={onPinTab}
+                    />
+                {/if}
+                
+                    {#if !isSelected && !isDragged && !isSearchResult}
+                        {#if isInFocus}
+                            <img
+                                src={menuIcon}
+                                class="menu icon"
+                                alt="Menu"
+                                on:mousedown={onMenuOpen}
+                            />
+                            <img
+                                src={closeIcon}
+                                class="icon"
+                                alt="Close"
+                                on:mousedown={onCloseTab}
+                            />
+                        {/if}
+                        
+
+                        
+                    {/if}
+                {/if}
+
+                
             </div>
-        {/if}
+        
     </div>
 </div>
 {/if}
@@ -811,7 +906,6 @@
     }
 
     .favicon-container {
-        position: relative;
         min-width: 20px;
         display: flex;
     }

@@ -1,5 +1,5 @@
 <script>
-    import { onDestroy, onMount } from "svelte";
+    import { createEventDispatcher, onDestroy, onMount } from "svelte";
     import SelectionHeader from "./header/SelectionHeader.svelte";
 
     import Windows from "./windows/Windows.svelte";
@@ -25,6 +25,8 @@
   import TabUpdateModal from "./tab/TabUpdateModal.svelte";
   import { getActiveTab, getContextFromGroupId } from "./utilities/chrome";
   import Archive from "./archive/Archive.svelte";
+
+    let dispatch = createEventDispatcher();
 
 
     export let user;
@@ -189,17 +191,24 @@
 
     let lastSelectionUpdate;
     const onUpdateSelection = ({ detail }) => {
-        const tab = detail;
-        const index = selectedTabs.findIndex((t) => t.id == tab.id);
-
-        if (index > -1) {
-            selectedTabs.splice(index, 1);
-        } else {
-            selectedTabs.push(tab);
+        
+        const tabs = Array.isArray(detail) ? detail : [detail];
+        for (const tab of tabs) {
+            const index = selectedTabs.findIndex((t) => t.id == tab.id);
+            if (index > -1) {
+                selectedTabs.splice(index, 1);
+            } else {
+                selectedTabs.push(tab);
+            }
         }
+       
 
         lastSelectionUpdate = Date.now();
     };
+
+
+
+
 
     const onClearSelection = () => {
         selectedTabs = [];
@@ -269,7 +278,6 @@
         }
     };
 
-    const onMoveTa
 
 </script>
 
@@ -312,7 +320,7 @@
                 {tabs}
                 bind:searchText
                 {lastUpdate}
-                on:updateSelection
+                on:updateSelection={onUpdateSelection}
                 {lastSelectionUpdate}
                 {selectedTabs}
                 {hasBookmarkPermission}

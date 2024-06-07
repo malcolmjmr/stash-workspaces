@@ -48,9 +48,9 @@
 
 <style>
     .corner {
-        height: 5px;
-        width: 5px;
-        border: 1px solid black;
+        height: 10px;
+        width: 10px;
         position: absolute;
+        z-index: 1000;
     }
 </style>

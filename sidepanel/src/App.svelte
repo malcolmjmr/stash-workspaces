@@ -61,8 +61,6 @@
     let loaded;
     let hasBookmarkPermission;
     const init = async () => {
-
-        
         hasBookmarkPermission = await getPermissions();
         settings.set(await getSettings());
         loaded = true;
@@ -76,7 +74,6 @@
             const resource = data.resource;
             resources[resource.url] = resource.url;
             updateTabsThatIncludeUrl(resource.url);
-
         }
 
         if (data.tab) {
@@ -113,7 +110,6 @@
             matchingTab = await getTabsBookmarks(matchingTab);
             tabs[index] = matchingTab;
             lastUpdatedTab = matchingTab;
-            console.log('updating last tab');
             _lastUpdatedTab.set(lastUpdatedTab);
             // if (tab.id == matchingTab.id) {
 
@@ -127,7 +123,6 @@
     let lastCreatedWorkspace;
     chrome.runtime.onMessage.addListener((msg, sender, response) => {
         if (msg.command == 'workspaceCreated') {
-            console.log('workspace created');
             lastCreatedWorkspace = msg.workspace;
         } else if (msg.command == 'workspaceRemoved') {
             workspaces = workspaces.filter((w) => w.id != msg.workspace.id);
