@@ -106,6 +106,7 @@
         color: white;
         justify-content: space-between;
         border-top: 1px solid #555555;
+        background-color: black;
     }
 
     .counts {

@@ -29,21 +29,6 @@ chrome.tabGroups.onRemoved.addListener((group) => onTabGroupClosed(group)); // 1
 // Commands
 chrome.commands.onCommand.addListener((command, tab) => onCommand(command, tab));
 
-// Web Request
-// Listen for response headers and modify them
-chrome.webRequest.onHeadersReceived.addListener(
-    modifyResponseHeaders,
-    {urls: ["<all_urls>"], types: ["sub_frame"]},
-    ["blocking", "responseHeaders", "extraHeaders"]
-);
-
-// Listen for request headers to modify User-Agent for mobile preview
-chrome.webRequest.onBeforeSendHeaders.addListener(
-    modifyRequestHeadersForMobilePreview,
-    {urls: ["<all_urls>"], types: ["sub_frame"]},
-    ["blocking", "requestHeaders"]
-);
-
 
 async function onInstalled(details) {
 
@@ -160,6 +145,20 @@ async function onCommand(command, tab) {
     else if (command == '04tabBelow') goToTabBelow();
     else if (command == '05lastTab') goToLastTab();
 
+}
+
+async function openNewTabPopUp() {
+
+    const bounds = (await chrome.system.display.getInfo());
+    await chrome.windows.create({
+        top: 300,
+        left: 300,
+        height: 250,
+        width: 200,
+        type: 'popup',
+        focused: true,
+        url: await chrome.runtime.getURL('window_manager/index.html'),
+     });
 }
 
 async function goToTabAbove() {

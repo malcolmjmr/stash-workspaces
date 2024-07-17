@@ -16,9 +16,9 @@
     export let windowData;
     export let tabs;
     export let groups;
-    export let lastUpdatedWindow;
-    export let lastUpdatedTab;
-    export let view;
+    export let lastUpdatedWindow = null;
+    export let lastUpdatedTab = null;
+    export let view = null;
 
     let activeTab;
     let activeGroup;

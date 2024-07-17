@@ -78,7 +78,7 @@
 
     const updateVisibleWorkspaces = () => {
         const text = searchText.toLowerCase();
-        visibleSpaces = $allWorkspaces.filter((w) => !w.deleted && w.title?.toLowerCase().includes(text));
+        visibleSpaces = $allWorkspaces.filter((w) => !w.deleted && !w.archived && w.title?.toLowerCase().includes(text));
         visibleSpaces.sort((a, b) => b.updated - a.updated);
     };
 
@@ -125,8 +125,8 @@
                     {/if}
                     {#if searchText.length > 0}
                     <div class="list-item" on:mousedown={moveToNewSpace}>
-                        <img src={createFolderIcon} alt="New Space" />
-                        <span>New Space</span>
+                        <img src={createFolderIcon} alt="New Session" />
+                        <span>New Session</span>
                     </div>
                     {/if}
                 </div>

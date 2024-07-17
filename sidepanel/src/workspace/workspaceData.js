@@ -35,7 +35,7 @@ export async function getWorkspaceData({db, user, workspace, group}) {
     let workspaces = [];
     let resources = [];
     if (user) {
-        console.log('fetching resources from the cloud');
+        //console.log('fetching resources from the cloud');
         const resourcesQuery = query(
             collection(db, StorePaths.userResources(user.id)),
             where("contexts", "array-contains", workspace.id)

@@ -13,6 +13,7 @@
   import Tab from "./Tab.svelte";
   import TabIcon from "./TabIcon.svelte";
   import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
+  import ObjectContainer from "../object/ObjectContainer.svelte";
     
 
     export let tab = null;
@@ -22,8 +23,11 @@
     let dispatch = createEventDispatcher();
 
     let suggestions = [];
-    let history;
-    let domains  = [];
+    let history = [];
+
+
+    let searchDomains  = [];
+    let recentDomains = [];
 
     let searchDomain;
     
@@ -136,9 +140,8 @@
         //     }
         // }
 
-        domains = defaultDomains.filter((d) => d.isDefault);
+        searchDomains = defaultDomains.filter((d) => d.isDefault && d.searchTemplate);
 
-        
         
         // favorite domains from settings
         // favorite domains from history
@@ -158,38 +161,47 @@
     let hasHistoryPermission;
     const loadHistoryData = async () => {
 
+        hasHistoryPermission = await chrome.permissions.contains({
+            permissions: ['history']
+        });
+
+        const permissions = await chrome.permissions.getAll();
+
+
         history = await getHistory();
         visibleHistory = history;
 
 
-        // let domainCounts = {}
-        // for (const item of results) {
-        //     const url = new URL(item.url);
-        //     const domain = url.host;
-        //     if (!domainCounts[domain]) {
-        //         let defaulDomainData = defaultDomainMap[domain] ?? {};
-        //         domainCounts[domain] = {
-        //             count: 0,
-        //             host: url.host,
-        //             url: url.host,
-        //             ...defaulDomainData
-        //         }
-        //     }
-        //     domainCounts[domain].count += 1;
-        // }
+        let domainCounts = {};
+        for (const item of history) {
+            const url = new URL(item.url);
+            const domain = url.host;
+            if (!domainCounts[domain]) {
+                let defaulDomainData = defaultDomainMap[domain] ?? {};
+                domainCounts[domain] = {
+                    count: 0,
+                    host: url.host,
+                    url: url.host,
+                    ...defaulDomainData
+                }
+            }
+            domainCounts[domain].count += 1;
+        }
 
-        // let tempDomains = Object.entries(domainCounts).map(([hostname, domain]) => {
-        //     return {
-        //         ...domain,
-        //     };
-        // }).filter((d) => d.count > 10);
 
-        // tempDomains.sort((a, b) => b.count > a.count);
+        let tempDomains = Object.entries(domainCounts).map(([hostname, domain]) => {
+            return {
+                ...domain,
+            };
+        });
+        
+        let filteredDomains = tempDomains.filter((d) => d.count > 1);
+        if (filteredDomains.length == 0) {
+            filteredDomains = tempDomains;
+        }
 
-        // console.log('got favorite domains');
-        // console.log(tempDomains);
-
-        // domains = [...domains, ...tempDomains]
+        filteredDomains.sort((a, b) => b.count - a.count);
+        recentDomains = filteredDomains;
 
     }
 
@@ -308,9 +320,7 @@
 
         let url = domain.url;
         const inputIsNotUrl = inputText.length > 0 && !inputText.includes('.') && inputText.includes(' ');
-        console.log('domain clicked');
-        console.log(domain);
-        console.log(inputIsNotUrl);
+
         if (inputIsNotUrl || domain.searchTemplate) {
             url = domain.searchTemplate?.replace(searchPlaceholder, encodeURIComponent(inputText));
         } else if (!inputIsNotUrl && !url.includes('http')) {
@@ -333,28 +343,34 @@
         
     };
 
+    let showResource = false;
+
     const onKeyDownInUrlField = async (e) => {
 
         if (e.key == "Enter" && !e.shiftKey) {
 
             let url = '';
-            if (visibleHistory.length == 1) {
-                url = visibleHistory[0].url;
-            } else {
-                const isUrl = inputText.includes('.') && !inputText.includes(' ');
-                if (isUrl) {
-                    const missingProtocol = !inputText.includes('http://') && !inputText.includes('https://');
-                    if (missingProtocol) url = 'https://' + inputText;
-                } else {
-                    if (searchDomain) {
-                        url = searchDomain.searchTemplate.replace(searchPlaceholder, encodeURIComponent(inputText))
-                    } else {
-                        url = 'https://www.google.com/search?q=' + encodeURIComponent(inputText);
-                    }
-                    
-                }
-            }
+            inputText = inputText.trim();
+            const isUrl = inputText.includes('.') && !inputText.includes(' ');
 
+            if (isUrl) {
+                const missingProtocol = !inputText.includes('http://') && !inputText.includes('https://');
+                if (missingProtocol) url = 'https://' + inputText;
+                else url = inputText;
+
+            } else {
+
+                //showResource = true; 
+                
+                if (searchDomain) {
+                    url = searchDomain.searchTemplate.replace(searchPlaceholder, encodeURIComponent(inputText))
+                } else {
+                    url = 'https://www.google.com/search?q=' + encodeURIComponent(inputText);
+                }
+                    
+                
+            }
+            
             const tabData = { url, active: true };
             loadTab(tabData);
             
@@ -381,7 +397,7 @@
     let showSettings;
 
     let inputHeight = '15px';
-    const updateInputHeight = (e) => {
+    const updateInputHeight = async (e) => {
         if (inputElement?.scrollHeight != inputElement?.clientHeight) {
             inputHeight = inputElement.scrollHeight + 'px';
         } 
@@ -401,23 +417,27 @@
     };
 
     
+
     const updateSearchResults = async () => {
 
         const text = (searchQuery != null && inputText == searchQuery) || inputText == tab?.url ? '' : inputText.toLowerCase();
 
         if (visibleSection == sections.bookmarks) {
-                let tempBookmarks = (await chrome.bookmarks.search(text != '' ? {query: text} : {}))
+            if (bookmarks.length == 0 && text.length == 0) {
+                bookmarks = (await chrome.bookmarks.search({})).filter((b) => b.url);
+                bookmarks.sort((a, b) => b.dateAdded - a.dateAdded);
+            }
+
+            let tempBookmarks = [];
+            if (text.length == 0) {
+                tempBookmarks = bookmarks;
+            } else {
+                tempBookmarks = (await chrome.bookmarks.search({query: text}))
                     .filter((b) => b.url);
-
-                try {
-                    tempBookmarks.sort((a, b) => b.dateAdded - a.dateAdded);
-
-                } catch (e) {
-                    console.log('error sorting bookmarks');
-                    console.log(e);
-                }
-                
-                visibleBookmarks = tempBookmarks;
+                //tempBookmarks.sort((a, b) => b.dateAdded - a.dateAdded);
+            }
+            
+            visibleBookmarks = tempBookmarks;
             
         } else {
 
@@ -431,8 +451,15 @@
 
             if (visibleSection == sections.search) {
                 visibleHistory = relevantHistory.filter((h) => {
-                    return domains
-                    .some((d) => d.searchTemplate && h.url.includes(d.searchTemplate.split(searchPlaceholder)[0]));
+                    return searchDomains
+                    .some((d) => {
+                        const url = new URL(h.url)
+                        let urlString = url.protocol + '://' + url.hostname + '/' + url.pathname;
+                        if (d.queryParam) {
+                            urlString += '?' + d.queryParam + '=';
+                        }
+                        return d.searchTemplate && h.url.includes(d.searchTemplate.split(searchPlaceholder)[0]);
+                    });
                 });
 
                 // if (visibleHistory.length == 0 && relevantHistory.length > 0) {
@@ -442,6 +469,7 @@
 
             if (visibleSection == sections.history) {
                 visibleHistory = relevantHistory;
+  
             }
             
         }
@@ -449,12 +477,15 @@
         
     };
 
-    let visibleSection = sections.search;
+    let visibleSection = sections.history;
     let visibleSearchHistory = [];
     let visibleBookmarks = [];
 
+    
+
     const onSectionClicked = async (section) => {
         visibleSection = section.key;
+
         updateSearchResults();
     };
 
@@ -474,13 +505,17 @@
 <ModalContainer on:exit={() => openedFolder = null}>
     <WorkspacePreview workspace={{folderId: openedFolder.id}}/>
 </ModalContainer>
+{:else if showResource}
+<ModalContainer on:exit={() => showResource = null}>
+    <ObjectContainer />
+</ModalContainer>
 {/if}
     <div class="container">
         <div class="url-field">
             <textarea
                 bind:value={inputText}
                 on:keydown={onKeyDownInUrlField}
-                placeholder="Enter search or website"
+                placeholder="Enter search or address"
                 bind:this={inputElement}
                 on:input={updateInputHeight}
                 on:keypress={updateInputHeight}
@@ -503,12 +538,12 @@
         {#if true}
         <div class="divider"/>
         <div class="results">
-            {#if domains.length > 0 && visibleSection == sections.search}
+            {#if visibleSection == sections.search && searchDomains.length > 0}
             
             <div class="domains">
-                {#each domains as domain}
+                {#each searchDomains as domain}
                     <div class="domain button">
-                        <DomainIcon {domain} size={24} on:mousedown={(e) => onDomainClicked(e, domain)}/>
+                        <DomainIcon {domain} size={22} on:mousedown={(e) => onDomainClicked(e, domain)}/>
                     </div>
                 {/each}
 
@@ -522,6 +557,24 @@
                 -->
 
             </div>
+            {:else if visibleSection == sections.history && recentDomains.length > 0} 
+                <div class="domains">
+                    {#each recentDomains as domain}
+                        <div class="domain button">
+                            <DomainIcon {domain} size={22} on:mousedown={(e) => onDomainClicked(e, domain)}/>
+                        </div>
+                    {/each}
+
+                    <!--
+                        <img 
+                            class="settings button" 
+                            src={settingsIcon} 
+                            alt="Settings"
+                            on:mousedown={() => null}
+                        />
+                    -->
+
+                </div>
             {/if}
 
             {#if visibleSection == sections.bookmarks}
@@ -563,7 +616,7 @@
                     </div>
                 {/if}
             {:else if visibleSection == sections.history || visibleSection == sections.search}
-                {#if !history}
+                {#if !hasHistoryPermission}
                     <div class="permission-request" on:mousedown={requestHistoryPermssion}>
                         Click to add history permission.
                     </div>
@@ -638,14 +691,17 @@
 
     .domains {
         display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
+        flex-direction: row;
         padding: 5px 0px;
         max-height: 30px;
         height: 30px;
         min-height: 30px;
         overflow-x: scroll;
+        background-color: #222;
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
     }
+
 
     .divider {
         height: 1px;
@@ -654,7 +710,9 @@
     }
 
     .domain.button {
-        margin: 5px
+        margin-right: 4px;
+        margin-left: 1px;
+        padding: 5px;
     }
 
     .button:hover {
@@ -755,8 +813,12 @@
         overflow-x: scroll;
         -ms-overflow-style: none; /* IE and Edge */
         scrollbar-width: none; /* Firefox */
-        min-height: 50px;
+        min-height: 40px;
+        height: 40px;
+        background-color: #222;
     }
+
+    
 
     .bookmark-bar::-webkit-scrollbar {
         display: none;
@@ -770,17 +832,17 @@
         align-items: center;
         padding: 5px;
         justify-content: center;
-        margin: 10px 5px;
+        margin: 0px 5px;
     }
 
     .bookmark-bar .bookmark:hover {
-        background-color: #333;
+        
         cursor: pointer;
     }
 
     .bookmark-bar .bookmark img {
-        height: 20px;
-        width: 20px;
+        height: 22px;
+        width: 22px;
     }
 
     .bookmark-bar .bookmark .title {

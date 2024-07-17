@@ -33,8 +33,6 @@
                 displayedTitle = resource?.note?.text?.split('\n')[0] ?? '';
             } catch (e) {
         
-                console.log(e);
-                console.log(resource);
             }
             
         }

@@ -16,7 +16,7 @@
     import ModalContainer from "../components/ModalContainer.svelte";
     import MoveModal from "./MoveModal.svelte";
     import Menu from "../header/Menu.svelte";
-    import { getTabFavIconUrl, getWorkspaceQueueFolder, saveContext, saveTabToFolder, set } from "../utilities/chrome";
+    import { getTabFavIconUrl, getWorkspaceQueueFolder, saveContext, saveTabToFolder, set, get } from "../utilities/chrome";
 
     import pinIcon from "../icons/pin.png";
     import unpinIcon from "../icons/pin-filled.png";
@@ -32,7 +32,7 @@
     import removeDomainIcon from "../icons/domain-remove.png";
     import closeTabIcon from "../icons/tab-close.png";
   import MenuDivider from "../components/MenuDivider.svelte";
-  import { get } from "svelte/store";
+
 
 
     let dispatch = createEventDispatcher();
@@ -53,9 +53,14 @@
 
     let isSaved;
     let isPinned;
-    onMount(() => {
+    let loaded;
+    let isFavoriteDomain;
+    onMount(async () => {
         isSaved = tab.bookmarks || tab.resource;
         isPinned = tab.pinned || tab.isPinned;
+        await loadFavoritesMenuItem();
+        
+        loaded = true;
     });
 
     
@@ -166,40 +171,77 @@
         
     };
 
-    const addToFavoriteDomains = async () => {
-        if (user && workspace) {
-            if (!workspace.domains) workspace.domains = [];
-            const url = new URL(tab.url);
-            const domain = url.protocol + '//' + url.hostname;
+    const updateFavoriteDomains = async () => {
+
+        const url = new URL(tab.url);
+        const domain = url.protocol + '//' + url.hostname;
+        
+        if (false) { //(user && workspace) {
+            if (!workspace.favorites) workspace.favorites = [];
             
-            const index = workspace.domains.findIndex((d) => d == domain);
+            
+            const index = workspace.favorites.findIndex((d) => d == domain);
             if (index == -1) {
-                workspace.domains.push(domain);
-                await saveContext(workspace);
-                dispatch('dataUpdated', { workspace });
+                workspace.favorites.push(domain);
+            } else {
+                workspace.favorites.splice(index, 1);
             }
+
+            await saveContext(workspace);
+            dispatch('dataUpdated', { workspace });
         } else {
             let favorites = (await get('favorites')) ?? [];
 
             const index = favorites.findIndex((d) => d.url == domain);
-            if (index > -1) {
+            if (index == -1) {
                 favorites.push({
                     url: domain,
                     favIconUrl: tab.favIconUrl,
                 });
-            } 
+                isFavoriteDomain = true;
+            } else {
+                favorites.splice(index, 1);
+                isFavoriteDomain = false;
+            }
 
             await set({favorites});
+            dispatch('dataUpdated', { favorites });
 
             
         }
+
+        await loadFavoritesMenuItem();
+
+
+
+        dispatch('exit');
         
     };
+
+    let favorites = [];
+    let favoritesTitle;
+    let favoritesIcon;
+    
+    const loadFavoritesMenuItem = async () => {
+        const url = new URL(tab.url);
+        const domainUrl = url.protocol + '//' + url.host;
+        favorites = (await get('favorites')) ?? [];
+        if (favorites.find((d) => d.url == domainUrl)) {
+            isFavoriteDomain = true;
+        }
+        favoritesTitle = await actions.favoriteDomain.title(tab, isFavoriteDomain);
+        favoritesIcon = await actions.favoriteDomain.icon(tab, isFavoriteDomain);
+
+        isFavoriteDomain = favorites
+
+    };
+
 
 
     
 </script>
 
+{#if loaded}
 <div class="context-menu">
     <!--
     {#if tab.groupId > -1}
@@ -279,10 +321,10 @@
         {/if}
 
         <MenuItem 
-            title='Add to favorite domains',
+            title={favoritesTitle}
             action={actions.favoriteDomain}
-            onClick={addToFavoriteDomains}
-            icon={addDomainIcon}
+            onClick={updateFavoriteDomains}  
+            icon={favoritesIcon}
             {tab}
             canToggle={true}
         />
@@ -321,7 +363,7 @@
             />
         {/if}
         <MenuItem 
-            title="Move to {tab.groupId > -1 ? 'Another ' : '' }Space",
+            title="Move to {tab.groupId > -1 ? 'Another ' : '' } Session",
             action={actions.moveToSpace} 
             onClick={openMoveModal} 
             icon={moveToSpaceIcon}
@@ -350,6 +392,7 @@
         </ModalContainer>
     {/if}
 </div>
+{/if}
 
 <style>
     .context-menu {

@@ -15,7 +15,7 @@
   import { actions } from "../tab/actions";
   import WorkspaceWidget from "../workspace/WorkspaceWidget.svelte";
   import { Views } from "../view";
-  import Favorites from "../components/Favorites.svelte";
+  import Favorites from "../favorites/Favorites.svelte";
 
 
     let dispatch = createEventDispatcher();
@@ -179,7 +179,7 @@
 
 <div class="padding"></div>
 {#if loaded}
-        <Favorites /> 
+        <Favorites on:dataUpdated/> 
         {#each tabs as tab (tab.id)}
             {#if tab.groupId > -1}
                 {#if groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}
@@ -239,7 +239,6 @@
                         on:moveToDesktop
                     />
                 </div>
-                
             {/if}
         {/each}
  

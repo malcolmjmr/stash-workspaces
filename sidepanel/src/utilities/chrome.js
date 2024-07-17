@@ -24,8 +24,9 @@ export const getOpenGroups = async () => {
 };
 
 export const getTabFavIconUrl = ({url, favIconUrl, pendingUrl}) => {
-    const browserNames = ['chrome', 'brave', 'edge'];
+    //const browserNames = ['chrome', 'brave', 'edge'];
     if (!url || url == '') url = pendingUrl;
+    
     if (!favIconUrl || url.includes('chrome:')) {
         let favIconUrlFromChrome = new URL(chrome.runtime.getURL("/_favicon/"));
         favIconUrlFromChrome.searchParams.set("pageUrl", url);
@@ -603,7 +604,7 @@ export async function getHistory() {
         permissions: ['history']
     });
 
-    if (!hasHistoryPermission) return;
+    if (!hasHistoryPermission) return [];
 
     const results = await chrome.history.search({
         startTime: Date.now() - (30 * 24 * 60 * 60 * 1000),

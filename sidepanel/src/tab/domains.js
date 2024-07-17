@@ -22,6 +22,7 @@ export const defaultDomains = [
       title: 'Google',
       favIconUrl: 'https://www.google.com/images/branding/product/1x/gsa_android_144dp.png',
       isDefault: true,
+      queryParam: 'q',
     },
     {
       url: 'https://en.wikipedia.org/',
@@ -30,6 +31,7 @@ export const defaultDomains = [
       title: 'Wikipedia',
       favIconUrl: 'https://en.wikipedia.org/static/favicon/wikipedia.ico',
       isDefault: true,
+      queryParam: 'search',
     },
     {
       url: 'https://scholar.google.com',
@@ -52,6 +54,7 @@ export const defaultDomains = [
       favIconUrl: 'https://duckduckgo.com/favicon.ico',
       searchTemplate: 'https://duckduckgo.com/?q=<|search|>',
       queryParam: 'q',
+      isDefault: true,
     },
     {
       title: 'Brave Search',
@@ -59,6 +62,7 @@ export const defaultDomains = [
       favIconUrl: 'https://cdn.search.brave.com/serp/v2/_app/immutable/assets/favicon.GnMcXrVh.ico',
       searchTemplate: 'https://search.brave.com/search?q=<|search|>',
       queryParam: 'q',
+      isDefault: true,
     },
     {
       title: 'Chat GPT',
@@ -89,6 +93,7 @@ export const defaultDomains = [
       favIconUrl: "https://www.youtube.com/s/desktop/7ea5dfab/img/favicon_32x32.png",
       searchTemplate: 'https://www.youtube.com/results?search_query=<|search|>',
       isDefault: true,
+      queryParam: 'search_query'
     },
     {
       title: 'Twitter',
@@ -97,6 +102,7 @@ export const defaultDomains = [
       searchTemplate: 'https://twitter.com/search?q=<|search|>',
       type: 'social',
       isDefault: true,
+      queryParam: 'q',
     },
     {
       title: 'Sublime',
@@ -113,6 +119,7 @@ export const defaultDomains = [
       searchTemplate: 'https://www.reddit.com/search/?q=<|search|>',
       type: 'social',
       isDefault: true,
+      queryParam: 'q',
     },
 
     {
@@ -129,6 +136,7 @@ export const defaultDomains = [
       searchTemplate: 'https://www.amazon.com/s?k=<|search|>',
       type: 'shopping',
       isDefault: true,
+      queryParam: 'k',
     },
     {
       title: 'Substack',
@@ -157,6 +165,7 @@ export const defaultDomains = [
       searchTemplate: 'https://www.quora.com/search?q=<|search|>',
       type: 'social',
       isDefault: true,
+      queryParam: 'q',
     },
     {
       title: 'Hacker News',
@@ -164,6 +173,7 @@ export const defaultDomains = [
       searchTemplate: 'https://hn.algolia.com/?q=<|search|>',
       favIconUrl: 'https://news.ycombinator.com/favicon.ico',
       type: 'social',
+      //isDefault: true
     },
     {
       title: 'Sci Hub',

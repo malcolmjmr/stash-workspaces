@@ -95,7 +95,7 @@ export const actions = {
         }
     },
     moveToSpace: {
-        title: (tab) =>  `Move to ${tab.groupId > -1 ? 'Another ' : ''}Space`,
+        title: (tab) =>  `Move to ${tab.groupId > -1 ? 'Another ' : ''}Session`,
         id: 'moveToSpace',
         icon: moveToSpaceIcon,
         onClick: (tab) => {
@@ -175,8 +175,8 @@ export const actions = {
     },
     favoriteDomain: {
         id: 'favoriteDomain',
-        title: async (tab) => {
-            let isFavoriteDomain = false;
+        title: async (tab, isFavoriteDomain) => {
+
 
             const url = new URL(tab.url);
             const domainUrl = url.protocol + '//' + url.host;
@@ -184,20 +184,14 @@ export const actions = {
      
             if (tab.groupId > -1) {
                 const workspace = await getContextFromGroupId(tab.groupId);
-                
-                if (workspace.favorites.includes(domainUrl)) {
+                if (workspace.favorites?.includes(domainUrl)) {
                     isFavoriteDomain = true;
                 } 
-            } else {
-                if ($_favorites.find((d) => d.url == domainUrl)) {
-                    isFavoriteDomain = true;
-                }
             }
 
-            return isFavoriteDomain ? 'Remove from favorite domains' : 'Add to favorite domains';
+            return isFavoriteDomain ? 'Remove from Favorites' : 'Add to Favorites';
         },
-        icon: async (tab) => {
-            let isFavoriteDomain = false;
+        icon: async (tab, isFavoriteDomain) => {
 
             const url = new URL(tab.url);
             const domainUrl = url.protocol + '//' + url.host;
@@ -206,13 +200,9 @@ export const actions = {
             if (tab.groupId > -1) {
                 const workspace = await getContextFromGroupId(tab.groupId);
                 
-                if (workspace.favorites.includes(domainUrl)) {
+                if (workspace.favorites?.includes(domainUrl)) {
                     isFavoriteDomain = true;
                 } 
-            } else {
-                if ($_favorites.find((d) => d.url == domainUrl)) {
-                    isFavoriteDomain = true;
-                }
             }
 
             return isFavoriteDomain ? removeDomainIcon : addDomainIcon;

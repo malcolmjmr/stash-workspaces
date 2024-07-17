@@ -1,5 +1,5 @@
 <script>
-    import { createEventDispatcher, onMount } from "svelte";
+    import { createEventDispatcher, onDestroy, onMount } from "svelte";
     import CircleDivider from "../components/CircleDivider.svelte";
     import FooterContainer from "../components/FooterContainer.svelte";
     import SelectionFooter from "../components/SelectionActions.svelte";
@@ -11,6 +11,7 @@
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
   import TabUpdateModal from "../tab/TabUpdateModal.svelte";
+  import { Views } from "../view";
 
     let dispatch = createEventDispatcher();
 
@@ -25,6 +26,10 @@
         getGroupCount();
         addListeners();
     });
+
+    onDestroy(() => {
+        removeListeners();
+    }); 
 
     let groupCount = 0;
 
@@ -53,9 +58,14 @@
 
     let showNewTabModal;
 
+    let keyListener;
     const addListeners = () => {
-        document.addEventListener('keydown', onKeyDown);
+        keyListener = document.addEventListener('keydown', onKeyDown);
     };
+
+    const removeListeners = () => {
+        document.removeEventListener('keydown', onKeyDown)
+    };  
 
     const onKeyDown = (e) => {
 
@@ -75,7 +85,7 @@
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {groups} {workspaces} {tabs} on:exit={() => showCreateGroupModal = false}/>
+    <CreateGroup {groups} {workspaces} {tabs} on:exit={() => showCreateGroupModal = false} on:locationSelected={() => view == Views.tabs}/>
 </ModalContainer>
 {/if}
 

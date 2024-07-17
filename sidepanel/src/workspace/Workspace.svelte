@@ -57,7 +57,7 @@
   import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
   import NewFolderModal from "./NewFolderModal.svelte";
   import CircleDivider from "../components/CircleDivider.svelte";
-  import Favorites from "../components/Favorites.svelte";
+  import Favorites from "../favorites/Favorites.svelte";
 
     
 
@@ -487,6 +487,30 @@
         lastBookmarkUpdate = Date.now();
     };
 
+    const onTabMovedToBookmarks = async ({ detail }) => {
+        const tabs = selectedTabs.length > 0 ? selectedTabs : [detail.tab];
+        tabs.sort((a, b) => b.index - a.index);
+        const bookmark = detail.bookmark;
+
+
+        for (const tab of tabs.reverse()) {
+            const newBookmark = await chrome.bookmarks.create({
+                parentId: bookmark.id,
+                index: 0,
+                title: tab.title,
+                url: tab.url
+            });
+            chrome.tabs.remove(tab.id);
+        }
+
+        if (selectedTabs.length > 0) {
+            selectedTabs = [];
+        }
+
+        lastBookmarkUpdate = Date.now();
+
+    };
+
 </script>
 
 {#if showNewFolderModal}
@@ -687,6 +711,7 @@
                             on:bookmarkDeleted
                             on:bookmarkCount={onReceiveBookmarkCount}
                             on:dataUpdated 
+                            on:tabMovedToBookmarks={onTabMovedToBookmarks}
                         />
                     {/key}
                 {/if}

@@ -128,7 +128,7 @@
             
             }
             
-            dispatch('exitModal');
+            dispatch('exit');
         }
         // search contexts and bookmark folders
        
@@ -197,7 +197,7 @@
 
     let dispatch = createEventDispatcher();
     const exitModal = () => {
-        dispatch('exitModal');
+        dispatch('exit');
     };
 
     const setColor = (color) => {
@@ -212,6 +212,10 @@
         } else { 
             createNewGroup();
         }
+
+        dispatch('exit');
+
+        view = Views.tabs;
         
     }
     //style={'background-color: ' + colorMap[group.color]}
@@ -297,12 +301,13 @@
                     bind:value={searchText}
                     on:blur={onTitleInputBlur}
                     on:keydown={onKeyDown}
+                    autofocus="true"
                     placeholder={
                         visibleSpaces.length > 0 || showFolders || !hasBookmarkPermission 
                         ? placeholder
                         : 'Create new tab group...'
                     }
-                    autofocus="true"
+                    
                 />
                 <!--
                 {#if autoCompleteSuggestion}
@@ -356,7 +361,7 @@
                 {#if visibleSpaces.length > 0}
                     <div class="spaces section"> 
                         <div class="header">
-                            <div class="title">Spaces</div>
+                            <div class="title">Sessions</div>
                             {#if searchText != ''}
                             <div class="count">
                                 Found {visibleSpaces.length}
@@ -420,6 +425,7 @@
 
     .search-container {
         padding: 5px;
+        border-bottom: 2px solid #333;
     }
 
     .search {

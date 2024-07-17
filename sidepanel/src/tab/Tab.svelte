@@ -110,23 +110,24 @@
     let favIconUrl;
     onMount(() => {
 
-        unsubscribeToTabUpdates = _lastUpdatedTab.subscribe((t) => {
-            if (t?.id == tab.id)  {
-                init();
+        // unsubscribeToTabUpdates = _lastUpdatedTab.subscribe((t) => {
+        //     if (t?.id == tab.id)  {
 
-                // if (tab.id && tab.active) {
-                //     scrollToTabIfActive();
-                // }
-            }
+        //         init();
+
+        //         // if (tab.id && tab.active) {
+        //         //     scrollToTabIfActive();
+        //         // }
+        //     }
 
             
-        });
+        // });
 
         init();
     });
 
     onDestroy(() => {
-        unsubscribeToTabUpdates();
+        //unsubscribeToTabUpdates();
     });
 
     const updateSavedState = () => {
@@ -145,13 +146,17 @@
         isPinned = workspace?.pinnedTabs?.find((t) => t.id == tab.id || t.url == tab.url) ?? tab.pinned;
         isAudible = tab.audible;
         isBookmark = tab.parentId;
+        // if (tab.status == 'unloaded') {
+        //     const activeTab = await getActiveTab();
+        //     if (activeTab.id == tab.id) tab.active = true;
+        // }
     
         loaded = true;
     };
 
     const updateFavIconUrl = () => {
         favIconUrl = getTabFavIconUrl(tab);
-    }
+    };
 
     const scrollToTabIfActive = () => {
         if (tab.active && el) {
@@ -208,6 +213,7 @@
 
     const onMouseLeaveFavIcon = (e) => {
         favIconInFocus = false;
+        //if (isInFocus) isInFocus = false;
     };
 
     let showMore;
@@ -236,9 +242,13 @@
         //tab.mutedInfo.muted = !tab.mutedInfo.muted;
     };
 
+    let selectionTimeout;
     const onSelectionUpdated = () => {
-        if (!isSelected && selectedTabs.length == 0) mouseDownOnSelection = Date.now();
-        dispatch("updateSelection", tab);
+        //if (!isSelected && selectedTabs.length == 0) 
+
+        selectionTimeout = setTimeout(onLongPressSelection, 1000);
+        mouseDownOnSelection = Date.now();
+        //dispatch("updateSelection", tab);
         
     };
 
@@ -579,11 +589,33 @@
 
     let mouseDownOnSelection;
 
+    const onLongPressSelection = async () => {
+        let tabs = [];
+        if (selectedTabs.length == 1 && !isSelected) {
+            tabs = (await chrome.tabs.query({ windowId: tab.windowId, }))
+                .filter((t) => {
+                    const selectBelow = tab.index > selectedTabs[0].index;
+
+                    return selectBelow 
+                        ? tab.index > t.index && t.index > selectedTabs[0].index
+                        : tab.index < t.index && t.index < selectedTabs[0].index;
+                        
+                });
+        } else {
+            tabs = [tab];
+        }
+        dispatch("updateSelection", tabs);
+    };
+
     const onMouseUpAfterSelection = async () => {
-        console.log('mouse up');
-        if (!isSelected || selectedTabs.length > 1) return;
-        const end = Date.now();
-        const isLongPress = end - mouseDownOnSelection > 1500;
+        if (selectionTimeout) { 
+            clearTimeout(selectionTimeout);
+            dispatch("updateSelection", tab);
+        }
+
+        //if (!isSelected || selectedTabs.length > 1) return;
+        
+        
         if (false) {
             const tabs = (await chrome.tabs.query({ windowId: tab.windowId }))
                 .filter((t) => t.id != tab.id)
@@ -736,6 +768,7 @@
                     src={emptyBoxIcon}
                     alt="Select"
                     on:mousedown={onSelectionUpdated}
+                    on:mouseup={onMouseUpAfterSelection}
                     
                 />
             {:else if favIconUrl && favIconUrl != ''}

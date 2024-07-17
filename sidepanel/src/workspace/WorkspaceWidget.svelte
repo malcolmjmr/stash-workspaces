@@ -288,7 +288,6 @@
         if (workspaceId) {
             workspace = await getContext(workspaceId);
         } else {
-
             setTimeout(async () => {
                 workspace = await getContextFromGroupId(group.id);
                 groups[groupId].workspaceId = workspace.id;
@@ -298,7 +297,6 @@
 
             
         }
-        
     }
 
     const checkIfGroupTitleNeedsEditing = () => {
@@ -327,7 +325,7 @@
             sections = [];
         }
         
-        fetchData();
+        await fetchData();
 
         
     };
@@ -361,7 +359,7 @@
         } else {
             cachedData = {};
             sections = [];
-            if(workspace.tabs && workspace.tabs?.length > 0) {
+            if(workspace?.tabs && workspace.tabs?.length > 0) {
                 sections.push({
                     name: SectionNames.tabs,
                     //icon: tabsIcon, 

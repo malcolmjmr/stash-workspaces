@@ -163,7 +163,7 @@
             if (tab) tab.resource = null;
             dispatch('dataUpdated', { tab, resource })
         } else if (isNativeBookmark && resource) {
-            console.log('deleting bookmark');
+            
             await chrome.bookmarks.remove(resource.id);
             resource.deleted = true;
             if (tab?.bookmarks) {

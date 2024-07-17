@@ -1,7 +1,7 @@
 {
-    "name": "Sidepanel Organizer",
-    "version": "0.0.0.2",
-    "description": "Organize all of your windows and tabs from the side panel.",
+    "name": "Stash Sidebar",
+    "version": "0.0.0.3",
+    "description": "Tab and Session Management Made Easy",
     "background": {
         "service_worker": "service-worker.js",
         "type": "module"
@@ -27,7 +27,7 @@
         ]
     },
     "action": {
-        "default_title": "Open Window Manager",
+        "default_title": "Open Sidebar",
         "default_icon": {
             "32": "logo.png"
         }
@@ -38,22 +38,15 @@
     },
     "optional_permissions": [
         "bookmarks",
-        "history",
-        "webRequest",
-        "webRequestBlocking"
-    ],
-    "host_permissions": [
-      "<all_urls>"
+        "history"
     ],
     "permissions": [
-        "identity",
         "tabs",
         "tabGroups",
         "sidePanel",
         "storage",
         "unlimitedStorage",
         "favicon"
-        
     ],
     "incognito": "spanning",
     "commands": {
@@ -79,15 +72,6 @@
           },
           "05lastTab": {
             "description": "GO TO LAST TAB - navigate to the last active tab"
-          },
-          "06saveTab": {
-            "description": "SAVE TAB - save tab to active group's bookmark folder"
-          },
-          "07stashTab": {
-            "description": "STASH TAB - closes active tab and saves it to the active group's bookmark folder",
-            "suggested_key": {
-              "default": "Alt+S"
-            }
           }
     },
     "manifest_version": 3

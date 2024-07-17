@@ -77,7 +77,6 @@
     };
 
     const loadTabsGroupsAndWindows = async () => {
-        console.log('loading tabs and windows');
         tabs = await chrome.tabs.query({});
         
 
@@ -125,8 +124,8 @@
             if (!$openGroups[group.id]) {
                 // need to get or create context
 
-                console.log('couldnt find context for group' );
-                console.log(group);
+                // console.log('couldnt find context for group' );
+                // console.log(group);
             }
         }
         groups = tempGroups;
@@ -246,8 +245,8 @@
         let tabIndex = tabs.findIndex((t) => t.id == tab.id);
 
         if (!tab){
-            console.log('tab couldn\'t be found');
-            console.log(tabId);
+            // console.log('tab couldn\'t be found');
+            // console.log(tabId);
         } 
 
         if (tabIndex > -1) {

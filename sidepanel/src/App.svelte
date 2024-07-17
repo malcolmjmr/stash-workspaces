@@ -8,7 +8,7 @@
     import SignIn from "./signin/SignIn.svelte";
     import WorkspaceManager from "./WorkspaceManager.svelte";
     import WindowManager from "./WindowManager.svelte";
-    import { _authLoaded, _lastUpdatedTab, allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
+    import { _authLoaded, _favorites, _lastUpdatedTab, allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
     import { getTabInfo } from "./utilities/chrome.js";
     import { getTabsBookmarks } from "./utilities/helpers.js";
 
@@ -51,8 +51,9 @@
     onMount(() => {
         init();
         
+        
+        
     });
-
 
     const setUser = ({ detail }) => {
         user = detail;
@@ -94,8 +95,11 @@
             if (data.notify) {
                 allWorkspaces.set(workspaces);
                 lastWorkspaceUpdate.set(Date.now());
-            }
-            
+            } 
+        }
+
+        if (data.favorites) {
+            _favorites.set(data.favorites);
         }
 
         

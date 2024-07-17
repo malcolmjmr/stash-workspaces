@@ -36,7 +36,6 @@
     let showMenu = false;
     const onMoreClicked = () => {
         showMenu = !showMenu;
-        console.log(workspace);
     };
 
     const onOpenClicked = async() => {
@@ -51,7 +50,7 @@
 
     let isEditingTitle;
     const onEditTitleClicked = () => {
-        console.log('edit title');
+        
         isEditingTitle = true;
     };
 

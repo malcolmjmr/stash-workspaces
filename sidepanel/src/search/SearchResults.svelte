@@ -137,7 +137,7 @@
                 {/if}
             {/each}
         </SearchResutlsSection>
-        <SearchResutlsSection title="Spaces" count={visibleSpaces.length}>
+        <SearchResutlsSection title="Sessions" count={visibleSpaces.length}>
             {#each visibleSpaces as workspace, i (workspace.id)}
                 <WorkspaceListItem
                     {workspace}

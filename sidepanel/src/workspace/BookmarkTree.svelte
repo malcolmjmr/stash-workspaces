@@ -201,6 +201,8 @@
                     on:bookmarkMoved={onBookmarkMoved}
                     on:dataUpdated
                     on:bookmarkDeleted={onBookmarkDeleted}
+                    on:tabMovedToBookmarks
+                    
                 /> 
             {/if}
         {/each}

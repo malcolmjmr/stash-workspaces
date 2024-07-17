@@ -130,7 +130,7 @@
         if (group) {
             chrome.tabs.group({tabIds: tab.id, groupId: group.id});
         } else {
-            console.log('couldn\'t find group');
+            //console.log('couldn\'t find group');
             // maybe create a tab group for the opened tab and 
             // keep previously opened tab configuration dormant?
         }

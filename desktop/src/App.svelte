@@ -54,8 +54,7 @@
 
     let showPermissionRequest;
     const checkPermissions = async () => {
-        console.log('checking permissions');
-        console.log(await chrome.permissions.getAll());
+
         let permissionGranted = await chrome.permissions.contains({
             permissions: ["webRequest"],
         });
@@ -67,7 +66,6 @@
     }; 
     
     const requestPermission = async () => {
-        console.log('requesting permssion');
         let permissionGranted = await chrome.permissions.request({
             permissions: ["webRequest",],
             origins: ["<all_urls>", "*://*/*"],
@@ -173,7 +171,7 @@
         showCreateMenu = false;
 
         const resourceData = resource ?? detail;
-        console.log(resourceData);
+
         lastResource = {
             ...createResource(),
             ...resourceData,

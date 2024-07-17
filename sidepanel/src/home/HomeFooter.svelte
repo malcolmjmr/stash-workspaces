@@ -2,9 +2,11 @@
     import { createEventDispatcher, onMount } from "svelte";
     import newTabIcon from "../icons/add-box-filled.png";
     import createGroupIcon from "../icons/new-folder.png";
+    import CircleDivider from "../components/CircleDivider.svelte";
     
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
+  import { numberWithCommas } from "../utilities/helpers";
 
 
     export let view;
@@ -16,6 +18,7 @@
 
     onMount(() => {
         getGroupCount();
+        getSessionCount();
     });
 
     let groupCount = 0;
@@ -28,6 +31,17 @@
             }
         }
         groupCount = groupIds.length;
+    };
+
+    let tabCount = 0;
+    let sessionCount = 0;
+    const getSessionCount = () => {
+        sessionCount = workspaces.length;
+        let tempTabCount = 0;
+        for (const space of workspaces) {
+            tempTabCount += space.tabs.length;
+        }
+        tabCount = tempTabCount;
     };
 
     const createNewTab = async () => {
@@ -72,6 +86,27 @@
         <div class="action" style="filter:invert(1);" on:mousedown={() => showCreateGroupModal = true}>
             <img src={createGroupIcon} alt="Create New Group" />
         </div>
+        <div class="counts">
+            <div class="container">
+                {#if sessionCount > 0}
+                    <div class="count">
+                        {sessionCount}
+                        <span>
+                            Session{sessionCount > 1 ? "s" : ""}
+                        </span>
+                    </div>
+                    <CircleDivider />
+                {/if}
+                {#if tabCount > 0}
+                <div class="count">
+                    {numberWithCommas(tabCount)}
+                    <span>
+                        Tab{tabCount > 1 ? "s" : ""}
+                    </span>
+                </div>
+                {/if}
+            </div>
+        </div>
         
         <div class="action" on:mousedown={createNewTab}>
             <img src={newTabIcon} alt="Create New Tab" />
@@ -90,6 +125,22 @@
         z-index: 100;
         color: white;
         justify-content: space-between;
+    }
+
+    .counts {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-around;
+        width: 100%;
+        font-size: 14px;
+        opacity: 0.8;
+    }
+
+    .counts .container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
     }
 
     .action img {

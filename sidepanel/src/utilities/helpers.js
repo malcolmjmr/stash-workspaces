@@ -26,3 +26,7 @@ export async function getTabsBookmarks(tab, allResources) {
     }
     return tab;
 };
+
+export function numberWithCommas(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}

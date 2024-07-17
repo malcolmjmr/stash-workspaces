@@ -1,8 +1,11 @@
 <script>
   import { onDestroy, onMount } from "svelte";
-  import DomainIcon from "./DomainIcon.svelte";
+  import DomainIcon from "../components/DomainIcon.svelte";
   import { getActiveTab, get, getHistory } from "../utilities/chrome";
   import { _favorites } from "../stores";
+  import settingsIcon from "../icons/more-horiz.png";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import FavoritesSettings from "./FavoritesSettings.svelte";
 
     export let workspace = null;
 
@@ -16,9 +19,9 @@
 
     const load = async () => {
 
-        // unsubscribeToTabUpdates = _favorites.subscribe((value) => {
-        //     favorites = value;
-        // });
+        unsubscribeToTabUpdates = _favorites.subscribe((value) => {
+            favorites = value;
+        });
        
         if ($_favorites.length == 0) {
             await refreshFavorites();
@@ -30,14 +33,12 @@
     };
 
     onDestroy(() => {
-        //unsubscribeToTabUpdates();
+        unsubscribeToTabUpdates();
     });
 
     const refreshFavorites = async () => {
         await getSavedFavorites();
-        await getDomainsFromOpenTabs();
-        await getDomainsFromHistory();
-        await getDomainsFromBookmarks();
+        // 
         _favorites.set(favorites);
     };
 
@@ -109,16 +110,41 @@
 
     };
 
+    let isInFocus;
+
+    const onMouseEnter = async () => {
+        isInFocus = true;
+    };
+
+    const onMouseLeave = async () => {
+        isInFocus = false;
+    };
+
+    let showSettings;
+
+
 </script>
 
+{#if showSettings}
+    <ModalContainer on:exit={() => showSettings = false}>
+        <FavoritesSettings on:dataUpdated/>
+    </ModalContainer>
+{/if}
+
 {#if favorites.length > 0}
-<div class="favorites">
+<div class="favorites" on:mouseenter={onMouseEnter} on:mouseleave={onMouseLeave}>
     {#each favorites as favorite}
-        <div class="favorite">
-            <DomainIcon domain={favorite} on:mousedown={(e) => onDomainClicked(e, favorite)}/>
+        <div class="favorite" on:mousedown={(e) => onDomainClicked(e, favorite)}>
+            <DomainIcon domain={favorite} />
         </div>
         
     {/each}
+    {#if isInFocus}
+    <div class="settings button" on:mousedown={() => showSettings = true}>
+        <img src={settingsIcon}  alt="Settings"/>
+    </div>
+    
+    {/if}
 </div>
 {/if}
 
@@ -139,5 +165,29 @@
         cursor: pointer;
         background-color: #333;
         border-radius: 8px;
+    }
+
+    .settings.button {
+        padding: 5px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+    }
+
+    .settings.button:hover {
+
+        background-color: #333;
+        border-radius: 8px;
+    }
+    
+    .settings.button img {
+        height: 18px;
+        width: 18px;
+        filter: invert(1);
+    }
+    .button:hover {
+        cursor: pointer;
     }
 </style>

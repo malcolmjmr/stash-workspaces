@@ -53,6 +53,37 @@ export default [
             image(),
         ]
     },
-
+    {
+        input: 'window_manager/main.js',
+        output: {
+            file: 'window_manager/bundle.js',
+            format: 'iife',
+            //format: 'cjs',
+            name: 'App',
+        },
+        plugins: [
+            svelte(),
+            css({ output: 'bundle.css' }),
+            resolve({ browser: true }),
+            terser(),
+            image(),
+        ]
+    },
+    {
+        input: 'omnibox/main.js',
+        output: {
+            file: 'omnibox/bundle.js',
+            format: 'iife',
+            //format: 'cjs',
+            name: 'App',
+        },
+        plugins: [
+            svelte(),
+            css({ output: 'bundle.css' }),
+            resolve({ browser: true }),
+            terser(),
+            image(),
+        ]
+    },
 
 ];

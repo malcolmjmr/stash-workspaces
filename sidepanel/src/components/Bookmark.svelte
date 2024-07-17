@@ -76,61 +76,42 @@
         const tabId = e.dataTransfer.getData("tabId");
         let draggedBookmark = await tryToGetBookmark(bookmarkId);
         let draggedTab = tabId ? await chrome.tabs.get(parseInt(tabId)) : null;
-        if (!draggedBookmark && !draggedTab) {
-            return;
-        }
 
-        if (draggedBookmark?.id == bookmark.id) return;
-        
         let parentId;
         let index = 0;
 
-        if (isFolder) {
-            if (draggedBookmark.url) {
-                if (draggedBookmark.parentId == bookmark.id) {
-                    parentId = bookmark.parentId;
+        if (draggedTab) {
+            dispatch('tabMovedToBookmarks', { tab: draggedTab, bookmark });
+            return; 
+        } else if (draggedBookmark) {
+            if (draggedBookmark?.id == bookmark.id) return;
+
+            if (isFolder) {
+                if (draggedBookmark?.url) {
+                    if (draggedBookmark.parentId == bookmark.id) {
+                        parentId = bookmark.parentId;
+                    } else {
+                        parentId = bookmark.id;
+                    }
                 } else {
-                    parentId = bookmark.id
+                    if (isOpen && draggedBookmark.parentId != bookmark.id) {
+                        parentId = bookmark.id;
+                    } else {
+                        index = bookmark.index;
+                        parentId = bookmark.parentId;
+                    }
                 }
-            } else {
-                if (isOpen && draggedBookmark.parentId != bookmark.id) {
-                    parentId = bookmark.id;
-                } else {
-                    index = bookmark.index;
-                    parentId = bookmark.parentId;
-                }
+            } else { // is folder
+                index = bookmark.index;
+                parentId = bookmark.parentId;
             }
-        } else { // is folder
-            index = bookmark.index;
-            parentId = bookmark.parentId;
         }
-
-        if (draggedTab) {   
-
-            const searchResults = await chrome.bookmarks.search({url: draggedTab.url });
-            for (const result of searchResults) {
-                if (result.parentId == bookmark.parentId) {
-                    draggedBookmark = result;
-                    break;
-                }
-            }
-            if (!draggedBookmark) {
-                const newBookmark = await chrome.bookmarks.create({
-                    parentId,
-                    index,
-                    title: draggedTab.title,
-                    url: draggedTab.url
-                });
-
-                dispatch('dataUpdated', {tab: draggedTab})
-            } 
-        }
-
+       
         if (draggedBookmark && draggedBookmark.id != parentId) {
             await chrome.bookmarks.move(draggedBookmark.id, {
                 index,
-                parentId,
-            }); 
+                parentId, 
+            });
         }
 
         dispatch('bookmarkMoved', {bookmark});
@@ -147,7 +128,10 @@
             // set timer to open folder 
             if (isFolder && !isOpen) {
                 hoverTimeout = setTimeout(() => {
-                    isOpen = true;
+                    if (isDraggedOver) {
+                        isOpen = true;
+                    }
+                    
                 }, 1000);
             }
         }
@@ -167,20 +151,18 @@
     };
 
     const onBookmarkClicked = () => {
-       
 
         if (isFolder) {
             if (onlyShowFolders) {
                 dispatch('bookmarkClicked', bookmark);
             } else  {
-                isOpen = !isOpen;
+                // isOpen = !isOpen;
             }
         } else {
             setTimeout(() => {
                 if (lastDragged && Date.now() - lastDragged < 1000) return;
                 dispatch('bookmarkClicked', bookmark);
             }, 200);
-            
         }
     };
 
@@ -214,6 +196,8 @@
     const onBookmarkUpdated = ({ detail }) => {
         bookmark = detail;
     };
+
+    let iconInFocus;
 
 
 </script>
@@ -260,7 +244,9 @@
         >
             <img
                 on:mousedown={onclick}
-                src={isFolder ? (isOpen ? openFolderIcon : folderIcon) : favIconUrl}
+                on:mouseenter={() => iconInFocus = true}
+                on:mouseleave={() => iconInFocus = false}
+                src={isFolder ? (isOpen || iconInFocus ? openFolderIcon : folderIcon) : favIconUrl}
                 class="icon{isFolder ? ' folder' : ''}"
                 alt=""
             />
@@ -274,12 +260,13 @@
 
 
             {#if isInFocus}
-                {#if !bookmark.url}
-                    <img src={openIcon} class="open button" on:mousedown={openAllChildren} alt="Open Folder"/>
-                {/if}
                 {#if !isTemporary}
                 <img src={moreIcon} class="more button" on:mousedown={openBookmarkDetails} alt="Menu"/>
                 {/if}
+                {#if !bookmark.url}
+                    <img src={openIcon} class="open button" on:mousedown={openAllChildren} alt="Open Folder"/>
+                {/if}
+                
             {/if}
 
             
@@ -296,6 +283,8 @@
                         on:bookmarkClicked 
                         on:bookmarkMoved 
                         on:bookmarkDeleted
+                        on:tabMovedToBookmarks
+                        
                     />
                 {/each}
             </div>

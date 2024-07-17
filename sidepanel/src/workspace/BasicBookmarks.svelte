@@ -95,6 +95,7 @@
             on:dataUpdated
             on:bookmarkDeleted
             on:locationSelected
+            on:tabMovedToBookmarks
         />
         {/if}
     </div>

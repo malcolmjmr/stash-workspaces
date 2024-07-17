@@ -191,7 +191,6 @@
 
     let lastSelectionUpdate;
     const onUpdateSelection = ({ detail }) => {
-        
         const tabs = Array.isArray(detail) ? detail : [detail];
         for (const tab of tabs) {
             const index = selectedTabs.findIndex((t) => t.id == tab.id);
