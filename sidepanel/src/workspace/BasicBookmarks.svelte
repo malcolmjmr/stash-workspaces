@@ -60,6 +60,24 @@
         refreshQueue();
     };
 
+    const onTabDraggedToBottom = async (e) => {
+        e.preventDefault();
+    
+        let tabId = e.dataTransfer.getData("tabId");
+        if (tabId) {
+            tabId = parseInt(tabId);
+            const tab = await chrome.tabs.get(tabId);
+            dispatch('tabMovedToBookmarks', {tab});
+
+        }
+        
+
+    };
+
+    const onDragOverBottom = (e) => {
+        e.preventDefault();
+    };
+
 </script>
 
 
@@ -98,7 +116,9 @@
             on:tabMovedToBookmarks
         />
         {/if}
+        
     </div>
+    <div class="bottom-drop-zone" on:drop={onTabDraggedToBottom} on:dragover={onDragOverBottom}></div>
 </div>
 
 
@@ -139,6 +159,11 @@
 
     .queue.button:hover {
         cursor: pointer;
+    }
+
+    .bottom-drop-zone {
+        height: 400px;
+        width: 100%;
     }
 
 </style>

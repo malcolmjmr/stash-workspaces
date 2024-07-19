@@ -95,7 +95,7 @@ export const actions = {
         }
     },
     moveToSpace: {
-        title: (tab) =>  `Move to ${tab.groupId > -1 ? 'Another ' : ''}Session`,
+        title: (tab) =>  `Move to ${tab.groupId > -1 ? 'Other ' : ''}Session`,
         id: 'moveToSpace',
         icon: moveToSpaceIcon,
         onClick: (tab) => {

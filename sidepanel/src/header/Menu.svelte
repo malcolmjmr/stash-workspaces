@@ -2,6 +2,8 @@
     import { slide } from "svelte/transition";
     import bugIcon from "../icons/bug.png";
     import featureIcon from "../icons/new-feature.png";
+    import keyboardIcon from "../icons/keyboard-keys.png";
+    import panelIcon from "../icons/sidebar.png";
     import { Views } from "../view";
     import syncConnectedIcon from "../icons/sync.png";
     import syncDisabledIcon from "../icons/sync-disabled.png";
@@ -34,6 +36,16 @@
             icon: bugIcon,
             title: "Report Bug",
             url: "https://docs.google.com/forms/d/e/1FAIpQLSd1mztaIj3bvp0HvqMIbw1G0d_OXmbLYVRMqD8bsv-07WNt3g/viewform?usp=sf_link",
+        },
+        {
+            icon: keyboardIcon,
+            title: "Keyboard Shortcuts",
+            url: "chrome://extensions/shortcuts",
+        },
+        {
+            icon: panelIcon,
+            title: "Panel Position",
+            url: "chrome://settings/appearance",
         },
     ];
 

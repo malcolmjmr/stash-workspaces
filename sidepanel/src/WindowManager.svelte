@@ -399,6 +399,12 @@
 
     const onTabGroupUpdated = (group) => {
         groups[group.id] = {...groups[group.id], ...group};
+        group = groups[group.id];
+
+        if (!group.workspaceId) {
+            console.log('no existing workspace');
+            console.log(group);
+        }
         lastUpdatedGroup = group;
     };
 

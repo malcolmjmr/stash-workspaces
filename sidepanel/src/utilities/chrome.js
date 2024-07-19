@@ -139,6 +139,8 @@ export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
     workspace = await getContext(workspace.id);
     const openGroup = await tryToGetTabGroup(workspace?.groupId);
 
+    console.log('openign workspace');
+
     if (openGroup) {
         // navigate to last open tab
         
@@ -173,7 +175,7 @@ export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
             }
         }
 
-        if (!tabFolder) {
+        if (workspace.tabs.length == 0) {
             workspace.tabs.push({
                 url: 'chrome://newtab/'
             });
@@ -417,6 +419,7 @@ export async function tryToGetTabGroup(groupId) {
 }
 
 export async function tryToGetWorkspaceFolder(workspace, createFolder) {
+    if (!workspace) return;
     let folder = await tryToGetBookmark(workspace.folderId);
     if (!folder) {
         // search for folders with the same name 
@@ -539,7 +542,7 @@ export const hiddenFolderTitles = [queueFolderTitle, tabFolderTitle];
 
 export async function getWorkspaceQueueFolder(workspace, createFolder) {
     
-    let folder = workspace.folderId
+    let folder = workspace?.folderId
         ? (await chrome.bookmarks.getChildren(workspace.folderId))
             .find((b) => !b.url && b.title == queueFolderTitle)
         : null;

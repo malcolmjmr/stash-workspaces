@@ -270,4 +270,13 @@
     .bottom-section .button:hover {
         cursor: pointer;
     }
+
+    .action.button {
+        opacity: 0.7;
+    }
+    
+    .action.button:hover {
+        cursor: pointer;
+        opacity: 1;
+    }
 </style>

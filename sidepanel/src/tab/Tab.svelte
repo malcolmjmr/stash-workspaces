@@ -281,6 +281,7 @@
         if (isDraggedOver) isDraggedOver = false;
         let tabId = e.dataTransfer.getData("tabId");
         const groupId = e.dataTransfer.getData("groupId");
+
         if (tabId) {
             tabId = parseInt(tabId);
             let draggedTabs = [];
@@ -292,9 +293,7 @@
             }
 
             for (const draggedTab of draggedTabs) {
-                if (draggedTab.groupId > -1 && (tab.groupId == -1)) {
-                    await chrome.tabs.ungroup(draggedTab.id);
-                }
+                
 
                 if (draggedTab.groupId == -1 && tab.groupId > -1) {
                     const tabs = await chrome.tabs.query({ groupId: tab.groupId });
@@ -304,11 +303,13 @@
                 }
                 await chrome.tabs.move(draggedTab.id, { index: tab.index });
 
+                if (draggedTab.groupId > -1 && (tab.groupId == -1)) {
+                    await chrome.tabs.ungroup(draggedTab.id);
+                }
+
             }
             
             
-
-
         } else if (groupId) {
             await chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
         }

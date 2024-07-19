@@ -1,7 +1,7 @@
 <script>
     import { createEventDispatcher, onMount } from "svelte";
     import Bookmark from "../components/Bookmark.svelte";
-    import { get, getExtensionFolder, hiddenFolderTitles, queueFolderTitle, saveContext, tabFolderTitle, tryToGetBookmark, tryToGetBookmarkTree, tryToGetTabGroup } from "../utilities/chrome";
+    import { get, getExtensionFolder, hiddenFolderTitles, queueFolderTitle, saveContext, tabFolderTitle, tryToGetBookmark, tryToGetBookmarkTree, tryToGetTabGroup, tryToGetWorkspaceFolder } from "../utilities/chrome";
   import { allWorkspaces } from "../stores";
 
     export let searchText = '';
@@ -65,29 +65,12 @@
 
     let folder;
     const load = async (forceReload = false) => {
-        if (bookmarkTree && !forceReload) {
+        if (!chrome.bookmarks || (bookmarkTree && !forceReload)) {
             loaded = true;
             return;
         }
 
-        const folderFromId = await tryToGetBookmark(workspace.folderId);
-        if (folderFromId?.title == workspace.title) folder = folderFromId;
-        if (!folder) {
-            const searchResults = await chrome.bookmarks.search({title: workspace.title});
-            if (searchResults.length == 0) {
-                // create folder
-                
-                folder = await chrome.bookmarks.create({
-                    title: workspace.title, 
-                    parentId: (await getExtensionFolder()).id
-                });
-            } else if (searchResults.length == 1) {
-                folder = searchResults[0];
-            } else {
-                console.log('found multiple matching folders');
-                console.log(searchResults);
-            }
-        }
+        folder = await tryToGetWorkspaceFolder(workspace);
 
         if (folder) {
 
@@ -98,8 +81,10 @@
                     getBookmarkCount(bookmarkTree);
                 }
 
-            loaded = true;
+            
         }
+
+        loaded = true;
     };
 
     const getFolderTree = (tree) => {
@@ -118,7 +103,7 @@
         return tree;
     };
 
-    export let bookmarkCount;
+    export let bookmarkCount = 0;
     const getBookmarkCount = (tree) => {
         bookmarkCount = 0;
         for (const node of tree) {

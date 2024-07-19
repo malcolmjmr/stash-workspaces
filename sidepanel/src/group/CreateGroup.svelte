@@ -21,7 +21,7 @@
     export let groups;
     export let workspaces;
     export let view;
-    export let placeholder = 'Search or create space...';
+    export let placeholder = 'Search or create session...';
     export let tabs = [];
     
 
@@ -37,18 +37,16 @@
         updateSearchResults();
     }
 
-    let hasBookmarkPermission;
+    let hasBookmarkPermission = false;;
 
     onMount(() => {
 
-        try {
-            getFolders();
-            hasBookmarkPermission = true;
-        } catch (e) {
-            hasBookmarkPermission = false;
-        }
-       
+
+        getFolders();
+
         getUngroupedTabs();
+
+
     });
 
     let suggestions = [];
@@ -59,19 +57,22 @@
    
     const getFolders = async () => {
 
-        const extensionFolder = await getExtensionFolder();
-        let workspaceFolderIds = workspaces.map((s) => s.folderId);
-        let workspaceFolderTitles = workspaces.map((s) => s.title);
-        folders = (await chrome.bookmarks.search({ url: null }))
-            .filter((folder) => {
-                return (!folder.url 
-                    && !workspaceFolderIds.includes(folder.id)
-                    && !workspaceFolderTitles.includes(folder.title)
-                    && !hiddenFolderTitles.includes(folder.title)
-                    && extensionFolder.id != folder.id
-                    && !workspaceFolderIds.includes(folder.parentId)
-                );
-            });
+        if (chrome.bookmarks) {
+            hasBookmarkPermission = true;
+            const extensionFolder = await getExtensionFolder();
+            let workspaceFolderIds = workspaces.map((s) => s.folderId);
+            let workspaceFolderTitles = workspaces.map((s) => s.title);
+            folders = (await chrome.bookmarks.search({ url: null }))
+                .filter((folder) => {
+                    return (!folder.url 
+                        && !workspaceFolderIds.includes(folder.id)
+                        && !workspaceFolderTitles.includes(folder.title)
+                        && !hiddenFolderTitles.includes(folder.title)
+                        && extensionFolder.id != folder.id
+                        && !workspaceFolderIds.includes(folder.parentId)
+                    );
+                });
+        }
 
 
         workspaces = workspaces.filter((w) => w?.id != workspace?.id);
@@ -110,12 +111,15 @@
 
     const onKeyDown = async (e) => {
         if (e.key == 'Enter') {
+            
             const shouldCreatNewGroup = searchText.length > 0 && visibleFolders.length == 0 && visibleSpaces.length == 0;
             if (workspace) {
                 
                 if ($userData) {
-
+                    
+                    console.log($userData);
                 } else {
+                    c
                     await createNewFolder();
                 }
             } else if (shouldCreatNewGroup) {
@@ -135,6 +139,15 @@
     };
 
     const createNewFolder = async () => {
+        let permissionGranted;
+        if (!chrome.bookmarks) {
+            permissionGranted = await requestBookmarkPermssion();
+        } else {
+            permissionGranted = true;
+        }
+
+        if (!permissionGranted) return;
+
         const folder = await chrome.bookmarks.create({
             title: searchText,
             parentId: workspace.folderId
@@ -240,6 +253,8 @@
             });
 
             await openWorkspace(newWorkspace, { openInNewWindow: false });
+
+            //dispatch('dataUpdated', { workspace: newWorkspace });
         }
         exitModal();
     };
@@ -260,6 +275,7 @@
                 view = Views.tabs;
             } else {
                 await openWorkspace(selectedWorkspace, { openInNewWindow: false });
+                //dispatch('dataUpdated', {workspace: selectedWorkspace});
             }
         }
 
@@ -271,6 +287,7 @@
         if (searchText.length > 0) {
             const workspace = await createContext({title: searchText});
             await openWorkspace(workspace, { openInNewWindow: false });
+            //dispatch('dataUpdated', { workspace });
         } else if (selectedTabs.length > 0) {
 
         } else {
@@ -284,8 +301,8 @@
     };
 
     const getBookmarkPermission = async () => {
-        const granted = await requestBookmarkPermssion();
-        if (granted) {
+        hasBookmarkPermission = await requestBookmarkPermssion();
+        if (hasBookmarkPermission) {
             getFolders();
         }
     };
@@ -303,9 +320,7 @@
                     on:keydown={onKeyDown}
                     autofocus="true"
                     placeholder={
-                        visibleSpaces.length > 0 || showFolders || !hasBookmarkPermission 
-                        ? placeholder
-                        : 'Create new tab group...'
+                        placeholder ?? (workspace ? 'Add folder' : 'Add group')
                     }
                     
                 />
@@ -340,10 +355,11 @@
             
 
 
-            
+            {#if visibleFolders.length > 0 || visibleSpaces.length > 0 || searchText.length > 0 || !hasBookmarkPermission}
             <MenuDivider/>
+            
             <div class="results">
-                {#if searchText.length == 0 && ungroupedTabs.length > 0}
+                {#if !workspace && searchText.length == 0 && ungroupedTabs.length > 1 }
                 
                     <div class="create-space" on:mousedown={createNewGroup}> 
                         <img src={createFolderIcon} alt="Create Space"/>
@@ -351,7 +367,7 @@
                     </div>
                 {/if}
 
-                {#if searchText.length > 1}
+                {#if searchText.length > 0}
                     <div class="create-space" on:mousedown={onCreateSpace}> 
                         <img src={createFolderIcon} alt="Create Space"/>
                         <span>Create {searchText.length > 0 ? '"'+searchText+'"' : ''}</span>
@@ -400,15 +416,20 @@
                     </div>
                 {/if}
 
-                {#if hasBookmarkPermission  == false}
+                {#if !hasBookmarkPermission}
                     <div class="bookmark-permission" on:mousedown={getBookmarkPermission}>
-                        Add bookmark permission to open existing bookmark folders as spaces
+                        Click to create session from existing bookmark folder
                     </div>
                 {/if}
                 
+
+            
             </div>
             
+            {/if}
 
+            
+            
 
         
     </div>
@@ -553,7 +574,7 @@
 
 
     .bookmark-permission {
-        padding: 5px;
+        padding: 10px 5px 5px 5px;
         font-size: 16px;
         opacity: 0.6;
         letter-spacing: 1px;

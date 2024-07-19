@@ -363,7 +363,7 @@
             />
         {/if}
         <MenuItem 
-            title="Move to {tab.groupId > -1 ? 'Another ' : '' } Session",
+            title="Move to {tab.groupId > -1 ? 'Other ' : '' } Session",
             action={actions.moveToSpace} 
             onClick={openMoveModal} 
             icon={moveToSpaceIcon}

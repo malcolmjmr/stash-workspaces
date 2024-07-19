@@ -27,6 +27,7 @@
     export let workspaces;
     export let workspacesLoaded = false;
     export let lastUpdatedTab = null;
+    export let lastUpdatedGroup = null;
     export let lastUpdate = null;
     export let lastSelectionUpdate = null;
     export let selectedTabs = [];
@@ -172,7 +173,53 @@
         } 
     }
 
+    const onTabDraggedToBottom = async (e) => {
+        e.preventDefault();
+    
+        let tabId = e.dataTransfer.getData("tabId");
+        const groupId = e.dataTransfer.getData("groupId");
+        let needToRefreshTabs;
 
+        if (tabId) {
+            tabId = parseInt(tabId);
+            let draggedTabs = [];
+            if (selectedTabs.find((t) => t.id == tabId)) {
+                draggedTabs = [...selectedTabs];
+                selectedTabs = [];
+            } else {
+                draggedTabs = [(await chrome.tabs.get(tabId))];
+            }
+
+            for (const draggedTab of draggedTabs) {
+                
+                
+
+                if (draggedTab.groupId > -1) {
+                    await chrome.tabs.ungroup(draggedTab.id);
+                    if (!needToRefreshTabs) {
+                        needToRefreshTabs = true;
+                    }
+                }
+
+                await chrome.tabs.move(draggedTab.id, { index: -1 });
+
+            }
+            
+            
+        } else if (groupId) {
+            await chrome.tabGroups.move(parseInt(groupId), { index: -1 });
+        }
+
+        if (needToRefreshTabs) {
+            dispatch('refreshTabs');
+        }
+        
+        
+    };
+
+    const onDragOverBottom = (e) => {
+        e.preventDefault();
+    };
     
     
 </script>
@@ -211,6 +258,7 @@
                         bind:selectedTabs
                         {workspacesLoaded}
                         {lastSelectionUpdate}
+                        
                         on:updateSelection
                         on:shiftClickTab
                         on:showWorkspaceView
@@ -245,6 +293,7 @@
     
 {/if}
 <div class="padding"></div>
+<div class="bottom-drop-zone" on:drop={onTabDraggedToBottom} on:dragover={onDragOverBottom}></div>
 <style>
     .padding {
         min-height: 5px;
@@ -252,5 +301,10 @@
 
     .tab-container.grouped {
         margin: 0px 5px;
+    }
+
+    .bottom-drop-zone {
+        height: 400px;
+        width: 100%;
     }
 </style>

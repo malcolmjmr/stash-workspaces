@@ -377,6 +377,7 @@
                 {workspaces}
                 bind:searchText
                 {searchResults}
+                {lastUpdatedGroup}
                 on:updateSelection={onUpdateSelection}
                 on:tabBookmarkAdded
                 on:foundDuplicates
@@ -467,6 +468,7 @@
                     {groups}
                     {workspaces}
                     on:newTabCreated={onNewTabCreated}
+                    on:dataUpdated
                 />
             {:else if view == Views.home}
                 <HomeFooter
@@ -476,6 +478,7 @@
                     bind:selectedTabs
                     {groups}
                     {workspaces}
+                    on:dataUpdated
                 />
             {/if}
         </div>

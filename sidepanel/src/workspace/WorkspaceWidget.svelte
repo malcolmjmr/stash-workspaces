@@ -24,6 +24,7 @@
     export let groups;
     export let workspacesLoaded;
     export let lastSelectionUpdate;
+    export let lastUpdatedGroup;
     export let selectedTabs = [];
 
     let workspace;
@@ -69,7 +70,7 @@
         folders: 'Folders',
         tabs: 'Tabs',
         saved: 'Recent',
-        toVisit: 'To Visit',
+        toVisit: 'Reading List',
         bookmarks: 'Bookmarks',
     };
 
@@ -96,10 +97,17 @@
 
 
     $: {
-        if (group != groups[groupId]) {
-            group = groups[groupId];
+        if (lastUpdatedGroup && lastUpdatedGroup.id == group?.id) {
+            //group = groups[groupId];
+            getWorkspace();
         }
     }
+    
+    const onGroupUpdated = async () => {
+        await getWorkspace();
+        await fetchData();
+        
+    };
 
     $: {
         if (user) {
@@ -176,12 +184,13 @@
     };
 
     const setTitle = async () => {
+
         if (!workspace) {
             workspace = await getContextFromGroupId(group.id);
-            workspace.title = group.title;
-            dispatch('dataUpdated', { workspace });
         }
         chrome.tabGroups.update(group.id, { title: group.title });
+        workspace.title = group.title;
+        dispatch('dataUpdated', { workspace });
         isEditingTitle = false;
     };
 
@@ -219,10 +228,15 @@
     };
 
     const onDrop = async (e) => {
+
+        // Todo: needs to handle multiple selected tabs
+
         if (isDraggedOver) isDraggedOver = false;
         let tabId = e.dataTransfer.getData("tabId");
+        
         const groupId = e.dataTransfer.getData("groupId");
         const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+        
         let startIndex = 100000;
         let endIndex = 0;
         for (const tab of tabsInGroup) {
@@ -259,11 +273,12 @@
                     index = startIndex -1;
                 }
             }
-            
-            await chrome.tabs.move(parseInt(tabId), { index: index });
             if (ungroup) {
                 await chrome.tabs.ungroup(tab.id);
             }
+            
+            await chrome.tabs.move(parseInt(tabId), { index: index });
+            
         } else if (groupId) {
             chrome.tabGroups.move(parseInt(groupId), { index: startIndex });
         }
@@ -284,7 +299,7 @@
     const getWorkspace = async () => {
         group = groups[groupId];
         checkIfGroupTitleNeedsEditing();
-        const workspaceId = groups[groupId]?.workspaceId;
+        const workspaceId = group?.workspaceId;
         if (workspaceId) {
             workspace = await getContext(workspaceId);
         } else {
@@ -293,6 +308,7 @@
                 groups[groupId].workspaceId = workspace.id;
                 _groups.set(groups);
                 checkIfGroupTitleNeedsEditing();
+                fetchData();
             }, 1000);
 
             
@@ -313,11 +329,12 @@
 
     let cachedData;
     const load = async (getCache = true) => {
-        group = $_groups[groupId];
+        //group = $_groups[groupId];
         loaded = true;
         await getWorkspace();
 
-        if (getCache) {
+
+        if (false) {
             cachedData = $_openWorkspaces[workspace?.id];
             sections = cachedData?.sections ?? [];
         } else {
@@ -342,6 +359,7 @@
     };
 
     const updateStoredData = () => {
+        if (!workspace) return;
         let spacesData = $_openWorkspaces;
         spacesData[workspace.id] = cachedData;
         _openWorkspaces.set(spacesData);
@@ -350,7 +368,7 @@
     let bookmarkTree;
 
     const loadLocalData = async () => {
-        if (cachedData) {
+        if (false) {
             bookmarkCount = cachedData.bookmarkCount;
             bookmarkTree = cachedData.bookmarkTree;
             queue = cachedData.queue ?? [];
@@ -370,7 +388,7 @@
             try {
                 await refreshLocalBookmarks();
             } catch (e) {
-
+                console.log(e);
             }
 
             
@@ -544,7 +562,7 @@
                 await refreshLocalBookmarks();
                 updateSectionsFromBookmarkUpdate(oldBookamrkCount);
             } catch (e) {
-                
+                console.log(e);
             }
 
             
@@ -552,7 +570,8 @@
         
     };
 
-    const updateSectionsFromBookmarkUpdate = (oldBookamrkCount) => {
+    const  updateSectionsFromBookmarkUpdate = (oldBookamrkCount) => {
+
         let needToUpdateCachedData;
         if (oldBookamrkCount > 0 && bookmarkCount == 0) {
             if (visibleSection == SectionNames.bookmarks) {

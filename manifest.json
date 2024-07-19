@@ -1,5 +1,5 @@
 {
-    "name": "Stash Sidebar",
+    "name": "Stash - Tab and Session Manager",
     "version": "0.0.0.3",
     "description": "Tab and Session Management Made Easy",
     "background": {
@@ -52,26 +52,32 @@
     "commands": {
         "_execute_action": {
             "suggested_key": {
-                "default": "Alt+M"
+                "default": "Alt+P"
             }
         },
         "01newTab": {
             "description": "NEW TAB - opens a new tab within the active group (replaces cmd/ctrl + T) "
           },
           "02groupTabs": {
-            "description": "GROUP TABS - creates a group from highlighted tabs (highlight a tab by holding cmd/ctrl and clicking the tab's label)",
-            "suggested_key": {
-              "default": "Alt+G"
-            }
+            "description": "GROUP TABS - creates a group from highlighted tabs (highlight a tab by holding cmd/ctrl and clicking the tab's label)"
           },
           "03tabAbove": {
-            "description": "GO TO TAB ABOVE - navigate to the tab above the active tab"
+            "description": "GO TO TAB ABOVE - navigate to the tab above the active tab",
+            "suggested_key": {
+              "default": "Alt+Up"
+            }
           },
           "04tabBelow": {
-            "description": "GO TO TAB BELOW - navigate to the tab below the active tab"
+            "description": "GO TO TAB BELOW - navigate to the tab below the active tab",
+            "suggested_key": {
+              "default": "Alt+Down"
+            }
           },
           "05lastTab": {
-            "description": "GO TO LAST TAB - navigate to the last active tab"
+            "description": "GO TO LAST TAB - navigate to the last active tab",
+            "suggested_key": {
+              "default": "Alt+Left"
+            }
           }
     },
     "manifest_version": 3

@@ -45,7 +45,7 @@
         folders: 'Folders',
         tabs: 'Tabs',
         saved: 'Recent',
-        toVisit: 'To Visit',
+        toVisit: 'Reading List ',
         bookmarks: 'Bookmarks',
     };
 
@@ -69,6 +69,7 @@
             await loadDataFromCloud();
         } else {
             await loadLocalData();
+            
         }
         
         loaded = true;
@@ -86,43 +87,49 @@
             if (!visibleSection) visibleSection = SectionNames.tabs;
         }
 
-        const folder = await tryToGetWorkspaceFolder(workspace);
-        if (folder) {
-            bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
-            bookmarkCount = 0;
-            const incrementBookmarkCount = (node) => {
-                if (!node.url && hiddenFolderTitles.includes(node.title)) return;
-                bookmarkCount += 1;
-                for (const child of node.children ?? []) {
-                    incrementBookmarkCount(child);
+        if (chrome.bookmarks) {
+            const folder = await tryToGetWorkspaceFolder(workspace);
+            if (folder) {
+                bookmarkTree = (await tryToGetBookmarkTree(folder.id))[0].children;
+                bookmarkCount = 0;
+                const incrementBookmarkCount = (node) => {
+                    if (!node.url && hiddenFolderTitles.includes(node.title)) return;
+                    bookmarkCount += 1;
+                    for (const child of node.children ?? []) {
+                        incrementBookmarkCount(child);
+                    }
+                };
+                if (bookmarkTree) {
+                    for (const node of bookmarkTree) {
+                        incrementBookmarkCount(node);
+                    }
+                    if (bookmarkCount > 0) {
+                        sections.push({
+                            name: SectionNames.bookmarks,
+                        });
+                    }  
+                    if (!visibleSection) visibleSection = SectionNames.bookmarks;
                 }
-            };
-            if (bookmarkTree) {
-                for (const node of bookmarkTree) {
-                    incrementBookmarkCount(node);
-                }
-                if (bookmarkCount > 0) {
-                    sections.push({
-                        name: SectionNames.bookmarks,
-                    });
-                }  
-                if (!visibleSection) visibleSection = SectionNames.bookmarks;
             }
+
+            const queueFolder = await getWorkspaceQueueFolder(workspace);
+                
+            if (queueFolder) {
+                queue = await chrome.bookmarks.getChildren(queueFolder.id);
+                if (queue.length > 0) {
+                    sections.push({
+                        name: SectionNames.toVisit
+                    });
+                }
+                
+            } else {
+                queue = []
+            }
+        } else {
+
         }
 
-        const queueFolder = await getWorkspaceQueueFolder(workspace);
-            
-        if (queueFolder) {
-            queue = await chrome.bookmarks.getChildren(queueFolder.id);
-            if (queue.length > 0) {
-                sections.push({
-                    name: SectionNames.toVisit
-                });
-            }
-            
-        } else {
-            queue = []
-        }
+        
 
         updateVisibleItems(visibleSection);
     };

@@ -247,8 +247,7 @@
     const requestBookmarkPermssion = async () => {
         const granted = await chrome.permissions.request({
             permissions: ['bookmarks']
-        })
-        if (!granted) return;
+        });
         
         updateSearchResults();
     };
@@ -396,7 +395,7 @@
 
     let showSettings;
 
-    let inputHeight = '15px';
+    let inputHeight = '26px';
     const updateInputHeight = async (e) => {
         if (inputElement?.scrollHeight != inputElement?.clientHeight) {
             inputHeight = inputElement.scrollHeight + 'px';
@@ -596,7 +595,7 @@
                 {/if}
                 {#if !hasBookmarkPermission}
                     <div class="permission-request" on:mousedown={requestBookmarkPermssion}>
-                        Click to add bookmarks permission.
+                        Click to view bookmarks
                     </div>
                 {:else if visibleBookmarks.length > 0}
 
@@ -618,7 +617,7 @@
             {:else if visibleSection == sections.history || visibleSection == sections.search}
                 {#if !hasHistoryPermission}
                     <div class="permission-request" on:mousedown={requestHistoryPermssion}>
-                        Click to add history permission.
+                        Click to view {visibleSection == sections.search ? 'search ' : ''}history
                     </div>
                 {:else if (visibleHistory?.length ?? 0) > 0}
 
@@ -771,6 +770,7 @@
         justify-content: space-between;
         height: 40px;
         border-top: 1px solid #333;
+        background-color: #111;
         
     }
 
@@ -785,6 +785,7 @@
         font-weight: 400;
         border-bottom: 2px solid transparent;
         justify-content: center;
+
     }
 
     .section:hover {

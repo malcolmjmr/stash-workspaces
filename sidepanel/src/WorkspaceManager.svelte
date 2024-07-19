@@ -63,13 +63,19 @@
 
     $: {
         if (lastUpdatedGroup) {
-            setTimeout(() => updateWorkspaces(), 200);
+            
+            setTimeout(() => {
+                console.log('updating workspaces after last updated group');
+                updateWorkspaces();
+                
+            }, 200);
         }
     }
 
     $: {
         if (lastCreatedWorkspace) {
             lastUpdatedGroup = {id: lastCreatedWorkspace?.groupId};
+            console.log('updating workspaces after last created workspace');
             updateWorkspaces();
         }
     }

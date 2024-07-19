@@ -85,7 +85,15 @@
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={()=> showCreateGroupModal = false}>
-    <CreateGroup {groups} {workspaces} {tabs} on:exit={() => showCreateGroupModal = false} on:locationSelected={() => view == Views.tabs}/>
+    <CreateGroup 
+        {groups} 
+        {workspaces} 
+        {tabs} 
+        placeholder="Search or create session..."
+        on:exit={() => showCreateGroupModal = false} 
+        on:locationSelected={() => view == Views.tabs}
+        on:dataUpdated
+    />
 </ModalContainer>
 {/if}
 

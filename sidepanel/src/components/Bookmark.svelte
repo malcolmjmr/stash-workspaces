@@ -162,7 +162,7 @@
             setTimeout(() => {
                 if (lastDragged && Date.now() - lastDragged < 1000) return;
                 dispatch('bookmarkClicked', bookmark);
-            }, 200);
+            }, 500);
         }
     };
 
@@ -246,7 +246,12 @@
                 on:mousedown={onclick}
                 on:mouseenter={() => iconInFocus = true}
                 on:mouseleave={() => iconInFocus = false}
-                src={isFolder ? (isOpen || iconInFocus ? openFolderIcon : folderIcon) : favIconUrl}
+                src={isFolder 
+                    ? (isOpen && !iconInFocus)
+                        ? openFolderIcon 
+                        : (!isOpen && iconInFocus) 
+                            ? folderIcon : openFolderIcon
+                    : favIconUrl}
                 class="icon{isFolder ? ' folder' : ''}"
                 alt=""
             />

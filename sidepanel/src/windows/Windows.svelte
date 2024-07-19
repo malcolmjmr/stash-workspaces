@@ -80,10 +80,10 @@
         isDraggedOver = false;
     };
     
-    const onDrop = async (e) => {
+    const onDropOnBackground = async (e) => {
         if (isDraggedOver) isDraggedOver = false;
         const tabId = parseInt(e.dataTransfer.getData("tabId"));
-        const newWindow = await chrome.windows.create();
+        const newWindow = await chrome.windows.create({ focused: false});
         await chrome.tabs.move(tabId, {
             index: -1,
             windowId: newWindow.id,
@@ -92,6 +92,10 @@
         const newTab = (await chrome.tabs.query({windowId: newWindow.id})).filter((t) => t.id != tabId)[0];
         await chrome.tabs.remove(newTab.id);
         
+    };
+
+    const onDragOverBackground = async (e) => {
+        e.preventDefault();
     };
 
 </script>
@@ -113,9 +117,11 @@
         />
     {/each}
 
-    <div class="background" on:drop={onDrop}>
+    <div class="background" on:drop={onDropOnBackground} on:dragover={onDragOverBackground}>
 
     </div>
+
+    
     
 </div>
 
@@ -140,6 +146,11 @@
     .background {
         position: fixed;
         height: 100%;
+        width: 100%;
+    }
+
+    .bottom-drop-zone {
+        height: 400px;
         width: 100%;
     }
 </style>

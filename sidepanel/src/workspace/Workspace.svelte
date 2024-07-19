@@ -17,7 +17,7 @@
     import unselectIcon from "../icons/remove-selection.png";
     import { colorMap } from "../utilities/colors";
     import { StorePaths } from "../utilities/storepaths";
-    import { getContext, get, tryToGetBookmark, openWorkspace, saveContext, getWorkspaceQueueFolder} from "../utilities/chrome";
+    import { getContext, get, tryToGetBookmark, openWorkspace, saveContext, getWorkspaceQueueFolder, tryToGetWorkspaceFolder} from "../utilities/chrome";
     import { closeAllTabs } from "./helpers";
 
 
@@ -155,7 +155,6 @@
             };
             isOpen = true;
         }
-
 
         updateTabData();
         checkScreenState();
@@ -436,15 +435,15 @@
         selectedTabs = [];
     };
 
+ 
+
     const stashAllTabs = async () => {
         const queueFolder = await getWorkspaceQueueFolder(workspace, true);
         const tabsToRemove = await saveSelectedTabsToFolder(queueFolder);
         chrome.tabs.remove(tabsToRemove.map((t) => t.id));
         queue = await chrome.bookmarks.getChildren(queueFolder.id);
-        if (queue.length > 0 && !sections.find((s) => s.name == SectionNames.toVisit)) {
-            sections = [...sections, { name: SectionNames.toVisit}];
-        }
         selectedTabs = [];
+        lastBookmarkUpdate = Date.now();
     };
 
     const saveSelectedTabsToFolder = async (folder) => {
@@ -490,12 +489,15 @@
     const onTabMovedToBookmarks = async ({ detail }) => {
         const tabs = selectedTabs.length > 0 ? selectedTabs : [detail.tab];
         tabs.sort((a, b) => b.index - a.index);
-        const bookmark = detail.bookmark;
-
+        let bookmark = detail.bookmark;
+        if (!bookmark) {
+            bookmark = await tryToGetWorkspaceFolder(workspace, true);
+            workspace.folderId = bookmark.id;
+        }
 
         for (const tab of tabs.reverse()) {
             const newBookmark = await chrome.bookmarks.create({
-                parentId: bookmark.id,
+                parentId: bookmark.url ? bookmark.parentId : bookmark.id,
                 index: 0,
                 title: tab.title,
                 url: tab.url
@@ -503,12 +505,18 @@
             chrome.tabs.remove(tab.id);
         }
 
+    
+        lastBookmarkUpdate = Date.now();
+
+
+
         if (selectedTabs.length > 0) {
             selectedTabs = [];
         }
 
-        lastBookmarkUpdate = Date.now();
 
+
+        
     };
 
 </script>
@@ -573,7 +581,7 @@
             </div>
 
             <div class="title" style='color: {colorMap[workspace?.color]}; font-size: {(workspace?.title ?? 'Untitled').length < 30 ? '350%' : '200%'};'>
-                {workspace?.title && workspace.title != '' ? workspace.title : 'Untitled'} 
+                {workspace?.title && workspace.title != '' ? workspace.title : group?.title && group.title != '' ? group.title : 'Untitled'} 
             </div>
             <div class="search-container">
                 <SearchBox bind:searchText/>

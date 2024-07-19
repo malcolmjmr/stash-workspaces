@@ -18,7 +18,7 @@
             bind:value={searchText}
             on:blur={onTitleInputBlur}
             on:keydown={onInput}
-            placeholder="Search or create..."
+            placeholder="Search or create resource..."
             autofocus="true"
         />
         <!--

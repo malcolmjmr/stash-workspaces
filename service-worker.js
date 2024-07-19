@@ -1,3 +1,5 @@
+
+
 // Runtime
 chrome.runtime.onInstalled.addListener((details) => onInstalled(details));
 chrome.runtime.onUpdateAvailable.addListener((details) => onUpdateAvailable(details));
@@ -53,6 +55,7 @@ async function setInitialData() {
     await chrome.storage.local.set({
         openGroups: {},
         contextKeys: [],
+        quickActions: ['reload', 'save'],
         config: {
             browser,
             os: platformInfo.os,
@@ -628,7 +631,7 @@ async function closeContext(context) {
     delete context.isCollapsed;
     delete context.groupId;
     await saveContext(context);
-    await saveWorkspaceTabsToFolder(context);
+    //await saveWorkspaceTabsToFolder(context);
 
 }
 
@@ -842,7 +845,7 @@ async function onWindowCreated(window) {
     const windowCount = windows.length;
     if (windowCount == 1) await onBrowserOpen();
 
-    chrome.sidePanel.open({ windowId: window.id });
+    //chrome.sidePanel.open({ windowId: window.id });
 }
 
 

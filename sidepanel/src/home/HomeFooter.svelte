@@ -7,6 +7,7 @@
     import CreateGroup from "../group/CreateGroup.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
   import { numberWithCommas } from "../utilities/helpers";
+  import { Views } from "../view";
 
 
     export let view;
@@ -73,11 +74,26 @@
         }
     };
 
+    const onSessionOpened = () => {
+        setTimeout(() => { 
+            view == Views.tabs;
+        }, 1500)
+        
+    };
+
 </script>
 
 {#if showCreateGroupModal}
 <ModalContainer on:exit={() => showCreateGroupModal = false}>
-    <CreateGroup {workspaces} {groups} {view} on:exit={() => showCreateGroupModal = false}/>
+    <CreateGroup 
+        {workspaces} 
+        {groups} 
+        {view} 
+        on:exit={() => showCreateGroupModal = false} 
+        placeholder={'Search or create session'} 
+        on:dataUpdated
+        on:locationSelected={onSessionOpened}
+        />
 </ModalContainer>
 {/if}
 {#key lastSelectionUpdate}
