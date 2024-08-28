@@ -30,7 +30,7 @@
     import {createEventDispatcher, onMount } from "svelte";
     import { get } from "./utilities/chrome.js";
     import { Views } from "./view.js";
-    import { _authLoaded } from "./stores.js";
+    import { _authLoaded, userData } from "./stores.js";
     
     
     let fbAuth;
@@ -114,6 +114,7 @@
       
       authLoaded = Date.now();
       _authLoaded.set(authLoaded);
+      userData.set(user);
       
     };
 

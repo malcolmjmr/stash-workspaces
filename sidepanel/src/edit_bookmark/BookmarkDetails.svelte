@@ -126,6 +126,7 @@
             } else {
 
                 if (user) {
+                    if (!resource.favIconUrl) delete resource.favIconUrl;
                     const ref = doc(db, StorePaths.userResource(user.id, resource.id));
                     setDoc(ref, resource, { merge: true });
                 }  
@@ -396,8 +397,8 @@
         </div>
         {#if !isFolder && (resource || tab.bookmarks?.length > 0 || tab.resource)}
         <div class="spacer"/>
-        <div class="delete button" on:mousedown={() => showDeleteDialog = true}>
-            <img src={trashIcon} alt='Delete'/>
+        <div class="delete button">
+            <img src={trashIcon} alt='Delete' on:mousedown={() => showDeleteDialog = true}/>
         </div>
         {/if}
     {/if}
@@ -409,7 +410,7 @@
     .bookmark-details {
         display: flex;
         flex-direction: column;
-        background-color: #111111;
+        background-color: #222;
         border-radius: 8px;
         padding: 0px 8px;
         max-height: 300px;

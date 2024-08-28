@@ -44,7 +44,7 @@
         flex-direction: column;
         width: 100%;
         min-height: 30px;
-        border-bottom: 1px solid #555555;
+        
         overflow: hidden;
     }
 

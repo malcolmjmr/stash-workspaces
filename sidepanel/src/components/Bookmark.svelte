@@ -247,10 +247,11 @@
                 on:mouseenter={() => iconInFocus = true}
                 on:mouseleave={() => iconInFocus = false}
                 src={isFolder 
-                    ? (isOpen && !iconInFocus)
+                    ? (isOpen || iconInFocus)
                         ? openFolderIcon 
-                        : (!isOpen && iconInFocus) 
-                            ? folderIcon : openFolderIcon
+                        : !isOpen 
+                            ? folderIcon 
+                            : openFolderIcon
                     : favIconUrl}
                 class="icon{isFolder ? ' folder' : ''}"
                 alt=""

@@ -18,6 +18,8 @@
     import Menu from "../header/Menu.svelte";
     import { getTabFavIconUrl, getWorkspaceQueueFolder, saveContext, saveTabToFolder, set, get } from "../utilities/chrome";
 
+    import { YoutubeTranscript } from 'youtube-transcript';
+
     import pinIcon from "../icons/pin.png";
     import unpinIcon from "../icons/pin-filled.png";
     import moveToInboxIcon from "../icons/move-to-inbox.png";
@@ -47,7 +49,7 @@
     const TabMenuView = {
         bookmark: 'bookmark',
         move: 'move',
-    }
+    };
 
     let view = null;
 
@@ -55,13 +57,25 @@
     let isPinned;
     let loaded;
     let isFavoriteDomain;
+
+    let isYoutubeVideo;
+
     onMount(async () => {
+
+        isYoutubeVideo = tab.url.includes('www.youtube.com/watch');
         isSaved = tab.bookmarks || tab.resource;
         isPinned = tab.pinned || tab.isPinned;
         await loadFavoritesMenuItem();
         
+        if (isYoutubeVideo) {
+           
+        
+        }
         loaded = true;
     });
+
+    
+
 
     
     const moveTabToNewWindow = async () => {
@@ -236,9 +250,10 @@
 
     };
 
+    const moveToMiniPlayer = () => {
+        dispatch('moveToMiniPlayer', tab);
+    };
 
-
-    
 </script>
 
 {#if loaded}
@@ -259,13 +274,16 @@
             </span>
         </div>
         <div class="url-field">
-            <img 
-                class="button"
-                src={copyIcon} 
-                style='opacity: {linkCopied ? '1' : '.8'}' 
-                alt="Copy Link" 
-                on:mousedown={copyLink} 
-            />
+            <!--
+                <img 
+                    class="button"
+                    src={copyIcon} 
+                    style='opacity: {linkCopied ? '1' : '.8'}' 
+                    alt="Copy Link" 
+                    on:mousedown={copyLink} 
+                />
+            -->
+            
             <input
                 type="text"
                 bind:value={tab.url}
@@ -275,7 +293,9 @@
     </div>
    
     <MenuDivider />
+    
     {#if isOpen}
+        <div class="actions">
         <MenuItem 
             title={isPinned ? 'Unpin' : 'Pin'}
             action={actions.pin}
@@ -298,10 +318,22 @@
             {tab}
             canToggle={true}
         />
+        <MenuItem 
+            action={actions.copy}
+            {tab}
+            canToggle={true}
+            on:exit
+        />
+        <MenuItem 
+            action={actions.discard}
+            {tab}
+            canToggle={true}
+            on:exit
+        />
         
         <MenuDivider />
 
-        <MenuItem 
+        <MenuItem
             title={isSaved ? 'Edit Bookmark': 'Save'} 
             action={actions.save}
             onClick={onEditTabBookmarkClicked} 
@@ -328,6 +360,8 @@
             {tab}
             canToggle={true}
         />
+        
+
 
         <MenuDivider />
 
@@ -335,7 +369,7 @@
             action={actions.getRelated}
             {tab}
             canToggle={true}
-            on:click={ () =>  dispatch('exit')}
+            on:exit
         />
 
 
@@ -362,6 +396,14 @@
                 on:moveToDesktop
             />
         {/if}
+
+        {#if user}
+            <MenuItem
+                action={actions.moveToMiniPlayer}
+                {tab}
+                onClick={moveToMiniPlayer}
+            />
+        {/if}
         <MenuItem 
             title="Move to {tab.groupId > -1 ? 'Other ' : '' } Session",
             action={actions.moveToSpace} 
@@ -370,6 +412,21 @@
             {tab}
             canToggle={true}
         />
+
+        {#if user}
+
+        <MenuDivider />
+
+        <MenuItem 
+            action={actions.createAction}
+            {tab}
+            canToggle={true}
+            on:click={() => {
+                dispatch('createAction', { tab, workspace });
+                dispatch('exit');
+            }}
+        />
+        {/if}
         
         <MenuDivider />
 
@@ -383,6 +440,7 @@
         {#if false}
             <MenuItem title="Close Group" onClick={closeTabGroup} />
         {/if}
+        </div>
     {/if}
     {:else if view == TabMenuView.bookmark}
         <BookmarkDetails {db} bind:tab {workspace} {workspaces} isOpen={true} on:dataUpdated on:exit={() => view = null}/>
@@ -398,7 +456,8 @@
     .context-menu {
         display: flex;
         flex-direction: column;
-        width: 100%
+        width: 100%;
+        overflow: hidden;
     }
 
     .top {
@@ -409,7 +468,7 @@
     }
 
     .divider {
-        height: 1px;
+        min-height: 2px;
         width: 100%;
         background-color: #444;
     }
@@ -459,5 +518,12 @@
     
     .button:hover {
         cursor: pointer;
+    }
+
+    .actions {
+        display: flex;
+        flex-direction: column;
+        overflow: scroll;
+        flex-grow: 1;
     }
 </style>

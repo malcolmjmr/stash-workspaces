@@ -37,7 +37,7 @@
         top: 0;
         left: 0;
         background-color: black;
-        opacity: 0.4;
+        opacity: 0.5;
         z-index: 10001;
     }
 
@@ -51,7 +51,7 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        border: 2px solid #333333;
+        box-shadow: 0px 0px 20px black;
     }
 
 </style>

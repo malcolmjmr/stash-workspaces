@@ -14,6 +14,7 @@
     export let context = null;
     export let tab = null;
     export let canToggle = false;
+    export let overRideActionClick = true;
 
     let dispatch = createEventDispatcher();
 
@@ -26,6 +27,8 @@
         if (!icon && action?.icon) {
             icon = typeof action.icon == 'string' ? action.icon : action.icon(tab);
         }
+
+        
 
         if (!onClick && action?.onClick)  onClick = () => {
             const result = action.onClick(tab);
@@ -92,13 +95,14 @@
 
 <style>
     .menu-item {
-        height: 25px;
+       
         font-size: 14px;
-        padding: 5px 8px;
+        padding: 0px 8px;
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
+        min-height: 34px;
     }
 
     .menu-item:hover {

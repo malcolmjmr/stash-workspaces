@@ -49,6 +49,7 @@
   import CircleDivider from "../components/CircleDivider.svelte";
   import Bookmark from "../components/Bookmark.svelte";
   import CreateFolderButton from "../components/CreateFolderButton.svelte";
+  import CreateGroup from "../group/CreateGroup.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -97,9 +98,8 @@
 
 
     $: {
-        if (lastUpdatedGroup && lastUpdatedGroup.id == group?.id) {
-            //group = groups[groupId];
-            getWorkspace();
+        if (group != groups[groupId]) {
+            group = groups[groupId];
         }
     }
     
@@ -124,6 +124,7 @@
     });
     
 
+    
     const onMouseEnter = () => {
         isInfocus = true;
     };
@@ -137,8 +138,12 @@
     };
 
     const toggleCollapse = () => {
-        dispatch("toggleCollapse", group);
-        chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+        setTimeout(() => {
+            if (showMenu) return;
+            dispatch("toggleCollapse", group);
+            chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
+        }, 10);
+        
     };
 
     const saveGroup = async () => {
@@ -753,13 +758,48 @@
 
         chrome.tabs.group({ tabIds: tab.id, groupId: workspace.groupId });
         
-    }
+    };
+
+    const onLocationAdded = async ({ detail }) => {
+        let location = detail;
+        const folder = await tryToGetWorkspaceFolder(workspace, true);
+
+        if (folder) {
+            const folderToMove = location.folder?.id ?? location.workspace.folderId;
+            if (!folderToMove || folderToMove == folder.id) return;
+            await chrome.bookmarks.move(folderToMove, {
+                parentId: folder.id,
+                index: 0,
+            });
+
+            lastBookmarkUpdate = Date.now();
+            
+        }
+
+        showNewFolderModal = false;
+    };
+
+    const onContextMenu = (e) => {
+        e.preventDefault();
+        showMenu = true;
+    };
 
 </script>
 
 {#if showNewFolderModal}
     <ModalContainer on:exit={() => showNewFolderModal = false}>
+
+        <CreateGroup
+            {groups} 
+            {workspace}
+            on:exit={ () => showNewFolderModal = false}
+            on:locationSelected={onLocationAdded} 
+            placeholder="Search or create folder..."
+        />
+        <!--
         <NewFolderModal {workspace} on:bookmarkFolderCreated={onBookmarkFolderCreated} />
+        -->
+        
     </ModalContainer>
 {/if}
 
@@ -823,7 +863,7 @@
             />
     </div>
     {:else }
-    <div class="header"
+    <div class="header{isDragged ? ' dragged' : isInfocus ? ' hover' : ''}"
         on:mouseenter={onMouseEnter}
         on:mouseleave={onMouseLeave}
         on:dragleave={onDragLeave}
@@ -831,6 +871,7 @@
         on:dragover={onDragOver}
         on:drop={onDrop}
         on:dragend={onDragEnd}
+        on:contextmenu={onContextMenu}
         draggable={isEditingTitle ? 'false' : 'true'}
         bind:this={el}
         style="color: {colorMap[group.color]};"
@@ -925,6 +966,8 @@
                             on:tabStashed={onTabStashed}
                             on:refreshTabs
                             on:moveToDesktop
+                            on:moveToMiniPlayer
+                            on:createAction
                         />
                     {:else}
                         <WorkspaceListItem 
@@ -956,6 +999,9 @@
                             on:tabStashed={onTabStashed}
                             on:refreshTabs
                             on:moveToDesktop
+                            on:moveToMiniPlayer
+                            on:createAction
+                            
                             
                         />
                     {/each}
@@ -1031,6 +1077,14 @@
         align-items: center;
         justify-content: space-between;
         padding: 5px 5px 0px 5px;
+    }
+
+    .header.dragged {
+        cursor: grabbing;
+    }
+
+    .header.hover {
+        cursor: pointer;
     }
 
     .spacer {

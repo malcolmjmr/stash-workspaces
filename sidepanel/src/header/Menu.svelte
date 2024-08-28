@@ -7,10 +7,13 @@
     import { Views } from "../view";
     import syncConnectedIcon from "../icons/sync.png";
     import syncDisabledIcon from "../icons/sync-disabled.png";
+  import { createEventDispatcher } from "svelte";
 
     export let showMenu;
     export let user;
     export let view;
+
+    let dispatch = createEventDispatcher();
 
     /*
         Bug
@@ -55,6 +58,8 @@
         } else if (menuItem.onClick) {
             menuItem.onClick();
         }
+
+        dispatch('itemClicked', menuItem);
     };
 </script>
 
@@ -89,6 +94,7 @@
     .menu {
         display: flex;
         flex-direction: column;
+        background-color: #111;
     }
 
     .menu-item {
@@ -97,7 +103,6 @@
         align-items: center;
         padding: 5px;
         opacity: 0.7;
-        border-top: 1px solid #444444;
     }
 
     .menu-item > img {
@@ -113,5 +118,6 @@
     .menu-item:hover {
         cursor: pointer;
         opacity: 1;
+        background-color: #333;
     }
 </style>

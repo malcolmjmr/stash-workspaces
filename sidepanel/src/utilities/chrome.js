@@ -27,7 +27,7 @@ export const getTabFavIconUrl = ({url, favIconUrl, pendingUrl}) => {
     //const browserNames = ['chrome', 'brave', 'edge'];
     if (!url || url == '') url = pendingUrl;
     
-    if (!favIconUrl || url.includes('chrome:')) {
+    if (!favIconUrl || url?.includes('chrome:')) {
         let favIconUrlFromChrome = new URL(chrome.runtime.getURL("/_favicon/"));
         favIconUrlFromChrome.searchParams.set("pageUrl", url);
         favIconUrlFromChrome.searchParams.set("size", "32");
@@ -132,12 +132,14 @@ export async function closeTabGroup(groupId) {
 
 }
 
-export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
+export const openWorkspace = async (workspace, {openInNewWindow = true, windowId }) => {
 
     const groupWorkspaceMap = await getOpenGroups();
 
     workspace = await getContext(workspace.id);
     const openGroup = await tryToGetTabGroup(workspace?.groupId);
+
+   
 
     console.log('openign workspace');
 
@@ -159,7 +161,9 @@ export const openWorkspace = async (workspace, {openInNewWindow = true}) => {
     let openedTabs = [];
     let window;
     let newTab; 
-    if (openInNewWindow) {
+    if (windowId) {
+        window = await chrome.windows.get(windowId);
+    } else if (openInNewWindow) {
         window = await chrome.windows.create({incognito: workspace.isIncognito ?? false, focused:true});
         newTab = (await chrome.tabs.query({windowId: window.id}))[0];
     }
@@ -512,22 +516,44 @@ function S4() {
 
 export function getTabInfo(tab, showAdditionalData = false) {
     if (!tab) return tab;
-    let additionalData = {
-        groupId: tab.groupId,
-        index: tab.index,
-        pinned: tab.pinned,
-        audible: tab.audible,
-        mutedInfo: tab.mutedInfo,
-    };
 
-    let tabInfo = {
-        id: tab.id,
-        title: tab.title,
-        url: tab.url && tab.url != '' ? tab.url : tab.pendingUrl,
-        favIconUrl: tab.favIconUrl,
-    };
+    let properties = [
+        'id',
+        'title',
+        'url',
+        'favIconUrl',
+        'lastAccessed',
+    ];
 
-    return showAdditionalData ? {...tabInfo, ...additionalData} : tabInfo;
+    if (showAdditionalData) {
+
+        let additionalProperties = [
+            'groupId',
+            'index',
+            'pinned',
+            'audible', 
+            'mutedInfo',
+            'status',
+            'windowId',
+            'sessionId',
+            'discarded',
+        ];
+
+        properties = [...properties, ...additionalProperties];
+
+    }
+
+    let tabInfo = {};
+
+    for (const property of properties) {
+        tabInfo[property] = tab[property];
+    }
+
+    if (!tabInfo.url || tabInfo.url == '') {
+        tabInfo.url = tab.pendingUrl;
+    }
+
+    return tabInfo;
 }
 
 export async function getFavoriteSpaces() {
@@ -601,7 +627,7 @@ export async function createAdjacentTab( props ) {
     return tab;
 }
 
-export async function getHistory() {
+export async function getHistory({ maxResults = 10000}) {
     let history = [];
     let hasHistoryPermission = await chrome.permissions.contains({
         permissions: ['history']
@@ -612,8 +638,7 @@ export async function getHistory() {
     const results = await chrome.history.search({
         startTime: Date.now() - (30 * 24 * 60 * 60 * 1000),
         text: '',
-        maxResults: 10000,
-
+        maxResults: maxResults,
     });
 
     history = removeDuplicateHistoryItems(results);
@@ -631,3 +656,49 @@ const removeDuplicateHistoryItems = (historyItems) => {
     }
     return result;
 };
+
+export const restoreWindow = async (window) => {
+
+};
+
+export const stashWindow = async (params = {}) => {
+    let windowId = params.windowId;
+     let window;
+
+     if (windowId) {
+         window = await chrome.windows.get(windowId);
+     } else {
+         const activeTab = await getActiveTab();
+         window = await chrome.windows.get(activeTab.windowId);
+     } 
+
+     const tabs = await chrome.tabs.query({ windowId: window.id });
+
+
+     let groupIds = [];
+
+     let tabData = [];
+
+     for (const tab of tabs) {
+         if (tab.groupId == -1 || !tab.groupId) {
+             tabData.push(tab);
+         } else if (!groupIds.includes(tab.groupId)) {
+             groupIds.push(tab.groupId);
+             const context = await getContextFromGroupId(tab.groupId);
+             tabData.push(context);
+         }
+     }
+
+     window.tabs = tabData;
+
+     let sessions = (await get('sessions')) ?? [];
+     sessions.push(window);
+     await set({ sessions });
+ 
+     if (!windowId) {
+         await chrome.tabs.create({});
+     }
+
+     await chrome.tabs.remove(tabs.map((t) => t.id));
+
+ };

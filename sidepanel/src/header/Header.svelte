@@ -8,6 +8,8 @@
     import { Views } from "../view";
     import Menu from "./Menu.svelte";
     import SearchBox from "../components/SearchBox.svelte";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import Settings from "../settings/Settings.svelte";
 
     export let user;
     export let view;
@@ -76,10 +78,14 @@
             <img src={moreIcon} alt="More" />
         </div>
     </div>
-    {#if showMenu}
-        <Menu bind:showMenu bind:view {user}/>
-    {/if}
+    
 </div>
+
+{#if showMenu}
+    <ModalContainer on:exit={() => showMenu = false}>
+        <Settings on:itemClicked={() => showMenu = false}/>
+    </ModalContainer>
+{/if}
 
 <style>
     .header {

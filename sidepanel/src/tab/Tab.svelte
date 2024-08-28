@@ -35,7 +35,7 @@
     import { doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import { createResource } from "../utilities/firebase";
-    import { _lastUpdatedTab, allWorkspaces, openGroups, quickActions } from "../stores";
+    import { _draggedOverTab, _draggedTab, _lastUpdatedTab, allWorkspaces, openGroups, quickActions } from "../stores";
     import { getWorkspaceData } from "../workspace/workspaceData";
     import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
 
@@ -47,6 +47,8 @@
   import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
   import { children } from "svelte/internal";
   import { LLM } from "../../../desktop/src/services/llm";
+  import CreateActionModal from "./CreateActionModal.svelte";
+  import { expoOut } from "svelte/easing";
 
 
     export let db;
@@ -120,8 +122,10 @@
         //         // }
         //     }
 
-            
         // });
+
+        console.log('loading tab interface');
+        console.log(tab);
 
         init();
     });
@@ -138,14 +142,27 @@
         
     };
 
+    let showPlaceholderElement;
+
+    let isAsleep;
     let isBookmark;
     const init = async () => {
+        console.log('init');
+        if (el) {
+            resetDraggedElement();
+        }
+        if (showPlaceholderElement) showPlaceholderElement = false;
+        
         group = groups[tab.groupId];
         updateFavIconUrl();
         updateSavedState();
         isPinned = workspace?.pinnedTabs?.find((t) => t.id == tab.id || t.url == tab.url) ?? tab.pinned;
         isAudible = tab.audible;
         isBookmark = tab.parentId;
+        isAsleep = tab.status == 'unloaded';
+        console.log(tab);
+
+
         // if (tab.status == 'unloaded') {
         //     const activeTab = await getActiveTab();
         //     if (activeTab.id == tab.id) tab.active = true;
@@ -197,18 +214,131 @@
         } 
     };
 
+    let mouseListenersAdded;
+    let mouseDownListenerAdded;
     const onMouseEnter = (e) => {
-        isInFocus = true;
+        if (!isOpen) {
+            isInFocus = true;
+            return;
+        }
+        if (!$_draggedTab) {
+            document.addEventListener('mousedown', onMouseDown);
+            mouseDownListenerAdded = true;
+            isInFocus = true;
+        } else if ($_draggedTab.id != tab.id) {
+            console.log('is draggoved over');
+            console.log(tab);
+
+        } else {
+            isInFocus = true;
+        }
     };
 
     const onMouseLeave = () => {
+        if (isDragged) return;
         isInFocus = false;
         favIconInFocus = false;
+        if (isDraggedOver) {
+            isDraggedOver = false;
+            //el.style.transform = '';
+        } else if (mouseListenersAdded || isDragged) {
+            console.log('mouse leave');
+            onMouseUp();
+            removeMouseListeners();
+        } else if (mouseDownListenerAdded) {
+            document.removeEventListener('mousedown', onMouseDown);
+            mouseDownListenerAdded = false;
+        }
+    };
+
+    let mouseDownY;
+    const onMouseDown = (e) => {
+        mouseListenersAdded = true;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        mouseDownY = e.clientY;
+        console.log('mouse down');
+    };
+
+    let lastDragEnd; 
+    const onMouseUp = async (e) => {
+            console.log('mouse up');
+        if (isDragged || $_draggedTab || mouseListenersAdded) {
+            isDragged = false;
+            _draggedTab.set(null);
+            lastDragEnd = Date.now();
+            removeMouseListeners(); 
+
+            await onTabMoveEnd();
+            resetDraggedElement();
+        }
+       
+    };
+
+    const onTabMoveEnd = async () => {
+        if (draggedOverTabs.length > 0) {
+            for (const draggOverTab of draggedOverTabs) {
+                const element = document.getElementById(draggOverTab.id);
+                element.style.transform = '';
+            }
+            const lastDraggedOverTab = draggedOverTabs[draggedOverTabs.length -1];
+
+            let draggedTabs = [];
+            if (selectedTabs.find((t) => t.id == tab.id)) {
+                draggedTabs = [...selectedTabs];
+                selectedTabs = [];
+            } else {
+                draggedTabs = [tab];
+            }
+
+            for (const draggedTab of draggedTabs) {
+                
+                if (draggedTab.groupId == -1 && lastDraggedOverTab.groupId > -1) {
+                    const tabs = await chrome.tabs.query({ groupId: lastDraggedOverTab.groupId });
+                    if (tabs.length == 1) {
+                        await chrome.tabs.group({ groupId: lastDraggedOverTab.groupId, tabIds: draggedTab.id });
+                    }
+                }
+                await chrome.tabs.move(draggedTab.id, { index: lastDraggedOverTab.index });
+
+                if (draggedTab.groupId > -1 && (lastDraggedOverTab.groupId == -1)) {
+                    await chrome.tabs.ungroup(draggedTab.id);
+                }
+
+            }
+            draggedOverTabs = [];
+        }
+    };
+
+
+
+    const onMouseMove = (e) => {
+
+        // if mouse is down and horizontal threshold reached 
+        if (isDragged) {
+            onDrag(e);
+        } else if (!$_draggedTab) {
+            const deltaX = e.clientY - mouseDownY;
+            console.log('delta x: ' +  deltaX);
+            if (Math.abs(deltaX) > 2) {
+                onDragStart(e);
+            }
+        }
+    };
+
+    const removeMouseListeners = () => {
+        console.log('removing mouse listeners');
+        document.removeEventListener('mousedown', onMouseDown);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('mousemove', onMouseMove);
+        mouseListenersAdded = false;
+        mouseDownListenerAdded = false;
     };
 
     const onMouseEnterFavIcon = (e) => {
         if (!canSelect) return;
         favIconInFocus = true;
+        
     };
 
     const onMouseLeaveFavIcon = (e) => {
@@ -252,29 +382,173 @@
         
     };
 
+
+    let startX;
+    let startY;
+    let positionX;
+    let positionY;
     let isDragged;
+    let isPopped;
+    let draggedElement;
+    let rect;
     const onDragStart = (e) => {
         isDragged = true;
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("tabId", tab.id);
+        // e.dataTransfer.effectAllowed = "move";
+        // e.dataTransfer.setData("tabId", tab.id);
+
+        startX = e.clientX;
+        startY = e.clientY;
+
+        if (el) {
+            console.log('on drag start');
+
+            showPlaceholderElement = true;
+            rect = el.getBoundingClientRect();
+            positionY = rect.top;
+
+            //el.style.position = 'fixed';
+            el.style.zIndex = '10';
+            el.style.position = 'absolute';
+            el.style.width = `${rect.width-10}px`;
+            
+            //el.style.left = `${rect.left}px`;
+            //el.style.width = `${el.offsetWidth}px`;
+        }
+        
+        _draggedTab.set(tab);
+
+
+    };
+
+
+    let lastDeltaY;
+    let draggedOverTabToIgnore;
+    let draggedOverTabs = [];
+    const onDrag = async (e) => {
+
+        const HORIZONTAL_THRESHOLD = 50;
+
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+
+        if (Math.abs(deltaX) > HORIZONTAL_THRESHOLD) {
+            isPopped = true;
+        } else {
+        // Restrict x-position, allow y-position to change
+            //draggedElement.style.top = `${e.clientY - draggedElement.offsetHeight / 2}px`;
+            lastDeltaY = positionY + deltaY;
+
+            //el.style.transform = `translateY(${deltaY}px)`;
+
+            el.style.top = `${lastDeltaY}px`;
+
+            
+
+        }
+
+        const _overlapped = document.elementsFromPoint(e.pageX, e.pageY);
+
+        const tabIds = _overlapped
+            .filter((element) => element.className.includes('tab') && element.id != '' &&element.id != tab.id && element.id != draggedOverTabToIgnore)
+            .map((el) => el.id);
+
+        if (tabIds.length > 0) {
+
+            const draggedOverTabId = tabIds[0];
+
+            const tabElement = document.getElementById(draggedOverTabId);
+
+            const index = draggedOverTabs.findIndex((t) => t.id == draggedOverTabId);
+            if (index > -1) {
+                tabElement.style.transform = '';
+                draggedOverTabs.splice(index, 1);
+            } else {
+                const draggedOverTab = await chrome.tabs.get(parseInt(draggedOverTabId));
+                const draggingDown = draggedOverTab.index - tab.index > 0;
+                draggedOverTabs.push(draggedOverTab);
+                tabElement.style.transform = `translateY(${draggingDown ? '-' :''}${el.offsetHeight}px)`;
+                
+                if (draggedOverTabs.length == 0) {
+                    const draggedOverTab = await chrome.tabs.get(draggedOverTabId);
+                }
+            }
+        }
     };
 
     let isDraggedOver;
     let lastDragOver = Date.now();
+    let draggedOverTabUnsubscribe;
     const onDragOver = (e) => {
         e.preventDefault();
-        if (!isDraggedOver) isDraggedOver = true;
+        if (!isDraggedOver && $_draggedTab?.id != tab.id) {
+            isDraggedOver = true;
+            // draggedOverTabUnsubscribe = _draggedOverTab.subscribe((t) => {
+            //     if (t?.id != tab.id) {
+            //         isDraggedOver = false;
+            //     }
+            //     draggedOverTabUnsubscribe();
+            // });
+            _draggedOverTab.set(tab);
+            console.log('dragover: ' + tab.id);
+            console.log($_draggedOverTab);
+        }
+
     };
 
     const onDragLeave = (e) => {
         e.preventDefault();
-        if (isDraggedOver) {
+
+        if ($_draggedOverTab?.id == tab.id && $_draggedTab?.id != tab.id && isDraggedOver) {
             isDraggedOver = false;
+            console.log('dragleave: ' + tab.id);
+            console.log($_draggedOverTab);
         }
     };
 
-    const onDragEnd = (e) => {
+    const onDragEnd = async (e) => {
         isDragged = false;
+        isPopped = false;
+        //resetDraggedElement();
+        _draggedTab.set(null);
+
+        let draggedOutOfPanel = (
+            e.clientX < 0 
+            || e.clientX > window.innerWidth 
+            || e.clientY < 0
+            || e.clientY > window.innerHeight
+        );
+
+        if (draggedOutOfPanel) { // Create window with dragged tabs
+
+            let draggedTabs = [];
+            const tabIsSelected = selectedTabs.find((t) => t.id == tab.id);
+            if (tabIsSelected) {
+                draggedTabs = [...selectedTabs];
+            } else {
+                draggedTabs = [tab];
+            }
+
+            draggedTabs.sort((a, b) => b.index - a.index);
+
+            const firstTab = draggedTabs.pop();
+            const currentWindow = await chrome.windows.get(tab.windowId);
+            const newWindow = await chrome.windows.create({
+                tabId: firstTab.id,
+                incognito: currentWindow.incognito,
+                state: currentWindow.state,
+                focused: true,
+            });
+
+            for (const draggedTab of draggedTabs) {
+                await chrome.tabs.move(draggedTab.id, {
+                    windowId: newWindow.id,
+                    index: -1,
+                });
+            }
+            
+
+        }
+        
     };
 
     const onDrop = async (e) => {
@@ -294,7 +568,6 @@
 
             for (const draggedTab of draggedTabs) {
                 
-
                 if (draggedTab.groupId == -1 && tab.groupId > -1) {
                     const tabs = await chrome.tabs.query({ groupId: tab.groupId });
                     if (tabs.length == 1) {
@@ -308,14 +581,18 @@
                 }
 
             }
-            
-            
         } else if (groupId) {
             await chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
         }
     };
 
     const onTitleClicked = async (e) => {
+        // check for three finger click
+        
+        if (isAsleep) {
+            isAsleep = false;
+        }
+        if (lastDragEnd && (Date.now() - lastDragEnd) < 200) return;
         dispatch('clicked', tab);
         if (preventDefault) return;
         if (isOpen) {
@@ -354,6 +631,14 @@
             
             chrome.tabs.create({url: tab.url});
         }
+    };
+
+    const resetDraggedElement = () => {
+        el.style.zIndex = '1';
+        el.style.transform = '';
+        el.style.position = 'relative';
+        el.style.top = '';
+        el.style.width = '';
     };
 
     const onTitleDoubleClicked = () => {
@@ -411,6 +696,7 @@
                 if (saveOption == saveOptions.saveToQueue) {
                     resource.isQueued = true;
                 }
+
                 const ref = doc(db, StorePaths.userResource(user.id, resource.id));
                 await setDoc(ref, resource, {merge: true});
                 tab.resource = resource;
@@ -676,6 +962,15 @@
             dispatch('updateSelection', suggestedGroup.tabs);
         }
     };
+
+    const onContextMenu = (e) => {
+        e.preventDefault();
+        showMore = true;
+    };
+
+    let showCreateActionModal;
+
+    // draggable={showMore || !canDrag ? "false" : "true"}
     
 </script>
 
@@ -687,6 +982,14 @@
         />
     </ModalContainer>
 {/if}
+
+
+{#if showCreateActionModal}
+    <ModalContainer on:exit={() => showCreateActionModal = false}>
+        <CreateActionModal {tab} {workspace} />
+    </ModalContainer>
+{/if}
+
 
 {#if showMore}
     <ModalContainer on:exit={exitModal}>
@@ -715,6 +1018,7 @@
                 on:dataUpdated={onDataUpdated}
                 on:tabStashed
                 on:moveToDesktop
+                on:moveToMiniPlayer
             />
         {/if}
     </ModalContainer>
@@ -726,11 +1030,17 @@
     </ModalContainer>
 {/if}
 
+{#if showPlaceholderElement}
+<div class="tab placeholder">
+
+</div>
+{/if}
 
 {#if loaded}
 
 <div
     bind:this={el}
+    id={tab.id}
     class="tab{isSelected ? ' selected' : ''}{isInFocus
         ? ' focused'
         : ''}{isDraggedOver ? ' dragged-over' : ''}{tab.active && !isSearchResult
@@ -738,15 +1048,19 @@
         : ''}{group ? ' grouped' : ''}
         {isListItem ? ' list-item' : ''}
         {isStartingTab ? ' start-tab' : ''}
-        {isEndingTab ? ' end-tab' : ''}"
+        {isEndingTab ? ' end-tab' : ''}
+        {isAsleep ? ' unloaded' : ''}
+        {isDragged ? ' dragged' : ''}"
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
-    on:dragstart={onDragStart}
     on:dragover={onDragOver}
     on:dragleave={onDragLeave}
     on:dragend={onDragEnd}
     on:drop={onDrop}
-    draggable={showMore || !canDrag ? "false" : "true"}
+    on:contextmenu={onContextMenu}
+    on:auxclick={onCloseTab}
+    draggable={isPopped ? "true" : "false"}
+    
 >
 
     <div class="main-container">
@@ -890,7 +1204,18 @@
         user-select: none;
         margin: 2px 5px;
         border-radius: 8px;
+        position: relative;
+        z-index: 1;
     }
+
+    .tab.placeholder {
+        height: 34px;
+    }
+
+    .tab:hover {
+        cursor: pointer;
+    }
+
 
     .main-container {
         width: 100%;
@@ -924,15 +1249,23 @@
     }
 
     
-
     .tab.active {
         background-color: #666666;
+    }
+
+    .tab.unloaded .title {
+        opacity: 0.5;
     }
 
     .tab.dragged-over {
         opacity: 0.4;
         background-color: #555555;
     }
+
+    .tab.dragged {
+        cursor: grabbing;
+    }
+
 
     .tab.end-tab {
         border-radius: 0px 0px 8px 8px;
@@ -980,10 +1313,6 @@
         display: none;
     }
 
-    .title:hover {
-        cursor: pointer;
-    }
-
     .spacer {
         height: 100%;
         flex-grow: 1;
@@ -1023,5 +1352,9 @@
         flex-direction: row;
         align-items: center;
         height: 100%;
+    }
+
+    .dragover-padding {
+        height: 40px;
     }
 </style>

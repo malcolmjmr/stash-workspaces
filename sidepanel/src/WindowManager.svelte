@@ -189,6 +189,8 @@
         chrome.tabs.onUpdated.addListener(onTabUpdated);
         chrome.tabs.onMoved.addListener(onTabMoved);
         chrome.tabs.onRemoved.addListener(onTabRemoved);
+        // chrome.tabs.onAttached.addListener(onTabAttached);
+        // chrome.tabs.onDetached.addListener(onTabDetached);
         chrome.tabGroups.onCreated.addListener(onTabGroupCreated);
         chrome.tabGroups.onUpdated.addListener(onTabGroupUpdated);
         chrome.tabGroups.onRemoved.addListener(onTabGroupRemoved);
@@ -198,6 +200,41 @@
             chrome.bookmarks.onCreated.addListener(onBookmarkCreated);
             chrome.bookmarks.onRemoved.addListener(onBookmarkRemoved);
             chrome.bookmarks.onMoved.addListener(onBookmarkMoved);
+        }
+    };
+
+    const onTabAttached = (tabId, attachInfo) => {
+        let tabIndex = tabs.findIndex((t) => t.id == tabId);
+        console.log('tab attached');
+
+        if (tabIndex > -1) {
+            console.log('found tab');
+            let tab = tabs[tabIndex];
+            console.log(tab);
+            tab.discarded = false;
+            tab.status = 'attached';
+            tab.updated = Date.now();
+            tabs[tabIndex] = tab;
+            lastUpdatedTab = tab;
+            _lastUpdatedTab.set(lastUpdatedTab);
+            //lastUpdatedWindow = tab.windowId;
+        }
+    };
+
+    const onTabDetached = (tabId, detachInfo) => {
+        let tabIndex = tabs.findIndex((t) => t.id == tabId);
+        console.log(' tab detached');
+        if (tabIndex > -1) {
+            console.log('found tab');
+            let tab = tabs[tabIndex];
+            console.log(tab);
+            tab.discarded = true;
+            tab.status = 'unloaded';
+            tab.updated = Date.now();
+            tabs[tabIndex] = tab;
+            lastUpdatedTab = tab;
+            _lastUpdatedTab.set(lastUpdatedTab);
+            //lastUpdatedWindow = tab.windowId;
         }
     };
 
@@ -242,15 +279,20 @@
 
     const onTabUpdated = async (tabId, updates, tab) => {
 
+        console.log('tab updated');
+        console.log(updates);
+
         let tabIndex = tabs.findIndex((t) => t.id == tab.id);
 
         if (!tab){
-            // console.log('tab couldn\'t be found');
-            // console.log(tabId);
+            console.log('tab couldn\'t be found');
+            console.log(tabId);
         } 
 
         if (tabIndex > -1) {
+
             tab = { ...tabs[tabIndex], ...getTabInfo(tab, true) };
+            console.log('found updated tab ');
             tab.updated = Date.now();
             tab = await getTabsBookmarks(tab);
             tabs[tabIndex] = tab;

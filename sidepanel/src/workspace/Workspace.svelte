@@ -378,7 +378,8 @@
 
     const onLocationAdded = async ({ detail }) => {
         let location = detail;
-        const folder = await tryToGetBookmark(workspace.folderId);
+        const folder = await tryToGetWorkspaceFolder(workspace, true);
+
         if (folder) {
             const folderToMove = location.folder?.id ?? location.workspace.folderId;
             if (!folderToMove || folderToMove == folder.id) return;

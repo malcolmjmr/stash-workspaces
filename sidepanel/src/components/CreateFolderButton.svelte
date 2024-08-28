@@ -4,8 +4,8 @@
 </script>
 
 <div class="create-folder" on:mousedown>
-    <img src={folderCreateIcon} alt="Create Folder"/>
-    <span>Create folder</span>
+    <img src={folderCreateIcon} alt="New Folder"/>
+    <span>New folder</span>
 </div>
 
 <style>

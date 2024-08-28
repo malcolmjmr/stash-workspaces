@@ -4,14 +4,22 @@
     import { colorMap } from "../utilities/colors";
     import closeIcon from "../icons/close.png";
     import webIcon from "../icons/web.png";
+    import stashIcon from "../icons/download.png";
+    import openIcon from "../icons/open-in-new-window.png";
+    import menuIcon from "../icons/more-vert.png";
+    import deleteIcon from "../icons/delete.png";
 
-    import { createEventDispatcher, onMount } from "svelte";
+    import { createEventDispatcher, getContext, onMount } from "svelte";
     import TabIcon from "../tab/TabIcon.svelte";
     import { fade } from "svelte/transition";
     import { Views } from "../view";
-  import { getTabFavIconUrl } from "../utilities/chrome";
+  import { getActiveTab, getTabFavIconUrl, openWorkspace, set, stashWindow } from "../utilities/chrome";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import WindowMenu from "./WindowMenu.svelte";
+  import { get } from "svelte/store";
 
     let dispatch = createEventDispatcher();
+
 
     export let windowData;
     export let tabs;
@@ -19,6 +27,8 @@
     export let lastUpdatedWindow = null;
     export let lastUpdatedTab = null;
     export let view = null;
+    export let isCurrentWindow = false;
+    export let isOpen = true;
 
     let activeTab;
     let activeGroup;
@@ -27,10 +37,26 @@
     let loaded;
 
     onMount(() => {
+        loadTabs();
         resetActiveTab();
         getTabPreview();
         loaded = true;
     });
+
+    const loadTabs = () => {
+        let tabs = [];
+        
+        for (let j = 0; j < windowData.tabs.length; j++) {
+            let tabData = windowData.tabs[j];
+            if (tabData.tabs) {
+                for (const tab of tabData.tabs) { 
+                    tabs.push(tab);
+                }
+            } else {
+                tabs.push(tabData);
+            }
+        }
+    }
 
     let showFavIcon;
     const resetActiveTab = () => {
@@ -55,7 +81,7 @@
        icons of three adjacent tabs if any and tab count 
     */
 
-    let showMore;
+    let showMenu;
     let showAllTabs = true;
 
     let activeTabInFocus;
@@ -67,12 +93,12 @@
         showAllTabs = true;
     };
 
-    const onMouseEnter = () => {
+    const onMouseEnter = async () => {
         activeTabInFocus = true;
     };
 
     const onMouseLeave = () => {
-        activeTabInFocus = false;
+        //activeTabInFocus = false;
         //showAllTabs = false;
         resetActiveTab();
     };
@@ -141,15 +167,70 @@
         e.dataTransfer.setData("tabId", activeTab.id);
     };
 
-    const onTabIconClicked = () => {
-        view = Views.tabs;
+    const onTabIconClicked = async () => {
+        const activeTab = await getActiveTab();
+        if (window.id == activeTab.id) {
+            view = Views.tabs;
+        } else {
+
+        }
+        
     };
+
+    let actionInstructions;
+
+    const onStashWindow = (e) => {
+        stashWindow({ windowId: windowData.id })
+    };
+
+    const onOpenWindow = () => {
+        restoreWindow(windowData);
+    };
+
+    const restoreWindow = async () => {
+
+        const newWindow = await chrome.windows.create({});
+        const newTab = await chrome.tabs.query({ windowId: newWindow.id });
+        for (const tab of windowData) {
+            if (tab.tabs) {
+                const context = await getContext(tab.id);
+                openWorkspace()
+            } else {
+                await chrome.tabs.create({
+                    url: tab.url
+                });
+            }
+        }
+        openWorkspace()
+    };
+
+    const deleteSession = async () => {
+        let sessions = await get('sessions') ?? [];
+
+        const index = sessions.findIndex((s) => s.id == windowData.id);
+        if (index > -1) {
+            sessions.splice(index, 1);
+            await set({ sessions });
+        }
+
+
+    };
+
+
 </script>
+
+{#if showMenu}
+<ModalContainer on:exit={() => showMenu = false}>
+    <WindowMenu window={windowData} {isOpen}/>
+</ModalContainer>
+{/if}
 
 {#if loaded && activeTab}
     <div
         class="window{windowData.incognito ? ' incognito' : ''}{isDraggedOver
             ? ' dragover'
+            : ''}{isCurrentWindow
+            ? ' current'
             : ''}"
         on:mouseenter={onMouseEnter}
         on:mouseleave={onMouseLeave}
@@ -164,12 +245,13 @@
                 on:dragstart={onDragActiveTab}
             >
                 <div class="tab-details">
-                    {#if closeWindowInFocus}
-                        <div class="close-window-instructions">
-                            <span on:mousedown={closeWindow}>Close Window</span>
+                    {#if actionInstructions}
+                        <div class="action-instructions">
+                            <span on:mousedown={closeWindow}>{actionInstructions}</span>
                         </div>
                     {:else}
                         <img
+                            class="icon"
                             src={getTabFavIconUrl(activeTab)}
                             alt={activeTab.url}
                             style={showFavIcon ? "" : "filter: invert(1);"}
@@ -180,16 +262,60 @@
                     {#if activeTabInFocus}
                         <div class="actions">
                             <!-- <img class="action" src={moreIcon} alt="more"/> -->
+                             {#if isOpen}
+                            <img
+                                class="action"
+                                src={stashIcon}
+                                on:mousedown={onStashWindow}
+                                alt="Stash"
+                                on:mouseenter={() =>
+                                    (actionInstructions = 'Save for later' )}
+                                on:mouseleave={() =>
+                                    (actionInstructions = null)}
+                            />
+                            {:else}
+                            <img
+                                class="action"
+                                src={openIcon}
+                                on:mousedown={restoreWindow}
+                                alt="Open"
+                                on:mouseenter={() =>
+                                    (actionInstructions = 'Restore window' )}
+                                on:mouseleave={() =>
+                                    (actionInstructions = null)}
+                            />  
+                            {/if}
+                            <img
+                                class="action"
+                                src={menuIcon}
+                                on:mousedown={() => showMenu = true}
+                                alt="menu"
+                            
+                            />
+
+                            {#if isOpen}
                             <img
                                 class="action"
                                 src={closeIcon}
                                 on:mousedown={closeWindow}
                                 alt="close"
                                 on:mouseenter={() =>
-                                    (closeWindowInFocus = true)}
+                                    (actionInstructions = 'Close window' )}
                                 on:mouseleave={() =>
-                                    (closeWindowInFocus = false)}
+                                    (actionInstructions = null)}
                             />
+                            {:else}
+                            <img
+                                class="action"
+                                src={deleteIcon}
+                                on:mousedown={deleteSession}
+                                alt="close"
+                                on:mouseenter={() =>
+                                    (actionInstructions = 'Delete session' )}
+                                on:mouseleave={() =>
+                                    (actionInstructions = null)}
+                            />
+                            {/if}
                         </div>
                     {/if}
                 </div>
@@ -232,14 +358,6 @@
                         
                 </div>
             </div>
-
-            {#if showMore}
-                <div class="menu">
-                    <div class="action">Open New Tab</div>
-                    <div class="action">Close Window</div>
-                    <div class="action">Save Window?</div>
-                </div>
-            {/if}
         {/if}
     </div>
 {/if}
@@ -251,7 +369,7 @@
         align-items: center;
         justify-content: left;
         border-radius: 5px;
-        background-color: #444444;
+        background-color: #333333;
         color: white;
         width: calc(100% - 24px);
         padding: 5px;
@@ -260,8 +378,8 @@
         z-index: 1;
     }
 
-    .window.incognito {
-        opacity: 0.5;
+    .current.window {
+        background-color: #444;
     }
 
     .window.dragover {
@@ -291,7 +409,7 @@
         width: 100%;
     }
 
-    .active-tab .tab-details img {
+    .active-tab .tab-details img.icon {
         height: 20px;
         width: 20px;
         margin: 5px;
@@ -350,14 +468,15 @@
         min-height: 30px;
     }
 
-    .close-window-instructions {
+    .action-instructions {
         opacity: 0.8;
         width: 100%;
         display: flex;
         flex-direction: row;
         align-items: center;
-        min-height: 100%;
-        margin-left: 5px;
+        min-height: 30px;
+        margin-left: 8px;
+        font-size: 24px;
     }
 
     .other-tabs {
@@ -395,10 +514,10 @@
     }
 
     .actions {
-        margin-left: 3px;
         display: flex;
         flex-direction: row;
         align-items: center;
+        height: 100%;
     }
 
     img.action {

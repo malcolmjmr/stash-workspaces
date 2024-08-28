@@ -15,6 +15,9 @@ import removeDomainIcon from "../icons/domain-remove.png";
 import relatedIcon from "../icons/join-right.png";
 import closeTabIcon from "../icons/tab-close.png";
 import moveToDesktopIcon from "../icons/place-item.png";
+import pipIcon from "../icons/pip.png";
+import createIcon from "../icons/add.png";
+import discardIcon from "../icons/do-not-disturb.png";
 import { createEventDispatcher } from "svelte";
 import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
 import { getContextData, getContextFromGroupId, getWorkspaceQueueFolder, saveContext, saveContextData, saveTabToFolder } from "../utilities/chrome";
@@ -43,6 +46,23 @@ export const actions = {
         onClick: (tab) => {
             chrome.tabs.reload(tab.id);
             return 'exit';
+        }
+    },
+    discard: {
+        title: 'Discard',
+        id: 'discard',
+        icon: discardIcon,
+        onClick: (tab) => {
+            chrome.tabs.discard(tab.id);
+            return 'exit'
+        }
+    },
+    createAction: {
+        title: 'Create Action',
+        id: 'createAction',
+        icon: createIcon,
+        onClick: (tab, workspace, dispatch) => {
+            dispatch('createAction', { tab, workspace });
         }
     },
     duplicate: {
@@ -95,15 +115,23 @@ export const actions = {
         }
     },
     moveToSpace: {
-        title: (tab) =>  `Move to ${tab.groupId > -1 ? 'Other ' : ''}Session`,
+        title: (tab) =>  `Move to ${tab.groupId > -1 ? 'Another ' : ''}Session`,
         id: 'moveToSpace',
         icon: moveToSpaceIcon,
         onClick: (tab) => {
-            return ''
+            return '';
         }
     },
+    moveToMiniPlayer: {
+        title: 'Move to Miniplayer',
+        id: 'moveToMiniPlayer',
+        icon: pipIcon,
+        onClick: async (tab) => {
+            return '';
+        },
+    },
     moveToDesktop: {
-        title: 'Move to desktop',
+        title: 'Move to Desktop',
         id: 'moveToDesktop',
         icon: moveToDesktopIcon,
         onClick: async (tab) => {

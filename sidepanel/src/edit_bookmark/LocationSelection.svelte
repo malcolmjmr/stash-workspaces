@@ -42,11 +42,12 @@
 
         const workspaceIds = $allWorkspaces.map((w) => w.id);
 
-        let folders = (await chrome.bookmarks.search(text))
-            .filter((b) => !b.url && !workspaceIds.includes(b.id));
-        folders.sort((a, b) => b.dateGroupModified - a.dateGroupModified);
-        visibleFolders = folders;
-
+        if (chrome.bookmarks) {
+            let folders = (await chrome.bookmarks.search(text))
+                .filter((b) => !b.url && !workspaceIds.includes(b.id));
+            folders.sort((a, b) => b.dateGroupModified - a.dateGroupModified);
+            visibleFolders = folders;
+        }
     };
 
     const onWorkspaceClicked = (workspace) => {

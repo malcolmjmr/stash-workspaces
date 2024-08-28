@@ -62,6 +62,7 @@
     let loaded;
     let hasBookmarkPermission;
     const init = async () => {
+        console.log('loading app');
         hasBookmarkPermission = await getPermissions();
         settings.set(await getSettings());
         loaded = true;

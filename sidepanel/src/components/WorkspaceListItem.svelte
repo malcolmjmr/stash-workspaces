@@ -122,7 +122,12 @@
     const exitModals = () => {
         showMenu = false;
         showPreview = false;
-    }
+    };
+
+    const onContextMenu = (e) => {
+        e.preventDefault();
+        showMenu = true;
+    };
     
 </script>
 
@@ -156,6 +161,7 @@
 <div class="workspace-list-item{isInFocus ? ' focused': ''}" 
     on:mouseenter={() => isInFocus = true}
     on:mouseleave={() => isInFocus = false}
+    on:contextmenu={onContextMenu}
 >
     <div class="main-container">
         

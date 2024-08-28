@@ -9,7 +9,7 @@
     import WorkspaceFolder from "../components/WorkspaceIcon.svelte";
     import createFolderIcon from "../icons/new-folder.png";
   import { Views } from "../view";
-  import { userData } from "../stores";
+  import { allWorkspaces, userData, } from "../stores";
   import Bookmark from "../components/Bookmark.svelte";
   import FolderListItem from "../components/FolderListItem.svelte";
   import { createAdjacentTab, createContext, getExtensionFolder, hiddenFolderTitles, openWorkspace, requestBookmarkPermssion, saveContext, tryToGetTabGroup } from "../utilities/chrome";
@@ -19,7 +19,7 @@
     export let selectedTabs = [];
     export let workspace = null;
     export let groups;
-    export let workspaces;
+    export let workspaces = null;
     export let view;
     export let placeholder = 'Search or create session...';
     export let tabs = [];
@@ -42,12 +42,23 @@
     onMount(() => {
 
 
-        getFolders();
-
-        getUngroupedTabs();
+        load();
 
 
     });
+
+    const load = async () => {
+        await getWorkspaces();
+        await getFolders();
+        await getUngroupedTabs();
+    };
+
+
+    const getWorkspaces = async () => {
+        if (!workspaces) {
+            workspaces = $allWorkspaces ?? [];
+        }
+    };
 
     let suggestions = [];
     let folders = [];
@@ -77,7 +88,7 @@
 
         workspaces = workspaces.filter((w) => w?.id != workspace?.id);
         folders.sort((a, b) => b.dateGroupModified - a.dateGroupModified);
-        updateSearchResults();
+        await updateSearchResults();
         // if (workspaces.length < 5) {
         //     visibleFolders = folders.slice(0, 10);
         // }
@@ -85,7 +96,7 @@
 
     let ungroupedTabs = [];
     let hasGroupedTabs;
-    const getUngroupedTabs = () => {
+    const getUngroupedTabs = async () => {
         for (const tab of tabs) {
             if (!hasGroupedTabs && tab.groupId > -1) {
                 hasGroupedTabs = true;
@@ -158,7 +169,8 @@
     let showFolders;
     let showSpaces = true;
 
-    const updateSearchResults = () => {
+    const updateSearchResults = async () => {
+        if (!workspaces) return;
         const text = searchText.toLowerCase();
         visibleFolders = folders.filter((f) => {
             return f.title?.toLowerCase().includes(text);

@@ -6,6 +6,8 @@
     import SearchResults from "../search/SearchResults.svelte";
     import Footer from "./WindowsFooter.svelte";
     import SelectionHeader from "../header/SelectionHeader.svelte";
+  import { get } from "../utilities/chrome";
+  import SectionHeader from "./SectionHeader.svelte";
 
     export let tabs;
     export let activeTab;
@@ -30,6 +32,7 @@
     let loaded;
     onMount(() => {
         loadWindows();
+        loadSessions();
    
         loaded = true;
     });
@@ -44,6 +47,27 @@
         });
     };
 
+    let sessions = [];
+    const loadSessions = async () => {
+        sessions = await get('sessions') ?? [];
+
+        for (let i = 0; i < sessions.length; i++) {
+            let session = sessions[i];
+            let tabs = [];
+            for (let j = 0; j < session.tabs.length; j++) {
+                let tabData = session.tabs[j];
+                if (tabData.tabs) {
+                    for (const tab of tabData.tabs) {
+                        tabs.push(tab);
+                    }
+                } else {
+                    tabs.push(tabData);
+                }
+            }
+            sessions[i].tabs = tabs;
+        }
+    };
+
     $: {
         searchText;
         updateResults();
@@ -51,13 +75,36 @@
 
     $: {
         lastUpdatedWindow;
-        windows = windows;
+        updateWindows();
+        
+    }
+
+    let normalWindows = [];
+    let popupWindows = [];
+    let incognitoWindows = [];
+    const updateWindows = () => {
+        let tempNormalWindows = [];
+        let tempPopupWindows = [];
+        let tempIncognitoWindows = []
         windows.sort((a, b) => {
             return (
                 (b.id == currentWindowId ? 1 : 0) -
                 (a.id == currentWindowId ? 1 : 0)
             );
         });
+        for (const window of windows) {
+            if (window.incognito) {
+                tempIncognitoWindows.push(window);
+            } else if (window.type == 'popup') {
+                tempPopupWindows.push(window);
+            } else {
+                tempNormalWindows.push(window);
+            }
+        }
+
+        normalWindows = tempNormalWindows;
+        popupWindows = tempPopupWindows;
+        incognitoWindows = tempIncognitoWindows;
     }
 
     const updateResults = () => {
@@ -98,14 +145,36 @@
         e.preventDefault();
     };
 
+    let showIncognitoWindows;
+    let showStashedWindows;
+    let showPopupWindows;
+
 </script>
 
 <div 
     class="windows"
     
 >
+    <div class="background" on:drop={onDropOnBackground} on:dragover={onDragOverBackground}></div>
+    {#each normalWindows as windowData (windowData)}
+        <Window
+            bind:view
+            {windowData}
+            isCurrentWindow={windowData.id == currentWindowId}
+            {groups}
+            tabs={tabs.filter((t) => t.windowId == windowData.id)}
+            {lastUpdatedWindow}
+            {lastUpdatedTab}
+            on:tabMoved
+        />
+    {/each}
 
-    {#each windows as windowData (windowData)}
+
+    {#if popupWindows.length > 0}
+    <SectionHeader title="Popups" bind:isOpen={showPopupWindows}/>
+    {/if}
+    {#if showPopupWindows}
+    {#each popupWindows as windowData (windowData)}
         <Window
             bind:view
             {windowData}
@@ -116,11 +185,47 @@
             on:tabMoved
         />
     {/each}
+    {/if}
 
-    <div class="background" on:drop={onDropOnBackground} on:dragover={onDragOverBackground}>
+    {#if incognitoWindows.length}
+        <SectionHeader title="Incognito" bind:isOpen={showIncognitoWindows}/>
+    {/if}
+    
 
-    </div>
+    {#if showIncognitoWindows}
+    {#each incognitoWindows as windowData (windowData)}
+        <Window
+            bind:view
+            {windowData}
+            {groups}
+            tabs={tabs.filter((t) => t.windowId == windowData.id)}
+            {lastUpdatedWindow}
+            {lastUpdatedTab}
+            on:tabMoved
+        />
+    {/each}
+    {/if}
 
+    
+    
+    
+
+
+    <SectionHeader title="Stash" bind:isOpen={showStashedWindows}/>
+    {#if showStashedWindows}
+    {#each sessions as session (session)}
+        <Window
+            bind:view
+            windowData={session}
+            {groups}
+            tabs={session.tabs}
+            {lastUpdatedWindow}
+            {lastUpdatedTab}
+            isOpen={false}
+            on:tabMoved
+        />
+    {/each}
+    {/if}
     
     
 </div>
@@ -132,7 +237,6 @@
         flex-direction: column;
         padding-bottom: 40px;
         position: relative;
-
     }
     
     .dragged-over {

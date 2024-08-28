@@ -16,6 +16,10 @@
   import WorkspaceWidget from "../workspace/WorkspaceWidget.svelte";
   import { Views } from "../view";
   import Favorites from "../favorites/Favorites.svelte";
+  import MiniPlayer from "./MiniPlayer.svelte";
+  import ModalContainer from "../components/ModalContainer.svelte";
+  import CreateActionModal from "../tab/CreateActionModal.svelte";
+  import BookmarkBar from "../components/BookmarkBar.svelte";
 
 
     let dispatch = createEventDispatcher();
@@ -39,6 +43,7 @@
     onMount(() => {
         getTabGroupStarts();
         getQuickActions();
+        console.log('loading window');
         loaded = true;
     });
 
@@ -152,7 +157,7 @@
                         resource = {
                             ...getTabInfo(tab),
                             id: createId(), 
-                        }
+                        };
                     }
                     resource.updated = now;
                 }
@@ -220,9 +225,24 @@
     const onDragOverBottom = (e) => {
         e.preventDefault();
     };
-    
-    
+
+    let miniPlayerResource;
+
+    const moveTabToMiniPlayer = ({ detail }) => {
+
+        miniPlayerResource = detail;
+        chrome.tabs.remove(miniPlayerResource.id);
+    };
+
+    let showCreateActionModal;
+
+    const onBookmarkClicked = ({ detail }) => {
+
+    };
+
 </script>
+
+
 
 <div class="padding"></div>
 {#if loaded}
@@ -265,6 +285,8 @@
                         on:dataUpdated
                         on:refreshTabs
                         on:moveToDesktop
+                        on:moveToMiniPlayer={moveTabToMiniPlayer}
+                        
                     />
                 {/key}
                 {/if}
@@ -285,6 +307,8 @@
                         on:shiftClickTab
                         on:refreshTabs
                         on:moveToDesktop
+                        on:moveToMiniPlayer={moveTabToMiniPlayer}
+                        
                     />
                 </div>
             {/if}
@@ -294,6 +318,10 @@
 {/if}
 <div class="padding"></div>
 <div class="bottom-drop-zone" on:drop={onTabDraggedToBottom} on:dragover={onDragOverBottom}></div>
+{#if miniPlayerResource}
+    <MiniPlayer resource={miniPlayerResource} on:exit={() => miniPlayerResource = null}/>
+{/if}
+
 <style>
     .padding {
         min-height: 5px;
@@ -307,4 +335,13 @@
         height: 400px;
         width: 100%;
     }
+
+
+    .bottom-container {
+        position: fixed;
+        bottom: 36px;
+        background-color: #111;
+        width: 100%;
+    }
+
 </style>

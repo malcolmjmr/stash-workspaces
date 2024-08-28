@@ -1,6 +1,6 @@
 {
     "name": "Stash - Tab and Session Manager",
-    "version": "0.0.0.3",
+    "version": "0.0.1.1",
     "description": "Tab and Session Management Made Easy",
     "background": {
         "service_worker": "service-worker.js",
@@ -46,7 +46,8 @@
         "sidePanel",
         "storage",
         "unlimitedStorage",
-        "favicon"
+        "favicon",
+        "audioCapture"
     ],
     "incognito": "spanning",
     "commands": {

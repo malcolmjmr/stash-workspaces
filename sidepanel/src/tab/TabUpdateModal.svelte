@@ -6,15 +6,23 @@
     import bookmarksIcon from "../icons/star-filled.png";
     import historyIcon from "../icons/refresh.png";
     import folderIcon from "../icons/folder.png";
+    import moreIcon from "../icons/more-vert.png";
+    import newWindowIcon from "../icons/new-window.png";
+    import incognitoIcon from "../icons/incognito.png";
+    
 
     import ModalContainer from "../components/ModalContainer.svelte";
     import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
-  import { getActiveTab, getHistory, getTabFavIconUrl, getTabInfo } from "../utilities/chrome";
-  import Tab from "./Tab.svelte";
-  import TabIcon from "./TabIcon.svelte";
-  import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
-  import ObjectContainer from "../object/ObjectContainer.svelte";
+    import { getActiveTab, getHistory, getTabFavIconUrl, getTabInfo } from "../utilities/chrome";
+    import Tab from "./Tab.svelte";
+    import TabIcon from "./TabIcon.svelte";
+    import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
+    import ObjectContainer from "../object/ObjectContainer.svelte";
+    import BookmarkBar from "../components/BookmarkBar.svelte";
+    import { userData } from "../stores";
     
+
+        
 
     export let tab = null;
 
@@ -32,7 +40,7 @@
     let searchDomain;
     
 
-    let inputText = '';
+    export let inputText = '';
 
     let loaded;
     onMount(() => {
@@ -40,39 +48,46 @@
     });
 
     let isNewTab;
+    let initialInputText;
+    $: {
+        inputElement;
+        if (!loaded) load();
+        if (!inputHeightSet) {
+            updateInputHeight();
+            setFocus();
+        }
+    }
     const load = async () => {
+
         
-        setTimeout(async () => {
-            // if (!tab) {
-            //     tab = await getActiveTab();
-            // }
-            if (tab) isNewTab = getTabInfo(tab).url.includes('//newtab');
+        initialInputText = inputText.trim();
 
-            await loadDefaultDomains();
-            
-            await loadBookmarks();
-            
-            await checkForSearchQuery();
-            await getDomains();
+        if (tab) isNewTab = getTabInfo(tab).url.includes('//newtab');
 
-            await loadHistoryData();
-            
-            
+        
 
-            await updateInputHeight();
+        
 
-            await updateSearchResults();
-            
-            loaded = true;
 
-            if (inputElement) {
-                inputElement.focus();
-                if (window.getSelection && document.createRange) {
-                    inputElement.setSelectionRange(0, inputText.length);
-                }
+        await loadDefaultDomains();
+        await loadBookmarks();
+        await checkForSearchQuery();
+        await getDomains();
+        await loadHistoryData();
+        await updateSearchResults();
+        
+        loaded = true;
+
+
+    };
+
+    const setFocus = () => {
+        if (inputElement) {
+            inputElement.focus();
+            if (initialInputText == '' && window.getSelection && document.createRange) {
+                inputElement.setSelectionRange(0, inputText.length);
             }
-            
-        }, 200);
+        }
     };
 
     let hasBookmarkPermission;
@@ -168,7 +183,7 @@
         const permissions = await chrome.permissions.getAll();
 
 
-        history = await getHistory();
+        history = await getHistory({ maxResults: 100 });
         visibleHistory = history;
 
 
@@ -255,7 +270,8 @@
     const requestHistoryPermssion = async () => {
         const granted = await chrome.permissions.request({
             permissions: ['history']
-        })
+        });
+        
         if (!granted) return;
         
         loadHistoryData();
@@ -395,9 +411,11 @@
 
     let showSettings;
 
-    let inputHeight = '26px';
+    let inputHeightSet;
+    let inputHeight = '24px';
     const updateInputHeight = async (e) => {
         if (inputElement?.scrollHeight != inputElement?.clientHeight) {
+            inputHeightSet = true;
             inputHeight = inputElement.scrollHeight + 'px';
         } 
         
@@ -413,6 +431,7 @@
     $: {
         inputText;
         updateSearchResults();
+        updateInputHeight();
     };
 
     
@@ -490,13 +509,45 @@
 
 
     let openedFolder; 
-    const onBookmarkClicked = (bookmark) => {
+    const onBookmarkClicked = ({ detail }) => {
+        let bookmark = detail;
         if (bookmark.url) {
             onLinkClicked(bookmark);
         } else {
             openedFolder = bookmark;
         }
+        
     };
+
+
+    const onSearchDomainSelected = ({ detail }) => {
+
+    };
+
+    const onCreateNewWindow = ({ detail }) => {
+        chrome.windows.create({
+            url: inputText.length > 0 
+                ? 'https://www.google.com/search?q=' + encodeURIComponent(inputText)
+                : null,
+            focused: true,
+        });
+
+        dispatch('exit');
+    };
+
+    const onCreateIncognitoWindow = ({ detail }) => {
+        chrome.windows.create({
+            url: inputText.length > 0 
+                ? 'https://www.google.com/search?q=' + encodeURIComponent(inputText)
+                : null,
+            focused: true,
+            incognito: true,
+        });
+
+        dispatch('exit');
+    };
+
+    
 
 </script>
 
@@ -514,7 +565,7 @@
             <textarea
                 bind:value={inputText}
                 on:keydown={onKeyDownInUrlField}
-                placeholder="Enter search or address"
+                placeholder={$userData ? "Enter address, search or prompt" : "Enter address or search"}
                 bind:this={inputElement}
                 on:input={updateInputHeight}
                 on:keypress={updateInputHeight}
@@ -523,76 +574,33 @@
         </div>
 
 
-        <div class="divider"/>
-        <div class="sections">
-            {#each sectionData as section}
-                <div class="section{section.key == visibleSection ? ' selected' : ''}" on:mousedown={() => onSectionClicked(section)}>
-                    <img src={section.icon} alt={section.title} />
-                    <span>{section.title}</span>
-                </div>
-            {/each}
-        </div>
+        
+        
         
 
         {#if true}
         <div class="divider"/>
-        <div class="results">
-            {#if visibleSection == sections.search && searchDomains.length > 0}
-            
-            <div class="domains">
-                {#each searchDomains as domain}
-                    <div class="domain button">
-                        <DomainIcon {domain} size={22} on:mousedown={(e) => onDomainClicked(e, domain)}/>
-                    </div>
-                {/each}
-
-                <!--
-                    <img 
-                        class="settings button" 
-                        src={settingsIcon} 
-                        alt="Settings"
-                        on:mousedown={() => null}
+        <div class="create-toolbar">
+            <img class="new-window button" alt="More" src={newWindowIcon} on:mousedown={onCreateNewWindow}> 
+            <img class="incognito button" alt="More" src={incognitoIcon} on:mousedown={onCreateIncognitoWindow}>
+            <div class="button-divider"></div>
+            {#each searchDomains as searchDomain}
+                <div class="domain-padding">
+                    <DomainIcon 
+                        domain={searchDomain} 
+                        size={20} 
+                        on:mousedown={(e) => onDomainClicked(e, searchDomain)} 
+                        on:domainSelected={onSearchDomainSelected}
                     />
-                -->
-
-            </div>
-            {:else if visibleSection == sections.history && recentDomains.length > 0} 
-                <div class="domains">
-                    {#each recentDomains as domain}
-                        <div class="domain button">
-                            <DomainIcon {domain} size={22} on:mousedown={(e) => onDomainClicked(e, domain)}/>
-                        </div>
-                    {/each}
-
-                    <!--
-                        <img 
-                            class="settings button" 
-                            src={settingsIcon} 
-                            alt="Settings"
-                            on:mousedown={() => null}
-                        />
-                    -->
-
                 </div>
-            {/if}
+                
+            {/each}
+        </div>
+        <div class="divider"/>
+        <div class="results">
 
             {#if visibleSection == sections.bookmarks}
-                {#if bookmarkBarChildren.length > 0}
-                    <div class="bookmark-bar">
-                        {#each bookmarkBarChildren as bookmark}
-                            <div class='bookmark'  on:mousedown={() => onBookmarkClicked(bookmark)}>
-                                {#if bookmark.url}
-                                <img src={getTabFavIconUrl(bookmark)}  alt=""/>
-                                {:else}
-                                <img src={folderIcon} alt=""/>
-                                {/if}
-                                {#if bookmark.title != ''}
-                                <div class="title">{bookmark.title}</div>
-                                {/if}
-                            </div>
-                        {/each}
-                    </div>
-                {/if}
+                
                 {#if !hasBookmarkPermission}
                     <div class="permission-request" on:mousedown={requestBookmarkPermssion}>
                         Click to view bookmarks
@@ -611,16 +619,16 @@
                 {/each}
                 {:else}
                     <div class="no-results">
-                        No matching bookmarks.
+                        No matching bookmarks
                     </div>
                 {/if}
+                
             {:else if visibleSection == sections.history || visibleSection == sections.search}
                 {#if !hasHistoryPermission}
                     <div class="permission-request" on:mousedown={requestHistoryPermssion}>
                         Click to view {visibleSection == sections.search ? 'search ' : ''}history
                     </div>
                 {:else if (visibleHistory?.length ?? 0) > 0}
-
 
                 {#each visibleHistory as historyItem (historyItem.id)}
                     <Tab 
@@ -634,12 +642,25 @@
                 {/each}
                 {:else}
                     <div class="no-results">
-                        No matching {visibleSection == sections.search ? 'searches' : 'history'}.
+                        No matching {visibleSection == sections.search ? 'searches' : 'history'}
                     </div>
                 {/if}
             {/if}
+
+
+
         </div>
         {/if}
+
+        <div class="divider"></div>
+        <div class="sections">
+            {#each sectionData as section}
+                <div class="section{section.key == visibleSection ? ' selected' : ''}" on:mousedown={() => onSectionClicked(section)}>
+                    <img src={section.icon} alt={section.title} />
+                    <span>{section.title}</span>
+                </div>
+            {/each}
+        </div>
 
         
 
@@ -653,11 +674,12 @@
 
 <style>
     .container {
-        height: 100%;
+        
         width: 100%;
         display: flex;
         flex-direction: column;
-        background-color: #111;
+        background-color: #222;
+        height: 400px;
     }
 
     .url-field {
@@ -677,15 +699,44 @@
         height: 18px;
         display: flex;
         overflow: scroll;
-        max-height: 75px;
+        
 
     }
 
-    .url-field img {
+    .create-toolbar {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+        overflow-x: scroll;
+        background-color: #333;
+        padding: 2px;
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+        min-height: 34px;
+    }
+
+    .create-toolbar img.button {
+        padding: 5px;
+        margin-right: 3px;
+        height: 20px;
+        width: 20px;
         filter: invert(1);
-        height: 16px;
-        width: 16px;
-        margin-right: 5px;
+        
+    }
+
+    .create-toolbar img.more.button {
+        filter: invert(0);
+        background-color: yellow;
+    }
+
+    .button-divider {
+        min-height: 3px;
+        min-width: 3px;
+        border-radius: 100%;
+        background-color: white;
+        margin: 5px 8px;
+
     }
 
     .domains {
@@ -703,9 +754,13 @@
 
 
     .divider {
-        height: 1px;
+        min-height: 1px;
         width: 100%;
         background-color: #444;
+    }
+
+    .domain-padding {
+        padding: 5px 8px;
     }
 
     .domain.button {
@@ -716,16 +771,6 @@
 
     .button:hover {
         cursor: pointer;
-    }
-
-    .spacer {
-        flex-grow: 1;
-    }
-
-    .settings.button {
-        height: 20px;
-        width: 20px;
-        filter: invert(1);
     }
 
     .permission-request {
@@ -748,8 +793,8 @@
     .results {
         display: flex;
         flex-direction: column;
-        height: 200px;
         overflow: scroll;
+        flex-grow: 1;
     }
 
     .no-results {
@@ -768,9 +813,9 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        height: 40px;
+        min-height: 40px;
         border-top: 1px solid #333;
-        background-color: #111;
+        background-color: #333;
         
     }
 
@@ -796,7 +841,7 @@
 
     .section.selected {
         opacity: 1;
-        border-bottom: 2px solid white;
+        border-top: 2px solid white;
     }
 
     .section img {
@@ -804,79 +849,6 @@
         height: 16px;
         width: 16px;
         margin-right: 5px;
-    }
-
-    .bookmark-bar {
-        display: flex;
-        width: 100%;
-        flex-direction: row;
-        align-items: center;
-        overflow-x: scroll;
-        -ms-overflow-style: none; /* IE and Edge */
-        scrollbar-width: none; /* Firefox */
-        min-height: 40px;
-        height: 40px;
-        background-color: #222;
-    }
-
-    
-
-    .bookmark-bar::-webkit-scrollbar {
-        display: none;
-    }
-
-    .bookmark-bar .bookmark {
-        max-width: 150px;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        padding: 5px;
-        justify-content: center;
-        margin: 0px 5px;
-    }
-
-    .bookmark-bar .bookmark:hover {
-        
-        cursor: pointer;
-    }
-
-    .bookmark-bar .bookmark img {
-        height: 22px;
-        width: 22px;
-    }
-
-    .bookmark-bar .bookmark .title {
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        overflow: hidden;
-        margin-left: 5px;
-    }
-
-    .history-item {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        opacity: 0.8;
-        padding: 3px 5px;
-        border-radius: 8px;
-        color: white;
-        background-color: #333;
-    }
-
-    .history-item:hover {
-        opacity: 1;
-        cursor: pointer;
-        background-color: #555;
-    }
-
-    .history-item img {
-        height: 15px;
-        width: 15px;
-    }
-
-    .history-item span {
-        font-size: 14px;
     }
 
 

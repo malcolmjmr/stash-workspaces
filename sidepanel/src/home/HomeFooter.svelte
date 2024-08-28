@@ -40,7 +40,7 @@
         sessionCount = workspaces.length;
         let tempTabCount = 0;
         for (const space of workspaces) {
-            tempTabCount += space.tabs.length;
+            tempTabCount += (space.tabs?.length ?? 0);
         }
         tabCount = tempTabCount;
     };

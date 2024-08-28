@@ -86,6 +86,10 @@
             window = await chrome.windows.create({incognito: workspace.isIncognito ?? false, focused:true});
             newTab = (await chrome.tabs.query({windowId: window.id}))[0];
         }
+
+        if (!workspace.tabs) {
+            workspace.tabs = [];
+        }
         
         if (workspace.tabs.length == 0)  {
             workspace.tabs.push({
@@ -180,7 +184,7 @@
                     {workspace?.title ?? "Untitled Group"}
                 </span>
                 <div class="count">
-                    ({workspace.tabs.length})
+                    ({workspace.tabs?.length ?? 0})
                 </div>
             </div>
         {/if}

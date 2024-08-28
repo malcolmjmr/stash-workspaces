@@ -53,4 +53,8 @@
         width: 100%;
     }
 
+    .domain-icon:hover {
+        cursor: pointer;
+    }
+
 </style>

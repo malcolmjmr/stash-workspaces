@@ -14,6 +14,8 @@ export const _lastUpdatedTab = writable(null);
 export const _openWorkspaces = writable({});
 export const allResources = writable({});
 export const _favorites = writable([]);
+export const _draggedTab = writable(null);
+export const _draggedOverTab = writable(null);
 
 export const settings = writable({});
 

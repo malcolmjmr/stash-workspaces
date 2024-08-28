@@ -25,12 +25,21 @@ export const defaultDomains = [
       queryParam: 'q',
     },
     {
+      title: 'Amazon',
+      url: 'https://amazon.com',
+      favIconUrl: 'https://www.amazon.com/favicon.ico',
+      searchTemplate: 'https://www.amazon.com/s?k=<|search|>',
+      type: 'shopping',
+      isDefault: true,
+      queryParam: 'k',
+    },
+    {
       url: 'https://en.wikipedia.org/',
       searchTemplate: 'https://en.wikipedia.org/wiki/Special:Search?go=Go&search=<|search|>',
       queryParam: 'search',
       title: 'Wikipedia',
       favIconUrl: 'https://en.wikipedia.org/static/favicon/wikipedia.ico',
-      isDefault: true,
+      isDefault: false,
       queryParam: 'search',
     },
     {
@@ -68,7 +77,15 @@ export const defaultDomains = [
       title: 'Chat GPT',
       url: 'https://chatgpt.com',
       favIconUrl: 'https://cdn.oaistatic.com/_next/static/media/favicon-32x32.be48395e.png',
-      isDefault: true,
+      isDefault: false,
+    },
+    {
+      title: 'Claude',
+      url: 'https://claude.ai',
+      favIconUrl: "https://claude.ai/favicon.ico",
+      searchTemplate: 'https://claude.ai/new?q=<|search|>',
+      queryParam: 'q',
+      isDefault: true
     },
     {
       title: 'Perplexity',
@@ -80,12 +97,13 @@ export const defaultDomains = [
     },
     {
       title: 'Exa',
-      favIconUrl: 'https://exa.ai/favicon.png',
+      favIconUrl: 'https://exa.ai/search/images/favicon-32x32.png',
       url: 'https://exa.ai/',
       searchTemplate: 'https://exa.ai/search?q=<|search|>',
       queryParam: 'q',
       type: 'ai',
       canSearchUrl: true,
+      isDefault: true
     },
     {
       title: 'Youtube',
@@ -129,15 +147,7 @@ export const defaultDomains = [
       favIconUrl: 'https://hypothes.is/assets/images/favicons/favicon-32x32.png?07d072',
       type: 'social',
     },
-    {
-      title: 'Amazon',
-      url: 'https://amazon.com',
-      favIconUrl: 'https://www.amazon.com/favicon.ico',
-      searchTemplate: 'https://www.amazon.com/s?k=<|search|>',
-      type: 'shopping',
-      isDefault: true,
-      queryParam: 'k',
-    },
+
     {
       title: 'Substack',
       url: 'https://substack.com',

@@ -147,6 +147,10 @@
 
         if (!folderId) return;
 
+        console.log('location selected');
+        console.log(folderId);
+        console.log(workspace);
+
         chrome.bookmarks.move(workspace.folderId, {
             parentId: folderId,
             index: 0,
@@ -209,15 +213,13 @@
             />
         </div>
        
-        <div class="group-selection-container">
+        <div class="color-selection-container">
             <GroupColors group={workspace} on:colorSelected={onColorSelected}/>
         </div>
     </div>
     
 
-    <div class="divider">
-
-    </div>
+    <div class="divider"></div>
 
     <!-- <div class="action" on:mousedown={toggleFavorite}> {workspace.favorite ? 'Remove from Favorites' : 'Add to Favorites'}</div> -->
     {#if !isOpen}
@@ -231,11 +233,10 @@
             icon={openInNewWindowIcon}
             onClick={openWorkspaceInNewWindow}
         />
+        <MenuDivider/>
     {/if}
 
        <!-- <div class="action" on:mousedown={showMoveMenu}>Move Folder</div> --> 
-
-    <MenuDivider/>
 
     <MenuItem
         title='Move Folder'
@@ -379,5 +380,9 @@
         height: 1px;
         width: 100%;
         background-color: #444444;
+    }
+
+    .color-selection-container {
+        margin-top: 5px;
     }
 </style>
