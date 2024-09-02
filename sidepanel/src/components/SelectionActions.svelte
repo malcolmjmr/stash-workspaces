@@ -1,5 +1,5 @@
 <script>
-    import { createEventDispatcher, onMount } from "svelte";
+    import { createEventDispatcher, onDestroy, onMount } from "svelte";
     import { Views } from "../view";
   import ModalContainer from "./ModalContainer.svelte";
   import MoveModal from "../tab/MoveModal.svelte";
@@ -30,6 +30,10 @@
         lastSelectionUpdate;
         getGroupCount();
     }
+
+    onDestroy(() => {
+        document.removeEventListener('keydown', onKeyDown);
+    });
 
     const getGroupCount = () => {
         let groupIds = [];

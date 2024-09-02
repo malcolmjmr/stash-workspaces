@@ -38,7 +38,11 @@
     },
     "optional_permissions": [
         "bookmarks",
-        "history"
+        "history",
+        "scripting"
+    ],
+    "optional_host_permissions": [
+        "<all_urls>"
     ],
     "permissions": [
         "tabs",

@@ -31,6 +31,9 @@ chrome.tabGroups.onRemoved.addListener((group) => onTabGroupClosed(group)); // 1
 // Commands
 chrome.commands.onCommand.addListener((command, tab) => onCommand(command, tab));
 
+// Port
+chrome.runtime.onConnect.addListener(onPortConnect);
+
 
 async function onInstalled(details) {
 
@@ -137,6 +140,50 @@ async function importUsersTabGroups() {
 async function importRecentFolders() {
     // get code from stash-extension
 }
+
+
+let toolbarPorts = {};
+
+
+async function onPortConnect(port) {
+    if (port.command === "connectToolbar") {
+        connectToolbar(port);
+    }
+}
+
+
+
+
+const connectToolbar = async (port) => {
+    //let toolbars = Object.values(toolbarPorts);//(await get('toolbars')) ?? [];
+    let toolbarPort = toolbarPorts[port.windowId];
+    if (!toolbarPort) {
+        
+        toolbar = {
+            connected: Date.now(),
+            windowId: port.windowId,
+        };
+    } 
+
+    port.onDisconnect.addListener(() => { 
+        disconnectToolbar(port.windowId);
+    });
+}
+
+const disconnectToolbar = async (windowId) => {
+    let toolbars = (await get('toolbars')) ?? [];
+    const index = toolbars.findIndex((t) => t.windowId == windowId);
+    if (index > -1) {
+        const isPrimaryToolbar = toolbars[index].isPrimary;
+        toolbars.splice(index, 1);
+        if (isPrimaryToolbar && toolbars.length > 0) {
+            toolbars[0].isPrimary = true;
+
+        }
+    } else {
+
+    }
+};
 
 // Commands 
 

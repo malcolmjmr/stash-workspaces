@@ -25,6 +25,7 @@
   import TabUpdateModal from "./tab/TabUpdateModal.svelte";
   import { getActiveTab, getContextFromGroupId } from "./utilities/chrome";
   import Archive from "./archive/Archive.svelte";
+  import KeyboardListeners from "./KeyboardListeners.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -198,10 +199,10 @@
             const index = selectedTabs.findIndex((t) => t.id == tab.id);
             if (index > -1) {
                 selectedTabs.splice(index, 1);
-                chrome.tabs.update(tab.id, { highlighted: false, active: false });
+                //chrome.tabs.update(tab.id, { highlighted: false, active: false });
             } else {
                 selectedTabs.push(tab);
-                chrome.tabs.update(tab.id, { highlighted: true , active: false});
+                //chrome.tabs.update(tab.id, { highlighted: true , active: false});
             }
         }
        
@@ -366,6 +367,7 @@
 {/if}
 
 {#if view}
+<KeyboardListeners bind:selectedTabs/>
 <main>
     {#if true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
         <div class="container header">
@@ -489,6 +491,7 @@
                 {lastUpdate} 
                 {lastUpdatedTab}
                 {lastSelectionUpdate}
+                bind:selectedTabs
                 on:goBack={() => view = Views.tabs}
                 on:dataUpdated
                 on:foundDuplicates

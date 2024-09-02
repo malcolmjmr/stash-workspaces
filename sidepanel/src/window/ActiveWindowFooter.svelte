@@ -72,6 +72,7 @@
     const addListeners = () => {
         keyListener = document.addEventListener('keydown', onKeyDown);
         auxClickListener = document.addEventListener('auxclick', onAuxClick);
+        
     };
 
     
@@ -93,7 +94,7 @@
 
         if (e.key.length == 1 && isAlphanumeric(e.key)) {
             showNewTabModal = true;
-            tabModalInputText = e.key;
+            //tabModalInputText = e.key;
         }
 
         // if (e.key == 't') {

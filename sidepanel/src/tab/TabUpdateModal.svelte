@@ -8,7 +8,8 @@
     import folderIcon from "../icons/folder.png";
     import moreIcon from "../icons/more-vert.png";
     import newWindowIcon from "../icons/new-window.png";
-    import incognitoIcon from "../icons/incognito.png";
+    import incognitoIcon from "../icons/visibility-off.png";
+    import micIcon from "../icons/mic.png";
     
 
     import ModalContainer from "../components/ModalContainer.svelte";
@@ -61,6 +62,7 @@
 
         
         initialInputText = inputText.trim();
+       
 
         if (tab) isNewTab = getTabInfo(tab).url.includes('//newtab');
 
@@ -75,8 +77,14 @@
         await getDomains();
         await loadHistoryData();
         await updateSearchResults();
+
+
         
         loaded = true;
+
+        startSpeechRecognition();
+
+        
 
 
     };
@@ -271,7 +279,7 @@
         const granted = await chrome.permissions.request({
             permissions: ['history']
         });
-        
+
         if (!granted) return;
         
         loadHistoryData();
@@ -363,8 +371,16 @@
     const onKeyDownInUrlField = async (e) => {
 
         if (e.key == "Enter" && !e.shiftKey) {
+            submit();
+        } else if (e.key == 'Backspace') {
+            updateInputHeight();
+        }
 
-            let url = '';
+        if (recognition) recognition.abort();
+    };
+
+    const submit = () => {
+        let url = '';
             inputText = inputText.trim();
             const isUrl = inputText.includes('.') && !inputText.includes(' ');
 
@@ -392,9 +408,6 @@
 
             // todo check that url is loaded 
             dispatch('exit');
-        } else if (e.key == 'Backspace') {
-            updateInputHeight();
-        }
     };
 
     const loadTab = async (tabData) => {
@@ -429,14 +442,19 @@
     };
 
     $: {
-        inputText;
-        updateSearchResults();
-        updateInputHeight();
+
+        if (inputText == '.') {
+            inputText = '';
+        } else {
+            updateSearchResults();
+            updateInputHeight();
+        }
     };
 
     
 
     const updateSearchResults = async () => {
+        
 
         const text = (searchQuery != null && inputText == searchQuery) || inputText == tab?.url ? '' : inputText.toLowerCase();
 
@@ -546,6 +564,42 @@
 
         dispatch('exit');
     };
+    let isPopup = location.href.includes('omnibox');
+
+    let recognition;
+
+    const startSpeechRecognition = async () => {
+        console.log('trying to start speech recognition');
+
+        if (isPopup) {
+            console.log('webkitSpeechRecognition' in window)
+            try {
+
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+                recognition.onerror = (event) => {
+                    console.log(`Error occurred in recognition: ${event.error}`);
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    inputText += transcript;
+                    updateInputHeight();
+
+                };
+                recognition.start();
+
+            } catch (e) {
+                console.log('got error:');
+                console.log(e);
+            }
+
+        }
+       
+
+    };
+
+    
 
     
 
@@ -560,7 +614,8 @@
     <ObjectContainer />
 </ModalContainer>
 {/if}
-    <div class="container">
+{#if isPopup}
+<div class="container">
         <div class="url-field">
             <textarea
                 bind:value={inputText}
@@ -583,7 +638,8 @@
         <div class="create-toolbar">
             <img class="new-window button" alt="More" src={newWindowIcon} on:mousedown={onCreateNewWindow}> 
             <img class="incognito button" alt="More" src={incognitoIcon} on:mousedown={onCreateIncognitoWindow}>
-            <div class="button-divider"></div>
+            <img class="mic button" alt="More" src={micIcon} on:mousedown={startSpeechRecognition}>
+            
             {#each searchDomains as searchDomain}
                 <div class="domain-padding">
                     <DomainIcon 
@@ -672,6 +728,14 @@
         {/if}
     </div>
 
+{:else}
+
+<div class="container">
+    <iframe title="" src={chrome.runtime.getURL('/omnibox/index.html')}/>
+
+</div>
+{/if}  
+
 <style>
     .container {
         
@@ -680,6 +744,14 @@
         flex-direction: column;
         background-color: #222;
         height: 400px;
+        color: white;
+        border-radius: 15px;
+    }
+
+    .container iframe {
+        height: 100%;
+        width: 100%;
+        border: none;
     }
 
     .url-field {

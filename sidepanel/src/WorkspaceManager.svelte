@@ -170,7 +170,7 @@
                 tabs[i].resource = resource;
             }
         }
-    } 
+    };
 
     const getSyncedWorkspaces = async () => {
 

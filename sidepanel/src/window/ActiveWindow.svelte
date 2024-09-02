@@ -230,8 +230,14 @@
 
     const moveTabToMiniPlayer = ({ detail }) => {
 
-        miniPlayerResource = detail;
-        chrome.tabs.remove(miniPlayerResource.id);
+        const tab = detail;
+        chrome.windows.create({
+            tabId: tab.id,
+            type: 'panel',
+        });
+
+        // miniPlayerResource = detail;
+        // chrome.tabs.remove(miniPlayerResource.id);
     };
 
     let showCreateActionModal;

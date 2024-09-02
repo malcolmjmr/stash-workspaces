@@ -15,19 +15,22 @@
     import { Views } from "./view.js";
     import { _activeTab, _groups, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
+  import { collection, onSnapshot } from "firebase/firestore";
+  import { StorePaths } from "./utilities/storepaths.js";
 
 
     let settings;
+    export let authLoaded = false;
     export let user = null;
+    export let db;
+    export let userRef;
     export let tabs = [];
     export let recentTabs = [];
     export let groups = {};
     export let windows = [];
+    export let otherWindows = [];
     export let activeTab;
     export let workspaces;
-    
-
-
 
     export let lastRefresh;
     export let lastUpdate;
@@ -37,6 +40,7 @@
 
     export let currentWindowId;
     export let view; 
+    export let listenForUpdates = false;
 
     onMount(() => {
         init();
@@ -45,6 +49,19 @@
     $: {
         lastRefresh;
         loadTabsGroupsAndWindows();
+    };
+
+    $: {
+
+        if (authLoaded) {
+            if (listenForUpdates) {
+                addUpdateListener();
+            } else {
+                unsubscribeToWindowUpdates();
+            }
+        }
+        
+        
     }
 
     // $: {
@@ -58,6 +75,9 @@
         await getActiveTab();
         await getPermissions();
         await loadTabsGroupsAndWindows();
+        if (user) {
+
+        }
         addListeners();
         //setView();
         //initializeFirebase();
@@ -203,6 +223,58 @@
         }
     };
 
+    let unsubscribeToWindowUpdates;
+    const addUpdateListener = () => {
+        unsubscribeToWindowUpdates = onSnapshot(collection(db, StorePaths.userWindows(user.id)), (snapshot) => {
+            /*
+                find corresponding window 
+                make update to it
+                have those updates reflected in the UI
+
+                existing window 
+                non existing window
+
+
+            */
+
+            snapshot.docChanges().forEach((change) => {
+                const window = change.doc.data();
+                if (change.type === "added") {
+                    addRemoteWindow(window);
+                }
+                if (change.type === "modified") {
+                    updateWindow(window);
+                }
+                if (change.type === "removed") {
+                    removeWindow(window);
+                }
+            });
+            
+        });
+    };
+
+    const addRemoteWindow = (window) => {
+        otherWindows = [...otherWindows, window];
+    };
+
+    
+    const updateWindow = (window) => {
+        let index = windows.findIndex((w) => w.id == window.id);
+        if (index > -1) {
+            
+        } else {
+            index = otherWindows.findIndex((w) => w.id == window.id);
+            if (index > -1) {
+                otherWindows[index] = window;
+                lastUpdatedWindow = Date.now();
+            }
+        }
+    };
+
+    const removeWindow = (window) => {
+
+    };
+
     const onTabAttached = (tabId, attachInfo) => {
         let tabIndex = tabs.findIndex((t) => t.id == tabId);
         console.log('tab attached');
@@ -279,9 +351,6 @@
 
     const onTabUpdated = async (tabId, updates, tab) => {
 
-        console.log('tab updated');
-        console.log(updates);
-
         let tabIndex = tabs.findIndex((t) => t.id == tab.id);
 
         if (!tab){
@@ -292,7 +361,6 @@
         if (tabIndex > -1) {
 
             tab = { ...tabs[tabIndex], ...getTabInfo(tab, true) };
-            console.log('found updated tab ');
             tab.updated = Date.now();
             tab = await getTabsBookmarks(tab);
             tabs[tabIndex] = tab;

@@ -124,14 +124,12 @@
 
         // });
 
-        console.log('loading tab interface');
-        console.log(tab);
-
         init();
     });
 
     onDestroy(() => {
         //unsubscribeToTabUpdates();
+        removeListeners();
     });
 
     const updateSavedState = () => {
@@ -147,12 +145,7 @@
     let isAsleep;
     let isBookmark;
     const init = async () => {
-        console.log('init');
-        if (el) {
-            resetDraggedElement();
-        }
-        if (showPlaceholderElement) showPlaceholderElement = false;
-        
+
         group = groups[tab.groupId];
         updateFavIconUrl();
         updateSavedState();
@@ -160,7 +153,6 @@
         isAudible = tab.audible;
         isBookmark = tab.parentId;
         isAsleep = tab.status == 'unloaded';
-        console.log(tab);
 
 
         // if (tab.status == 'unloaded') {
@@ -217,22 +209,65 @@
     let mouseListenersAdded;
     let mouseDownListenerAdded;
     const onMouseEnter = (e) => {
-        if (!isOpen) {
-            isInFocus = true;
-            return;
-        }
-        if (!$_draggedTab) {
-            document.addEventListener('mousedown', onMouseDown);
-            mouseDownListenerAdded = true;
-            isInFocus = true;
-        } else if ($_draggedTab.id != tab.id) {
-            console.log('is draggoved over');
-            console.log(tab);
-
-        } else {
-            isInFocus = true;
+        isInFocus = true;
+        if (isOpen) {
+            addListeners();
         }
     };
+
+    const addListeners = () => {
+        console.log('adding mouse listeners');
+        const title = document.querySelector('#tab-'+tab.id+' .title');
+        const spacer = document.querySelector('#tab-'+tab.id+' .spacer');
+
+        for (const el of [title, spacer]) {
+            el?.addEventListener('mousedown', onMouseDown);
+            el?.addEventListener('mouseup', onMouseUp);
+        }
+        
+        
+    };
+
+    const removeListeners = () => {
+        console.log('removing mouse listeners');
+        // drag listeners 
+        // touch listeners 
+        const title = document.querySelector('#tab-'+tab.id+' .title');
+        const spacer = document.querySelector('#tab-'+tab.id+' .spacer');
+
+        for (const el of [title, spacer]) {
+            el?.removeEventListener('mousedown', onMouseDown);
+            el?.removeEventListener('mouseup', onMouseUp);
+        }
+    };
+
+    let touchStartTime;
+    let touchCount = 0;
+    let longPressTimeout;
+
+    const onMouseDown = (e) => {
+        console.log('webkit force: ', e.webkitForce);
+        touchStartTime = Date.now();
+
+        longPressTimeout = setTimeout(() => {
+            onCloseTab();
+        },700);
+    };
+
+    const onMouseUp = (e) => {
+        console.log('mouse up');
+        clearTimeout(longPressTimeout);
+        // const touchDuration = Date.now() - touchStartTime;
+        // if (touchDuration > 500) {
+        //     e.preventDefault();
+        //     onCloseTab();
+        // }
+
+        
+    };
+
+
+
 
     const onMouseLeave = () => {
         if (isDragged) return;
@@ -241,109 +276,29 @@
         if (isDraggedOver) {
             isDraggedOver = false;
             //el.style.transform = '';
-        } else if (mouseListenersAdded || isDragged) {
-            console.log('mouse leave');
-            onMouseUp();
-            removeMouseListeners();
-        } else if (mouseDownListenerAdded) {
-            document.removeEventListener('mousedown', onMouseDown);
-            mouseDownListenerAdded = false;
         }
+
+        removeListeners();
     };
 
-    let mouseDownY;
-    const onMouseDown = (e) => {
-        mouseListenersAdded = true;
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        mouseDownY = e.clientY;
-        console.log('mouse down');
-    };
-
-    let lastDragEnd; 
-    const onMouseUp = async (e) => {
-            console.log('mouse up');
-        if (isDragged || $_draggedTab || mouseListenersAdded) {
-            isDragged = false;
-            _draggedTab.set(null);
-            lastDragEnd = Date.now();
-            removeMouseListeners(); 
-
-            await onTabMoveEnd();
-            resetDraggedElement();
-        }
-       
-    };
-
-    const onTabMoveEnd = async () => {
-        if (draggedOverTabs.length > 0) {
-            for (const draggOverTab of draggedOverTabs) {
-                const element = document.getElementById(draggOverTab.id);
-                element.style.transform = '';
-            }
-            const lastDraggedOverTab = draggedOverTabs[draggedOverTabs.length -1];
-
-            let draggedTabs = [];
-            if (selectedTabs.find((t) => t.id == tab.id)) {
-                draggedTabs = [...selectedTabs];
-                selectedTabs = [];
-            } else {
-                draggedTabs = [tab];
-            }
-
-            for (const draggedTab of draggedTabs) {
-                
-                if (draggedTab.groupId == -1 && lastDraggedOverTab.groupId > -1) {
-                    const tabs = await chrome.tabs.query({ groupId: lastDraggedOverTab.groupId });
-                    if (tabs.length == 1) {
-                        await chrome.tabs.group({ groupId: lastDraggedOverTab.groupId, tabIds: draggedTab.id });
-                    }
-                }
-                await chrome.tabs.move(draggedTab.id, { index: lastDraggedOverTab.index });
-
-                if (draggedTab.groupId > -1 && (lastDraggedOverTab.groupId == -1)) {
-                    await chrome.tabs.ungroup(draggedTab.id);
-                }
-
-            }
-            draggedOverTabs = [];
-        }
-    };
-
-
-
-    const onMouseMove = (e) => {
-
-        // if mouse is down and horizontal threshold reached 
-        if (isDragged) {
-            onDrag(e);
-        } else if (!$_draggedTab) {
-            const deltaX = e.clientY - mouseDownY;
-            console.log('delta x: ' +  deltaX);
-            if (Math.abs(deltaX) > 2) {
-                onDragStart(e);
-            }
-        }
-    };
-
-    const removeMouseListeners = () => {
-        console.log('removing mouse listeners');
-        document.removeEventListener('mousedown', onMouseDown);
-        document.removeEventListener('mouseup', onMouseUp);
-        document.removeEventListener('mousemove', onMouseMove);
-        mouseListenersAdded = false;
-        mouseDownListenerAdded = false;
-    };
-
+   
     const onMouseEnterFavIcon = (e) => {
         if (!canSelect) return;
-        favIconInFocus = true;
+
+        const shouldUpdateSelection = (selectedTabs.length > 1 || (selectedTabs.length == 1 && !selectedTabs.find((t) => t.id == tab.id)));
+        if (shouldUpdateSelection) {
+            dispatch("updateSelection", tab);
+        } else {
+            favIconInFocus = true;
+        }
+        
         
     };
 
     const onMouseLeaveFavIcon = (e) => {
         favIconInFocus = false;
         //if (isInFocus) isInFocus = false;
+        
     };
 
     let showMore;
@@ -352,6 +307,8 @@
     };
 
     const onCloseTab = () => {
+
+        clearTimeout(longPressTimeout);
 
         if (isOpen) {
             if (showMultiselectActions) {
@@ -383,132 +340,35 @@
     };
 
 
-    let startX;
-    let startY;
-    let positionX;
-    let positionY;
     let isDragged;
     let isPopped;
-    let draggedElement;
-    let rect;
+
     const onDragStart = (e) => {
+        clearTimeout(longPressTimeout);
         isDragged = true;
-        // e.dataTransfer.effectAllowed = "move";
-        // e.dataTransfer.setData("tabId", tab.id);
-
-        startX = e.clientX;
-        startY = e.clientY;
-
-        if (el) {
-            console.log('on drag start');
-
-            showPlaceholderElement = true;
-            rect = el.getBoundingClientRect();
-            positionY = rect.top;
-
-            //el.style.position = 'fixed';
-            el.style.zIndex = '10';
-            el.style.position = 'absolute';
-            el.style.width = `${rect.width-10}px`;
-            
-            //el.style.left = `${rect.left}px`;
-            //el.style.width = `${el.offsetWidth}px`;
-        }
-        
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("tabId", tab.id);
         _draggedTab.set(tab);
 
-
     };
 
-
-    let lastDeltaY;
-    let draggedOverTabToIgnore;
-    let draggedOverTabs = [];
-    const onDrag = async (e) => {
-
-        const HORIZONTAL_THRESHOLD = 50;
-
-        const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
-
-        if (Math.abs(deltaX) > HORIZONTAL_THRESHOLD) {
-            isPopped = true;
-        } else {
-        // Restrict x-position, allow y-position to change
-            //draggedElement.style.top = `${e.clientY - draggedElement.offsetHeight / 2}px`;
-            lastDeltaY = positionY + deltaY;
-
-            //el.style.transform = `translateY(${deltaY}px)`;
-
-            el.style.top = `${lastDeltaY}px`;
-
-            
-
-        }
-
-        const _overlapped = document.elementsFromPoint(e.pageX, e.pageY);
-
-        const tabIds = _overlapped
-            .filter((element) => element.className.includes('tab') && element.id != '' &&element.id != tab.id && element.id != draggedOverTabToIgnore)
-            .map((el) => el.id);
-
-        if (tabIds.length > 0) {
-
-            const draggedOverTabId = tabIds[0];
-
-            const tabElement = document.getElementById(draggedOverTabId);
-
-            const index = draggedOverTabs.findIndex((t) => t.id == draggedOverTabId);
-            if (index > -1) {
-                tabElement.style.transform = '';
-                draggedOverTabs.splice(index, 1);
-            } else {
-                const draggedOverTab = await chrome.tabs.get(parseInt(draggedOverTabId));
-                const draggingDown = draggedOverTab.index - tab.index > 0;
-                draggedOverTabs.push(draggedOverTab);
-                tabElement.style.transform = `translateY(${draggingDown ? '-' :''}${el.offsetHeight}px)`;
-                
-                if (draggedOverTabs.length == 0) {
-                    const draggedOverTab = await chrome.tabs.get(draggedOverTabId);
-                }
-            }
-        }
-    };
 
     let isDraggedOver;
-    let lastDragOver = Date.now();
-    let draggedOverTabUnsubscribe;
+
     const onDragOver = (e) => {
         e.preventDefault();
-        if (!isDraggedOver && $_draggedTab?.id != tab.id) {
-            isDraggedOver = true;
-            // draggedOverTabUnsubscribe = _draggedOverTab.subscribe((t) => {
-            //     if (t?.id != tab.id) {
-            //         isDraggedOver = false;
-            //     }
-            //     draggedOverTabUnsubscribe();
-            // });
-            _draggedOverTab.set(tab);
-            console.log('dragover: ' + tab.id);
-            console.log($_draggedOverTab);
-        }
+        if (!isDraggedOver) isDraggedOver = true;
 
     };
 
     const onDragLeave = (e) => {
         e.preventDefault();
-
-        if ($_draggedOverTab?.id == tab.id && $_draggedTab?.id != tab.id && isDraggedOver) {
-            isDraggedOver = false;
-            console.log('dragleave: ' + tab.id);
-            console.log($_draggedOverTab);
-        }
+        if (isDraggedOver) isDraggedOver = false;
     };
 
     const onDragEnd = async (e) => {
+        console.log('drag end');
         isDragged = false;
-        isPopped = false;
-        //resetDraggedElement();
         _draggedTab.set(null);
 
         let draggedOutOfPanel = (
@@ -517,9 +377,7 @@
             || e.clientY < 0
             || e.clientY > window.innerHeight
         );
-
         if (draggedOutOfPanel) { // Create window with dragged tabs
-
             let draggedTabs = [];
             const tabIsSelected = selectedTabs.find((t) => t.id == tab.id);
             if (tabIsSelected) {
@@ -527,18 +385,23 @@
             } else {
                 draggedTabs = [tab];
             }
-
             draggedTabs.sort((a, b) => b.index - a.index);
-
             const firstTab = draggedTabs.pop();
             const currentWindow = await chrome.windows.get(tab.windowId);
-            const newWindow = await chrome.windows.create({
+            let createData = {
                 tabId: firstTab.id,
                 incognito: currentWindow.incognito,
                 state: currentWindow.state,
                 focused: true,
-            });
+            };
 
+            if (currentWindow.state != 'fullscreen') {
+                createData.top = currentWindow.top;
+                createData.left = currentWindow.left + currentWindow.width - window.innerWidth + e.clientX - Math.floor(currentWindow.width / 2);
+                createData.width = currentWindow.width;
+            }
+            
+            const newWindow = await chrome.windows.create(createData);
             for (const draggedTab of draggedTabs) {
                 await chrome.tabs.move(draggedTab.id, {
                     windowId: newWindow.id,
@@ -546,9 +409,7 @@
                 });
             }
             
-
         }
-        
     };
 
     const onDrop = async (e) => {
@@ -585,6 +446,8 @@
             await chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
         }
     };
+
+    let lastDragEnd;
 
     const onTitleClicked = async (e) => {
         // check for three finger click
@@ -772,6 +635,7 @@
 
 
     const onActionButtonClicked = async (e, action) => {
+        clearTimeout(longPressTimeout);
 
         if (showMultiselectActions) {
             if (action.id == actions.save.id) {
@@ -964,6 +828,7 @@
     };
 
     const onContextMenu = (e) => {
+        clearTimeout(longPressTimeout);
         e.preventDefault();
         showMore = true;
     };
@@ -1040,7 +905,7 @@
 
 <div
     bind:this={el}
-    id={tab.id}
+    id={'tab-'+tab.id}
     class="tab{isSelected ? ' selected' : ''}{isInFocus
         ? ' focused'
         : ''}{isDraggedOver ? ' dragged-over' : ''}{tab.active && !isSearchResult
@@ -1053,13 +918,14 @@
         {isDragged ? ' dragged' : ''}"
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
+    on:dragstart={onDragStart}
     on:dragover={onDragOver}
     on:dragleave={onDragLeave}
     on:dragend={onDragEnd}
     on:drop={onDrop}
     on:contextmenu={onContextMenu}
     on:auxclick={onCloseTab}
-    draggable={isPopped ? "true" : "false"}
+    draggable={showMore || !canDrag ? "false" : "true"}
     
 >
 
@@ -1253,8 +1119,8 @@
         background-color: #666666;
     }
 
-    .tab.unloaded .title {
-        opacity: 0.5;
+    .tab.unloaded {
+        opacity: 0.7;
     }
 
     .tab.dragged-over {

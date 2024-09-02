@@ -74,7 +74,7 @@
     export let isOpen = false;
     export let groups;
     export let workspaces;
-    let selectedTabs = [];
+    export let selectedTabs = [];
     //export let allResources = null;
 
     export let workspace = null;

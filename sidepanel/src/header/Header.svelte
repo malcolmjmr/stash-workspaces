@@ -125,8 +125,8 @@
 
     .action > img {
         filter: invert(1);
-        height: 22px;
-        width: 22px;
+        height: 24px;
+        width: 24px;
         opacity: 0.5;
     }
 

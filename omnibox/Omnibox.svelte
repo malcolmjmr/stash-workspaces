@@ -17,4 +17,16 @@
         margin: 0;
     }
 
+    :global(html, body, #app) {
+        margin: 0px;
+        background-color: #28282b;
+        width: 100%;
+        height: 100%;
+        position: relative;
+        font-family: system-ui, sans-serif;
+        font-weight: 300;
+        overflow: hidden;
+        letter-spacing: 1px;
+    }
+
 </style>
