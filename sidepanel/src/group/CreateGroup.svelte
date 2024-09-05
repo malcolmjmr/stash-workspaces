@@ -21,7 +21,7 @@
     export let groups;
     export let workspaces = null;
     export let view;
-    export let placeholder = 'Search or create session...';
+    export let placeholder = 'Search or create space...';
     export let tabs = [];
     
 
@@ -368,7 +368,6 @@
 
 
             {#if visibleFolders.length > 0 || visibleSpaces.length > 0 || searchText.length > 0 || !hasBookmarkPermission}
-            <MenuDivider/>
             
             <div class="results">
                 {#if !workspace && searchText.length == 0 && ungroupedTabs.length > 1 }
@@ -389,7 +388,7 @@
                 {#if visibleSpaces.length > 0}
                     <div class="spaces section"> 
                         <div class="header">
-                            <div class="title">Sessions</div>
+                            <div class="title">Spaces</div>
                             {#if searchText != ''}
                             <div class="count">
                                 Found {visibleSpaces.length}
@@ -430,7 +429,7 @@
 
                 {#if !hasBookmarkPermission}
                     <div class="bookmark-permission" on:mousedown={getBookmarkPermission}>
-                        Click to create session from existing bookmark folder
+                        Click to add bookmark permission
                     </div>
                 {/if}
                 
@@ -499,7 +498,15 @@
         flex-direction: column;
         overflow-y: scroll;
         padding: 0px 10px 10px 10px;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .results::-webkit-scrollbar {
+        display: none;
+    }
+    
 
     .section .header {
         display: flex;

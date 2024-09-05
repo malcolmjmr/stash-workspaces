@@ -79,6 +79,13 @@
         flex-grow: 1;
         width: 100%;
         overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .main-container::-webkit-scrollbar {
+        display: none;
     }
 
     img.action {

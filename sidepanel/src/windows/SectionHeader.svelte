@@ -25,7 +25,7 @@
         width: calc(100% - 20px);
         font-size: 16px;
         font-weight: 300;
-        padding: 10px;
+        padding: 10px 10px 5px 10px;
         display: flex;
         flex-direction: row;
         align-items: center;

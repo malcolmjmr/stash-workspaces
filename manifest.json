@@ -50,8 +50,9 @@
         "sidePanel",
         "storage",
         "unlimitedStorage",
-        "favicon",
-        "audioCapture"
+        "favicon", 
+        "audioCapture", 
+        "sessions"
     ],
     "incognito": "spanning",
     "commands": {

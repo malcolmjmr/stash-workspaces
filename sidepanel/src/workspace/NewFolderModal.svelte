@@ -42,6 +42,13 @@
         flex-direction: row;
         padding: 10px;
         overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .new-folder-modal::-webkit-scrollbar {
+        display: none;
     }
 
     img {

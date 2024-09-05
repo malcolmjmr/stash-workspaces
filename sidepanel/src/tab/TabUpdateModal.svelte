@@ -107,7 +107,11 @@
             permissions: ["bookmarks"],
         });
 
-        bookmarkBarChildren = await chrome.bookmarks.getChildren('1');
+        if (hasBookmarkPermission) {
+            bookmarkBarChildren = await chrome.bookmarks.getChildren('1');
+        }
+
+       
 
     };
 
@@ -771,8 +775,13 @@
         height: 18px;
         display: flex;
         overflow: scroll;
-        
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
 
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .url-field textarea::-webkit-scrollbar {
+        display: none;
     }
 
     .create-toolbar {
@@ -867,6 +876,13 @@
         flex-direction: column;
         overflow: scroll;
         flex-grow: 1;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .results::-webkit-scrollbar {
+        display: none;
     }
 
     .no-results {

@@ -752,8 +752,13 @@
         width: 100%;
         top: 0px;
         left: 0px;
-        
-        overflow-y: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none; 
+        background-color: black;
+    }
+
+    .workspace::-webkit-scrollbar {
+        display: none;
     }
 
     .header {
@@ -861,6 +866,12 @@
     .section .items {
         overflow-y: scroll;
         padding: 8px;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none; 
+    }
+
+    .section .items::-webkit-scrollbar {
+        display: none;
     }
 
     .section .items .container {

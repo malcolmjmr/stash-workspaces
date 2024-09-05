@@ -51,7 +51,6 @@
     .domain-settings {
         max-height: 500px;
         border-radius: 8px;
-        background-color: black;
         user-select: none;
         display: flex;
         flex-direction: column;
@@ -71,6 +70,13 @@
         display: flex;
         flex-direction: column;
         overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .domains::-webkit-scrollbar {
+        display: none;
     }
 
 
