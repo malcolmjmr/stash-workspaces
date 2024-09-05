@@ -281,11 +281,18 @@
         removeListeners();
     };
 
-   
+    
     const onMouseEnterFavIcon = (e) => {
         if (!canSelect) return;
 
-        const shouldUpdateSelection = (selectedTabs.length > 1 || (selectedTabs.length == 1 && !selectedTabs.find((t) => t.id == tab.id)));
+        const shouldUpdateSelection = (
+            Date.now() - lastSelectionUpdate > 200
+            && (selectedTabs.length > 1 
+            || (
+                selectedTabs.length == 1 
+                && !selectedTabs.find((t) => t.id == tab.id)
+            ))
+        );
         if (shouldUpdateSelection) {
             dispatch("updateSelection", tab);
         } else {
@@ -306,6 +313,14 @@
         showMore = !showMore;
     };
 
+    const onAuxClick = (e) => {
+        setTimeout(() => {
+            if (!contextMenuOpened || (Date.now() - contextMenuOpened > 1000)) {
+                onCloseTab();
+            }
+        });
+        
+    }
     const onCloseTab = () => {
 
         clearTimeout(longPressTimeout);
@@ -827,10 +842,12 @@
         }
     };
 
+    let contextMenuOpened;
     const onContextMenu = (e) => {
         clearTimeout(longPressTimeout);
         e.preventDefault();
         showMore = true;
+        contextMenuOpened = Date.now();
     };
 
     let showCreateActionModal;
@@ -924,7 +941,7 @@
     on:dragend={onDragEnd}
     on:drop={onDrop}
     on:contextmenu={onContextMenu}
-    on:auxclick={onCloseTab}
+    on:auxclick={onAuxClick}
     draggable={showMore || !canDrag ? "false" : "true"}
     
 >

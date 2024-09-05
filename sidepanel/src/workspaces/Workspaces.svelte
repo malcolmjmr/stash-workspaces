@@ -304,7 +304,6 @@
         align-items: center;
         border: 2px solid #555555;
         border-radius: 5px;
-
     }
 
     .public-spaces img {

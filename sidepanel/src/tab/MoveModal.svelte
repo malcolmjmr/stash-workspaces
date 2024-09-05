@@ -182,7 +182,15 @@
         display: flex;
         flex-direction: column;
         overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .move-modal .container::-webkit-scrollbar {
+        display: none;
+    }
+    
 
     .search-container {
         height: 25px;

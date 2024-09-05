@@ -1,7 +1,7 @@
 <script>
 
     import { onMount } from "svelte";
-    import { get, getContexts, getPermissions, getSettings } from "./utilities/chrome.js";
+    import { get, getContexts, getPermissions, getSettings, set } from "./utilities/chrome.js";
     import { Views } from "./view.js";
     import SidePanel from "./SidePanel.svelte";
     import Auth from "./Auth.svelte";
@@ -62,6 +62,7 @@
     let loaded;
     let hasBookmarkPermission;
     const init = async () => {
+        
         console.log('loading app');
         hasBookmarkPermission = await getPermissions();
         settings.set(await getSettings());
@@ -223,7 +224,7 @@
 <style>
     :global(html, body, #app) {
         margin: 0px;
-        background-color: #28282b;
+        background-color: black;
         width: 100%;
         height: 100%;
         position: relative;

@@ -33,6 +33,7 @@
     onMount(() => {
         loadWindows();
         loadSessions();
+        loadRemoteSessions();
    
         loaded = true;
     });
@@ -54,18 +55,42 @@
         for (let i = 0; i < sessions.length; i++) {
             let session = sessions[i];
             let tabs = [];
-            for (let j = 0; j < session.tabs.length; j++) {
-                let tabData = session.tabs[j];
+            let contexts = [];
+            for (const id in session.tabs) {
+                let tabData = session.tabs[id];
                 if (tabData.tabs) {
                     for (const tab of tabData.tabs) {
+                        contexts.push(id);
+                        tab.contextId = id;
                         tabs.push(tab);
                     }
                 } else {
                     tabs.push(tabData);
                 }
             }
+            tabs.sort((a, b) => a.index - b.index);
             sessions[i].tabs = tabs;
+            sessions[i].contexts = contexts;
         }
+    };
+
+    let devices = [];
+    const loadRemoteSessions = async () => {
+        const chromeDevices = await chrome.sessions.getDevices();
+        let tempDevices = [];
+        for (const d of chromeDevices) {
+            let device = {
+                name: d.deviceName,
+                windows: []
+            };
+            for (const session of d.sessions) {
+                device.windows.push(session.window);
+                console.log(session.window);
+            }
+            tempDevices.push(device);
+        }
+
+        devices = tempDevices;
     };
 
     $: {
@@ -151,6 +176,8 @@
 
 </script>
 
+
+{#if loaded}
 <div 
     class="windows"
     
@@ -206,13 +233,32 @@
     {/each}
     {/if}
 
+    {#if devices.length > 0}
     
-    
+    {#each devices as device (device)}
+        <SectionHeader title={device.name} bind:isOpen={device.show}/>
+        {#if device.show}
+        {#each device.windows as window}
+            <Window
+                bind:view
+                windowData={window}
+                {groups}
+                tabs={window.tabs}
+                {lastUpdatedWindow}
+                {lastUpdatedTab}
+                isOpen={false}
+                on:tabMoved
+            />
+        {/each}
+        {/if}
+    {/each}
+    {/if}
     
 
-
-    <SectionHeader title="Stash" bind:isOpen={showStashedWindows}/>
+    {#if sessions.length > 0}
+    <SectionHeader title="Saved for later" bind:isOpen={showStashedWindows}/>
     {#if showStashedWindows}
+    
     {#each sessions as session (session)}
         <Window
             bind:view
@@ -226,9 +272,11 @@
         />
     {/each}
     {/if}
+    {/if}
     
     
 </div>
+{/if}
 
 <style>
     .windows {

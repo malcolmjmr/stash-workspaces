@@ -90,7 +90,7 @@
         {groups} 
         {view} 
         on:exit={() => showCreateGroupModal = false} 
-        placeholder={'Search or create session'} 
+        placeholder={'Search or create space'} 
         on:dataUpdated
         on:locationSelected={onSessionOpened}
         />
@@ -108,7 +108,7 @@
                     <div class="count">
                         {sessionCount}
                         <span>
-                            Session{sessionCount > 1 ? "s" : ""}
+                            Spaces{sessionCount > 1 ? "s" : ""}
                         </span>
                     </div>
                     <CircleDivider />

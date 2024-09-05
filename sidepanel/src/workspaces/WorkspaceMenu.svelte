@@ -1,7 +1,7 @@
 <script>
     import { slide } from "svelte/transition";
     import GroupColors from "../group/GroupColors.svelte";
-    import { closeTabGroup, get, getContext, getOpenGroups, openWorkspace, saveContext, tryToGetBookmark, tryToGetTabGroup, tryToGetWorkspaceFolder } from "../utilities/chrome";
+    import { closeTabGroup, get, getActiveTab, getContext, getOpenGroups, openWorkspace, saveContext, tryToGetBookmark, tryToGetTabGroup, tryToGetWorkspaceFolder } from "../utilities/chrome";
     import { createEventDispatcher, onMount } from "svelte";
     import { colorMap } from "../utilities/colors";
     import MenuItem from "../components/MenuItem.svelte";
@@ -97,11 +97,14 @@
     };
 
     const moveWorkspaceToNewWindow = async () => {
-        
-        const window = await chrome.windows.create({ focused: true });
-        const newTab = (await chrome.tabs.query({windowId: window.id}))[0];
+        const currentWindow = await chrome.windows.get((await getActiveTab()).windowId);
+        const newWindow = await chrome.windows.create({ 
+            focused: true, 
+            state: currentWindow.state,  
+        });
+        const newTab = (await chrome.tabs.query({windowId: newWindow.id}))[0];
         await chrome.tabGroups.move(workspace.groupId, {
-            windowId: window.id,
+            windowId: newWindow.id,
             index: -1
         });
         await chrome.tabs.remove(newTab.id);

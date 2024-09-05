@@ -525,5 +525,13 @@
         flex-direction: column;
         overflow: scroll;
         flex-grow: 1;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .actions::-webkit-scrollbar {
+        display: none;
+    }
+    
 </style>

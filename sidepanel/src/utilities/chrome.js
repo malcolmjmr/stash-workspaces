@@ -665,10 +665,12 @@ export const stashWindow = async (params = {}) => {
     let windowId = params.windowId;
      let window;
 
+     const activeTab = await getActiveTab();
+     const isCurrentWindow = !windowId || (activeTab.windowId == windowId);
+
      if (windowId) {
          window = await chrome.windows.get(windowId);
      } else {
-         const activeTab = await getActiveTab();
          window = await chrome.windows.get(activeTab.windowId);
      } 
 
@@ -677,25 +679,26 @@ export const stashWindow = async (params = {}) => {
 
      let groupIds = [];
 
-     let tabData = [];
+     let tabData = {};
 
      for (const tab of tabs) {
          if (tab.groupId == -1 || !tab.groupId) {
-             tabData.push(tab);
+             tabData[tab.id] = tab;
          } else if (!groupIds.includes(tab.groupId)) {
              groupIds.push(tab.groupId);
              const context = await getContextFromGroupId(tab.groupId);
-             tabData.push(context);
+             tabData[context.id] = context;
          }
      }
 
      window.tabs = tabData;
+     window.stashed = Date.now();
 
      let sessions = (await get('sessions')) ?? [];
-     sessions.push(window);
+     sessions.unshift(window);
      await set({ sessions });
  
-     if (!windowId) {
+     if (isCurrentWindow) {
          await chrome.tabs.create({});
      }
 

@@ -188,7 +188,16 @@
         flex-direction: column;
         flex-grow: 1;
         overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .location-selection .container::-webkit-scrollbar {
+        display: none;
+    }
+
+
 
 
     .header {

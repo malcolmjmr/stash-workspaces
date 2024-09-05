@@ -9,17 +9,16 @@
     import menuIcon from "../icons/more-vert.png";
     import deleteIcon from "../icons/delete.png";
 
-    import { createEventDispatcher, getContext, onMount } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import TabIcon from "../tab/TabIcon.svelte";
     import { fade } from "svelte/transition";
     import { Views } from "../view";
-  import { getActiveTab, getTabFavIconUrl, openWorkspace, set, stashWindow } from "../utilities/chrome";
+  import { createAdjacentTab, get, getActiveTab, getContext, getTabFavIconUrl, openWorkspace, set, stashWindow } from "../utilities/chrome";
   import ModalContainer from "../components/ModalContainer.svelte";
   import WindowMenu from "./WindowMenu.svelte";
-  import { get } from "svelte/store";
-
+  
     let dispatch = createEventDispatcher();
-
+ 
 
     export let windowData;
     export let tabs;
@@ -37,31 +36,25 @@
     let loaded;
 
     onMount(() => {
-        loadTabs();
+        loadContexts();
         resetActiveTab();
-        getTabPreview();
+        //getTabPreview();
         loaded = true;
     });
 
-    const loadTabs = () => {
-        let tabs = [];
-        
-        for (let j = 0; j < windowData.tabs.length; j++) {
-            let tabData = windowData.tabs[j];
-            if (tabData.tabs) {
-                for (const tab of tabData.tabs) { 
-                    tabs.push(tab);
-                }
-            } else {
-                tabs.push(tabData);
-            }
-        }
+    let contexts = {};
+    const loadContexts = async () => {
+        for (const id of windowData.contexts ?? []){
+            contexts[id] = await getContext(id);
+        };
     }
 
     let showFavIcon;
     const resetActiveTab = () => {
         activeTab = tabs.find((t) => t.active);
-        if (!activeTab) return;
+        if (!activeTab) {
+            activeTab = tabs[0];
+        }
         activeGroup = groups[activeTab.groupId];
         showFavIcon = activeTab.favIconUrl && activeTab.favIconUrl != "";
     };
@@ -98,14 +91,14 @@
     };
 
     const onMouseLeave = () => {
-        //activeTabInFocus = false;
+        activeTabInFocus = false;
         //showAllTabs = false;
         resetActiveTab();
     };
 
     const onShowTabDetails = ({ detail }) => {
         activeTab = detail;
-        activeGroup = groups[activeTab.groupId];
+        activeGroup = activeTab.contextId ? contexts[activeTab.contextId] : groups[activeTab.groupId];
         showFavIcon = activeTab.favIconUrl && activeTab.favIconUrl != "";
     };
 
@@ -167,12 +160,16 @@
         e.dataTransfer.setData("tabId", activeTab.id);
     };
 
-    const onTabIconClicked = async () => {
+    const onTabIconClicked = async ({ detail }) => {
+        const tab = detail;
         const activeTab = await getActiveTab();
-        if (window.id == activeTab.id) {
+        if (window.id == activeTab.windowId) {
             view = Views.tabs;
-        } else {
-
+        } else if (!isOpen) {
+            await createAdjacentTab({
+                url: tab.url,
+            });
+            view = Views.tabs;
         }
         
     };
@@ -180,28 +177,45 @@
     let actionInstructions;
 
     const onStashWindow = (e) => {
-        stashWindow({ windowId: windowData.id })
+        stashWindow({ windowId: windowData.id });
+        lastUpdatedWindow = Date.now();
     };
 
     const onOpenWindow = () => {
         restoreWindow(windowData);
     };
 
-    const restoreWindow = async () => {
-
-        const newWindow = await chrome.windows.create({});
-        const newTab = await chrome.tabs.query({ windowId: newWindow.id });
-        for (const tab of windowData) {
-            if (tab.tabs) {
-                const context = await getContext(tab.id);
-                openWorkspace()
+    const restoreWindow = async (openInCurrentWindow) => {
+        let newWindow;
+        let newTab;
+        if (!openInCurrentWindow) {
+            const currentWindow = await chrome.windows.get((await getActiveTab()).windowId);
+            newWindow = await chrome.windows.create({ state: currentWindow.state, incognito: currentWindow.incognito });
+            newTab = (await chrome.tabs.query({ windowId: newWindow.id }))[0];
+        }
+        
+        let openedContexts = [];
+        for (const tab of windowData?.tabs ?? []) {
+            if (tab.contextId) {
+                if (!openedContexts.includes(tab.contextId)) {
+                    await openWorkspace(contexts[tab.contextId], { windowId: newWindow?.id })
+                }
+                
             } else {
                 await chrome.tabs.create({
-                    url: tab.url
+                    active: tab.active,
+                    url: tab.url,
+                    windowId: newWindow?.id
                 });
             }
         }
-        openWorkspace()
+        if (newTab) {
+            chrome.tabs.remove(newTab.id);
+        }
+        
+        await deleteSession();
+
+        lastUpdatedWindow = Date.now();
     };
 
     const deleteSession = async () => {
@@ -213,15 +227,37 @@
             await set({ sessions });
         }
 
+        lastUpdatedWindow = Date.now();
+
 
     };
 
+    let showSaveModal;
+    const onMenuItemClicked = ({ detail }) => {
+        const action = detail.action;
+        if (action == 'save') {
+            showSaveModal = true;
+        } else if (action == 'stash') {
+            onStashWindow();
+        } else if (action == 'close') {
+            onCloseClicked();
+        } else if (action == 'openInCurrentWindow') {
+            restoreWindow(true);
+        } else if (action == 'restore') {
+            restoreWindow();
+        } else if (action == 'delete') {
+            deleteSession();
+        }
+
+        showMenu = false;
+    };
+    
 
 </script>
 
 {#if showMenu}
 <ModalContainer on:exit={() => showMenu = false}>
-    <WindowMenu window={windowData} {isOpen}/>
+    <WindowMenu window={windowData} {isOpen} on:menuItemClicked={onMenuItemClicked}/>
 </ModalContainer>
 {/if}
 
@@ -254,7 +290,6 @@
                             class="icon"
                             src={getTabFavIconUrl(activeTab)}
                             alt={activeTab.url}
-                            style={showFavIcon ? "" : "filter: invert(1);"}
                         />
                         <span on:mouseup={openActiveTab}>{activeTab.title}</span
                         >
@@ -273,18 +308,8 @@
                                 on:mouseleave={() =>
                                     (actionInstructions = null)}
                             />
-                            {:else}
-                            <img
-                                class="action"
-                                src={openIcon}
-                                on:mousedown={restoreWindow}
-                                alt="Open"
-                                on:mouseenter={() =>
-                                    (actionInstructions = 'Restore window' )}
-                                on:mouseleave={() =>
-                                    (actionInstructions = null)}
-                            />  
                             {/if}
+                            
                             <img
                                 class="action"
                                 src={menuIcon}
@@ -304,17 +329,19 @@
                                 on:mouseleave={() =>
                                     (actionInstructions = null)}
                             />
-                            {:else}
+                            {/if}
+
+                            {#if !isOpen}
                             <img
                                 class="action"
-                                src={deleteIcon}
-                                on:mousedown={deleteSession}
-                                alt="close"
+                                src={openIcon}
+                                on:mousedown={() => restoreWindow()}
+                                alt="Open"
                                 on:mouseenter={() =>
-                                    (actionInstructions = 'Delete session' )}
+                                    (actionInstructions = 'Restore window' )}
                                 on:mouseleave={() =>
                                     (actionInstructions = null)}
-                            />
+                            />  
                             {/if}
                         </div>
                     {/if}
@@ -521,8 +548,8 @@
     }
 
     img.action {
-        height: 20px;
-        width: 20px;
+        height: 18px;
+        width: 18x;
         filter: invert(1);
     }
 

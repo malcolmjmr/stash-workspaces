@@ -52,7 +52,7 @@
     }
 
     .favorite-list-item:hover {
-        background-color: #222;
+        background-color: #333;
     }
 
     img {

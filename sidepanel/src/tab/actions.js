@@ -17,7 +17,7 @@ import closeTabIcon from "../icons/tab-close.png";
 import moveToDesktopIcon from "../icons/place-item.png";
 import pipIcon from "../icons/pip.png";
 import createIcon from "../icons/add.png";
-import discardIcon from "../icons/do-not-disturb.png";
+import discardIcon from "../icons/sleep.png";
 import { createEventDispatcher } from "svelte";
 import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
 import { getContextData, getContextFromGroupId, getWorkspaceQueueFolder, saveContext, saveContextData, saveTabToFolder } from "../utilities/chrome";
@@ -49,7 +49,7 @@ export const actions = {
         }
     },
     discard: {
-        title: 'Discard',
+        title: 'Sleep',
         id: 'discard',
         icon: discardIcon,
         onClick: (tab) => {

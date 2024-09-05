@@ -1107,7 +1107,15 @@
     .header .title span {
         margin-left: 5px;
         overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .header .title span::-webkit-scrollbar {
+        display: none;
+    }
+
 
     .title-input {
         text-decoration: none;
@@ -1230,6 +1238,13 @@
         flex-direction: column;
         overflow: scroll;
         flex-grow: 1;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .section-items .container::-webkit-scrollbar {
+        display: none;
     }
 
     .bookmarks-container {

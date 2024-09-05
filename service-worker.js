@@ -295,8 +295,12 @@ async function onTabCreated(tab) {
         const context = await getContextFromGroupId(tab.groupId);
         if (!context) return;
         context.tabs.push(getTabInfo(tab));
+        saveContext(context);
+        
     } else {
         // check if tab should be grouped
+
+
 
         
     }

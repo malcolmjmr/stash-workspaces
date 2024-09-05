@@ -99,6 +99,13 @@
         border: none;
         color: white;
         overflow: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .title input::-webkit-scrollbar {
+        display: none;
     }
 
     .end {

@@ -440,7 +440,6 @@
                 bind:view
                 on:updateSelection={onUpdateSelection}
                 on:tabMoved
-            
             />
         {:else if view == Views.tabs}
             <ActiveWindow
@@ -569,7 +568,7 @@
 <style>
     main {
         position: relative;
-        background-color: #111111;
+        background-color: black;
         width: 100%;
         height: 100%;
         color: white;
