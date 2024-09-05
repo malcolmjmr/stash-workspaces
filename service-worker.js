@@ -1,5 +1,5 @@
 
-
+const appUrl = 'http://localhost:3000/'; //'https://stash.technology/';
 // Runtime
 chrome.runtime.onInstalled.addListener((details) => onInstalled(details));
 chrome.runtime.onUpdateAvailable.addListener((details) => onUpdateAvailable(details));
@@ -11,7 +11,6 @@ chrome.sidePanel
 
 
 // Windows 
-
 chrome.windows.onCreated.addListener((window) => onWindowCreated(window));
 
 // Tabs
@@ -42,7 +41,8 @@ async function onInstalled(details) {
     await chrome.runtime.setUninstallURL(uninstallPageURL);
     await setInitialData();
     await importUsersTabGroups();
-    await importRecentFolders(); // Todo
+    await launchOnboarding();
+
 }
 
 async function onUpdateAvailable(details) {
@@ -54,6 +54,7 @@ async function setInitialData() {
     const platformInfo = await chrome.runtime.getPlatformInfo();
     const date = new Date();
     const initialData = await getInitialData();
+    const manifest = await chrome.runtime.getManifest();
 
     await chrome.storage.local.set({
         openGroups: {},
@@ -61,6 +62,10 @@ async function setInitialData() {
         quickActions: ['reload', 'save'],
         config: {
             browser,
+            extensionDetails: {
+                name: manifest.name,
+                version: manifest.version
+            },
             os: platformInfo.os,
             arch: platformInfo.arch,
             progress: { install: date.valueOf() },
@@ -141,6 +146,13 @@ async function importRecentFolders() {
     // get code from stash-extension
 }
 
+async function launchOnboarding() {
+    chrome.tabs.create({
+        url: appUrl + 'onboarding',
+        active: true,
+    });
+}
+
 
 let toolbarPorts = {};
 
@@ -158,7 +170,7 @@ const connectToolbar = async (port) => {
     //let toolbars = Object.values(toolbarPorts);//(await get('toolbars')) ?? [];
     let toolbarPort = toolbarPorts[port.windowId];
     if (!toolbarPort) {
-        
+
         toolbar = {
             connected: Date.now(),
             windowId: port.windowId,
