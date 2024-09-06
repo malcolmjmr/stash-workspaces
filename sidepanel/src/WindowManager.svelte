@@ -97,11 +97,11 @@
     };
 
     const loadTabsGroupsAndWindows = async () => {
-        tabs = await chrome.tabs.query({});
+        let tempTabs = await chrome.tabs.query({});
         
 
-        for (let i = 0; i < tabs.length; i++) {
-            tabs[i] = await getTabsBookmarks(tabs[i]);
+        for (let i = 0; i < tempTabs.length; i++) {
+            tempTabs[i] = await getTabsBookmarks(tempTabs[i]);
         }
 
         windows = await chrome.windows.getAll();
@@ -173,6 +173,7 @@
             workspaces = workspaces;
         }
 
+        tabs = tempTabs;
         _tabs.set(tabs);
         _groups.set(groups);
 
@@ -257,7 +258,7 @@
         otherWindows = [...otherWindows, window];
     };
 
-    
+
     const updateWindow = (window) => {
         let index = windows.findIndex((w) => w.id == window.id);
         if (index > -1) {
