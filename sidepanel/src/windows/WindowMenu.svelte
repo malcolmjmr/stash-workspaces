@@ -27,11 +27,12 @@
 </script>
 
 <div class="menu">
-    <div class="header">
-        {window.tabs.length} tab{window.tabs.length > 1 ? 's' : ''} 
+    <div class="header">    
         {#if window.stashed} 
-            last opened {getTimeString()}
+           {getTimeString()} -
         {/if}
+        {window.tabs.length} Tab{window.tabs.length > 1 ? 's' : ''} 
+        
     </div>
     
     <div class="items">

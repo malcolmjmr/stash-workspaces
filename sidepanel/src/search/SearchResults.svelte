@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
     import Tab from "../tab/Tab.svelte";
   import { allWorkspaces } from "../stores";
-  import SectionContainer from "../workspace/SectionContainer.svelte";
+  import SectionContainer from "../components/SectionContainer.svelte";
   import SearchResutlsSection from "../components/SearchResutlsSection.svelte";
   import Bookmark from "../components/Bookmark.svelte";
   import WorkspaceListItem from "../components/WorkspaceListItem.svelte";

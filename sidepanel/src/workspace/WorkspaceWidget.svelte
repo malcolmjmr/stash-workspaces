@@ -1196,7 +1196,15 @@
         flex-direction: row;
         align-items: center;
         overflow-x: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .section-options .container::-webkit-scrollbar {
+        display: none;
+    }
+    
 
     .section-options .padding {
         height: 100%;

@@ -498,9 +498,10 @@
     }
 
     .resource-title .container {
-        overflow: scroll;
         border-radius: 8px;
         width: 100%;
+
+        
     }
 
     .divider {
@@ -515,7 +516,16 @@
         flex-direction: row;
         align-items: center;
         overflow-x: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .resource-url::-webkit-scrollbar {
+        display: none;
+    
+    }
+    
 
     .resource-url img {
         filter: invert(1);
@@ -528,7 +538,16 @@
         white-space: nowrap;
         max-lines: 1;
         overflow-y: scroll;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .resource-url span::-webkit-scrollbar {
+        display: none;
+    
+    }
+    
 
     .location {
         margin: 15px 0px;

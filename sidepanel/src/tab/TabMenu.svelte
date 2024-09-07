@@ -172,6 +172,7 @@
             const queueFolder = await getWorkspaceQueueFolder(workspace, true);
             await saveTabToFolder(tab, queueFolder.id);
             dispatch('tabStashed');
+    
             setTimeout(async () => {
                 const tabs = await chrome.tabs.query({ groupId: workspace.groupId });
                 if (tabs.length == 1) {

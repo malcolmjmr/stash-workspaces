@@ -440,6 +440,7 @@
                 bind:view
                 on:updateSelection={onUpdateSelection}
                 on:tabMoved
+                on:dataUpdated
             />
         {:else if view == Views.tabs}
             <ActiveWindow

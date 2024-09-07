@@ -1,5 +1,5 @@
 <script>
-    import SectionContainer from "./SectionContainer.svelte";
+    import SectionContainer from "../components/SectionContainer.svelte";
     import Tab from "../tab/Tab.svelte";
 
     import newTabIcon from "../icons/add-box.png";

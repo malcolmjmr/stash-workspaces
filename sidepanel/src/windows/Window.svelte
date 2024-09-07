@@ -13,9 +13,11 @@
     import TabIcon from "../tab/TabIcon.svelte";
     import { fade } from "svelte/transition";
     import { Views } from "../view";
-  import { createAdjacentTab, get, getActiveTab, getContext, getTabFavIconUrl, openWorkspace, set, stashWindow } from "../utilities/chrome";
+  import { createAdjacentTab, createContext, get, getActiveTab, getContext, getPermissions, getTabFavIconUrl, openWorkspace, set, stashWindow, tryToGetWorkspaceFolder } from "../utilities/chrome";
   import ModalContainer from "../components/ModalContainer.svelte";
   import WindowMenu from "./WindowMenu.svelte";
+    import SaveModal from "./SaveModal.svelte";
+    import Workspaces from "../workspaces/Workspaces.svelte";
   
     let dispatch = createEventDispatcher();
  
@@ -190,7 +192,7 @@
         let newTab;
         if (!openInCurrentWindow) {
             const currentWindow = await chrome.windows.get((await getActiveTab()).windowId);
-            newWindow = await chrome.windows.create({ state: currentWindow.state, incognito: currentWindow.incognito });
+            newWindow = await chrome.windows.create({ state: currentWindow.state, incognito: currentWindow.incognito, focused: true });
             newTab = (await chrome.tabs.query({ windowId: newWindow.id }))[0];
         }
         
@@ -215,7 +217,7 @@
         
         await deleteSession();
 
-        lastUpdatedWindow = Date.now();
+       
     };
 
     const deleteSession = async () => {
@@ -251,6 +253,13 @@
 
         showMenu = false;
     };
+
+    const onSave = ({ detail }) => {
+        showSaveModal = false;
+        dispatch('dataUpdated', { workspace: detail });
+        view = Views.home;
+
+    };
     
 
 </script>
@@ -258,6 +267,12 @@
 {#if showMenu}
 <ModalContainer on:exit={() => showMenu = false}>
     <WindowMenu window={windowData} {isOpen} on:menuItemClicked={onMenuItemClicked}/>
+</ModalContainer>
+{/if}
+
+{#if showSaveModal}
+<ModalContainer on:exit={() => showSaveModal = false}> 
+    <SaveModal {windowData} on:workspaceSave={onSave} />
 </ModalContainer>
 {/if}
 

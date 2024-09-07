@@ -252,6 +252,7 @@
             onClick={moveWorkspaceToNewWindow}
             icon={openInNewWindowIcon}
         />
+        <MenuDivider/>
         <MenuItem 
             title='Close'
             onClick={closeWorkspace} 

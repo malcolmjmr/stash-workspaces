@@ -351,7 +351,6 @@
 
     .children {
         margin-left: 20px;
-        overflow-y: scroll;
         flex-grow: 1;
     }
 

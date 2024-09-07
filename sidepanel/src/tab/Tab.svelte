@@ -216,7 +216,7 @@
     };
 
     const addListeners = () => {
-        console.log('adding mouse listeners');
+       
         const title = document.querySelector('#tab-'+tab.id+' .title');
         const spacer = document.querySelector('#tab-'+tab.id+' .spacer');
 
@@ -229,7 +229,7 @@
     };
 
     const removeListeners = () => {
-        console.log('removing mouse listeners');
+        
         // drag listeners 
         // touch listeners 
         const title = document.querySelector('#tab-'+tab.id+' .title');
@@ -362,6 +362,7 @@
         clearTimeout(longPressTimeout);
         isDragged = true;
         e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.dropEffect = "move";
         e.dataTransfer.setData("tabId", tab.id);
         _draggedTab.set(tab);
 
@@ -371,7 +372,10 @@
     let isDraggedOver;
 
     const onDragOver = (e) => {
+       
         e.preventDefault();
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.dropEffect = "move";
         if (!isDraggedOver) isDraggedOver = true;
 
     };
@@ -533,10 +537,10 @@
         save: 'save',
         saveToQueue: 'saveForQueue',
         saveToFolder: 'saveToFolder'
-    }
+    };
 
     const saveTab = async (tab, saveOption = saveOptions.save, location) => {
-
+        
         const hasBookmarkPermission = await getPermissions();
 
         if (!hasBookmarkPermission) {
@@ -657,16 +661,13 @@
                 for (const t of selectedTabs) {
                     saveTab(t);
                 }
-            } else if (action.id == actions.saveForLater.id) {
-                for (const t of selectedTabs) {
-                    saveTab(t, saveOptions.saveToQueue);
-                }
             } else if (action.id == actions.saveToFolder.id) {
                 // show save modal
                 showSaveModal = true;
             } else {
                 for (const t of selectedTabs) {
-                    action.onClick(t);
+                    const result  = await action.onClick(t);
+                    if (result) dispatch(result);
                 }
             }
         } else {
@@ -1146,7 +1147,7 @@
     }
 
     .tab.dragged {
-        cursor: grabbing;
+        
     }
 
 

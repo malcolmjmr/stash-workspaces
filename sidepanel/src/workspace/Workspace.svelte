@@ -42,7 +42,7 @@
   import ModalContainer from "../components/ModalContainer.svelte";
   import WorkspacePreview from "./WorkspacePreview.svelte";
   import BackButton from "../components/BackButton.svelte";
-  import SectionContainer from "./SectionContainer.svelte";
+  import SectionContainer from "../components/SectionContainer.svelte";
   import Tab from "../tab/Tab.svelte";
   import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
   import SearchBox from "../components/SearchBox.svelte";
@@ -684,6 +684,8 @@
                                     canDrag={visibleTabs.length == tabs.length}
                                     on:updateSelection={onTabSelected}
                                     on:clicked={onTabClicked}
+                                    on:bookmarkCreated={() => lastBookmarkUpdate = Date.now()}
+                                    on:tabStashed={() => lastBookmarkUpdate = Date.now()}
                                 />
                             {/each}
                             {/key}
@@ -752,6 +754,7 @@
         width: 100%;
         top: 0px;
         left: 0px;
+        overflow: scroll;
         -ms-overflow-style: none;  /* IE and Edge */
         scrollbar-width: none; 
         background-color: black;

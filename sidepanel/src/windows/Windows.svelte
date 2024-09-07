@@ -60,7 +60,7 @@
                 let tabData = session.tabs[id];
                 if (tabData.tabs) {
                     for (const tab of tabData.tabs) {
-                        contexts.push(id);
+                        if (!contexts.includes(id)) contexts.push(id);
                         tab.contextId = id;
                         tabs.push(tab);
                     }
@@ -269,6 +269,7 @@
             {lastUpdatedTab}
             isOpen={false}
             on:tabMoved
+            on:dataUpdated
         />
     {/each}
     {/if}

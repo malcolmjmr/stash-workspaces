@@ -36,7 +36,7 @@
         align-items: center;
         justify-content: space-between;
         margin: 5px 3px 0px 3px;
-        height: 25px;
+        height: 30px;
         width: calc(100% - 6px);
     }
 

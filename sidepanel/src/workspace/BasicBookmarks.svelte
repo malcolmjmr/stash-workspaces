@@ -31,6 +31,9 @@
 
     const refreshQueue = async () => {
         const queueFolder = await getWorkspaceQueueFolder(workspace);
+
+        console.log('refreshing queue');
+        console.log(queueFolder);
             
         if (queueFolder) {
             queue = await chrome.bookmarks.getChildren(queueFolder.id);
@@ -82,28 +85,30 @@
 
 
 <div class="bookmarks">
-    {#if bookmarkCount > 0}
+    {#if queue.length > 0}
     <div class="heading">
-        <span>Bookmarks</span>
-        {#if queue.length > 0}
-            <img 
-                src={showQueue ? inboxIconFilled : inboxIcon} 
-                alt="queue" 
-                class='queue button{showQueue ? ' selected' : ''}'
-                on:mousedown={() => showQueue = !showQueue}
-            />
-        {/if}
+        <span>Reading List</span>
     </div>
     {/if}
     <div class="container">
-        {#if showQueue}
-            {#each queue as bookmark}
-                <Bookmark 
-                    {bookmark}
-                    on:bookmarkClicked={() => onTempBookmarkClicked(bookmark)}
-                />
-            {/each}
-        {:else}
+        {#each queue as bookmark}
+            <Bookmark 
+                {bookmark}
+                isTemporary={true}
+                on:bookmarkClicked={() => onTempBookmarkClicked(bookmark)}
+            />
+        {/each}
+    </div>
+    
+    
+    {#if bookmarkCount > 0}
+    <div class="heading">
+        <span>Bookmarks</span>
+        
+    </div>
+    {/if}
+    <div class="container">
+
         <BookmarkTree 
             {searchText} 
             {workspace} 
@@ -115,16 +120,15 @@
             on:locationSelected
             on:tabMovedToBookmarks
         />
-        {/if}
-        
     </div>
+   
     <div class="bottom-drop-zone" on:drop={onTabDraggedToBottom} on:dragover={onDragOverBottom}></div>
 </div>
 
 
 <style>
     .bookmarks {
-        margin: 12px 8px 50px 8px;
+        margin: 5px 8px 50px 8px;
         display: flex;
         flex-direction: column;
         overflow: hidden; 
@@ -143,6 +147,7 @@
         border-radius: 8px;
         background-color: #333333;
         overflow: hidden;
+        margin-bottom: 10px;
     }
 
     .queue.button {

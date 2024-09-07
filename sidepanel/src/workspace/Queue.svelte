@@ -1,5 +1,5 @@
 <script>
-    import SectionContainer from "./SectionContainer.svelte";
+    import SectionContainer from "../components/SectionContainer.svelte";
     import Bookmark from "../components/Bookmark.svelte";
 
     export let queue;

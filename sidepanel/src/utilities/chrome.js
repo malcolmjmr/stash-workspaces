@@ -5,6 +5,13 @@ export const getPermissions = async () => {
     });
 };
 
+
+export const getBookmarkPermissions = async () => {
+    return await chrome.permissions.contains({
+        permissions: ["bookmarks"],
+    });
+};
+
 export const get = async (key) => {
     const data = (await chrome.storage.local.get([key])) ?? {};
     return data[key];
@@ -136,13 +143,16 @@ export const openWorkspace = async (workspace, {openInNewWindow = true, windowId
 
     const groupWorkspaceMap = await getOpenGroups();
 
+    console.log('opening workspace');
+
+    console.log(workspace);
+    
     workspace = await getContext(workspace.id);
     const openGroup = await tryToGetTabGroup(workspace?.groupId);
 
-   
+    console.log(workspace);
 
-    console.log('openign workspace');
-
+    
     if (openGroup) {
         // navigate to last open tab
         
