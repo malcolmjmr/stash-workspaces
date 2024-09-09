@@ -61,14 +61,16 @@
             title="Save as workspace"
             onClick={() => dispatch('menuItemClicked', {action: 'save'})}
         />
-        <MenuDivider/>
+        
         {#if isOpen}
+        <MenuDivider/>
         <MenuItem 
             icon={closeIcon}
             title="Close"
             onClick={() => dispatch('menuItemClicked', {action: 'close'})}
         />
-        {:else} 
+        {:else if !window.isRemote} 
+        <MenuDivider/>
         <MenuItem
             icon={deleteIcon}
             title="Delete"

@@ -1,6 +1,18 @@
+import { get } from "../../../sidepanel/src/utilities/chrome";
 import { config } from "./config";
 
 export class LLM {
+
+    constructor() {
+      this.load();
+    }
+
+    async load()  {
+      const settings = (await get('settings'))  ?? {};
+      this.apiKeys = settings.apiKeys ?? {};
+    }
+
+    
 
     async claudeChatCompletion({
         prompt, 
@@ -10,19 +22,17 @@ export class LLM {
         maxTokens = 500, 
         temp = 0.5
     }) {
+
         const apiUrl = 'https://api.anthropic.com/v1/messages';
     
-        if (messages == null && prompt == null) return;
+        if (messages == null && prompt == null || !this.apiKeys.anthropic) return;
         
         let body = '';
         try {
           body = JSON.stringify({
             'model': model, // You can choose a different model based on your needs
             'messages': prompt != null 
-              ? [{
-                  "role": "system",
-                  "content": systemPrompt ?? "You are a helpful assistant."
-                },
+              ? [
                 {
                   "role": "user",
                   "content": prompt
@@ -41,7 +51,7 @@ export class LLM {
             method: 'POST',
             headers: {
                 'content-type': 'application/json',
-                'x-api-key': `${config.claudeApiKey}`,
+                'x-api-key': `${this.apiKeys.anthropic}`,
                 'anthropic-version': '2023-06-01',
             },
             body: body,
@@ -51,14 +61,16 @@ export class LLM {
     
         if (response.ok) {
           var data = await response.json();
-          const generatedText = data['choices'][0]['message']['content'];
+          console.log('got ok response');
+          console.log(data);
+          const generatedText = data['content'][0]['text'];
           // Further processing can be done here to clean and format the generated list
     
           return generatedText;
         } else {
           console.log(response.status);
           console.log(response.body);
-          console.log(response);
+          console.log(await response.json());
 
           console.log('sent body');
           console.log(body);

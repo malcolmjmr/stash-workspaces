@@ -46,9 +46,7 @@
         display: flex;
         flex-direction: column;
         width: calc(100% - 20px);
-        min-height: 30px;
         padding: 5px 10px;
-        overflow: hidden;
     }
 
     .expanded {

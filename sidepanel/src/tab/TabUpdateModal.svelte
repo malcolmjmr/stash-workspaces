@@ -14,13 +14,14 @@
 
     import ModalContainer from "../components/ModalContainer.svelte";
     import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
-    import { getActiveTab, getHistory, getTabFavIconUrl, getTabInfo } from "../utilities/chrome";
+    import { createAdjacentTab, getActiveTab, getHistory, getTabFavIconUrl, getTabInfo } from "../utilities/chrome";
     import Tab from "./Tab.svelte";
     import TabIcon from "./TabIcon.svelte";
     import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
     import ObjectContainer from "../object/ObjectContainer.svelte";
     import BookmarkBar from "../components/BookmarkBar.svelte";
     import { userData } from "../stores";
+  import { LLM } from "../../../desktop/src/services/llm";
     
 
         
@@ -58,6 +59,8 @@
             setFocus();
         }
     }
+
+    let llm;
     const load = async () => {
 
         
@@ -78,6 +81,7 @@
         await loadHistoryData();
         await updateSearchResults();
 
+        llm = new LLM();
 
         
         loaded = true;
@@ -195,7 +199,7 @@
         const permissions = await chrome.permissions.getAll();
 
 
-        history = await getHistory({ maxResults: 100 });
+        history = await getHistory({ maxResults: 50000 });
         visibleHistory = history;
 
 
@@ -385,33 +389,68 @@
 
     const submit = () => {
         let url = '';
-            inputText = inputText.trim();
-            const isUrl = inputText.includes('.') && !inputText.includes(' ');
+        inputText = inputText.trim();
+        const isUrl = inputText.includes('.') && !inputText.includes(' ');
 
-            if (isUrl) {
-                const missingProtocol = !inputText.includes('http://') && !inputText.includes('https://');
-                if (missingProtocol) url = 'https://' + inputText;
-                else url = inputText;
+        if (isUrl) {
+            const missingProtocol = !inputText.includes('http://') && !inputText.includes('https://');
+            if (missingProtocol) url = 'https://' + inputText;
+            else url = inputText;
 
-            } else {
-
-                //showResource = true; 
-                
-                if (searchDomain) {
-                    url = searchDomain.searchTemplate.replace(searchPlaceholder, encodeURIComponent(inputText))
-                } else {
-                    url = 'https://www.google.com/search?q=' + encodeURIComponent(inputText);
-                }
-                    
-                
-            }
-            
             const tabData = { url, active: true };
             loadTab(tabData);
-            
 
-            // todo check that url is loaded 
-            dispatch('exit');
+        } else {
+
+            routeQuery(inputText);
+                
+            
+        }
+        
+       
+        
+
+        // todo check that url is loaded 
+        dispatch('exit');
+    };
+
+    const routeQuery = async (query) => {
+
+        // past a certain lenght route to exa
+        const start = Date.now();
+        let prompt = ` 
+        Given user input from the browser omnibox, if input is a specific website name, provide direct URL (e.g., "twitter" → "https://twitter.com"). If input query suggests seeking deep understanding (e.g., "explain", "how does", "why is"), flag with "prompt". If query appears to be a task (e.g., starts with action verbs, includes time-related words), flag with "task". If input is a request from the user to create a resource flag with "create". Otherwise, analyze the query to determine the most appropriate search engine type (general or vertical), select a specific search engine based on the query's topic or intent, and construct a search URL for the chosen engine, incorporating the user's query. Output JSON:
+        {
+            "type": "type of query", // website, prompt, search, task or create
+            "subType": "subtype of query", // shopping, books, food, travel, etc
+            "url": "Direct or search URL", // omit if type is task, prompt, or create
+        }
+
+        Exclude explanations.
+        
+        Input:
+        ${query}
+        Output:`;
+
+
+
+        console.log('routing query');
+        const response = JSON.parse(await llm.claudeChatCompletion({ prompt, model: 'claude-3-5-sonnet-20240620' }));
+
+        const end = Date.now(); 
+        console.log('got response in ' + (end - start) + ' milliseconds.');
+        console.log(response);
+
+
+        if (response.url) {
+            createAdjacentTab({ url: response.url });
+        } else if (response.type == 'llm') {
+
+        } else if (response.type == 'task') {
+
+        } else if (response.type == 'create') {
+
+        }
     };
 
     const loadTab = async (tabData) => {
@@ -618,7 +657,6 @@
     <ObjectContainer />
 </ModalContainer>
 {/if}
-{#if isPopup}
 <div class="container">
         <div class="url-field">
             <textarea
@@ -730,15 +768,7 @@
 
         </div>
         {/if}
-    </div>
-
-{:else}
-
-<div class="container">
-    <iframe title="" src={chrome.runtime.getURL('/omnibox/index.html')}/>
-
-</div>
-{/if}  
+    </div> 
 
 <style>
     .container {

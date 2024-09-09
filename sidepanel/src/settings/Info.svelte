@@ -27,15 +27,15 @@
 {#if loaded}
 <SectionContainer title="Info" canCollapse={false}>
     <div class="container" slot="main">
-        <div class="name">
-            {manifest.name}
+        <div class="details">
+            <div class="name">
+                {manifest.name}
+            </div>
+            <div class="version">
+               Version: {manifest.version}
+            </div>
         </div>
-        <div class="description">
-            {manifest.description}
-        </div>
-        <div class="version">
-           Version: {manifest.version}
-        </div>
+        
         <MenuItem 
             title="Webstore Page"
             icon="https://www.google.com/images/icons/product/chrome_web_store-32.png",
@@ -52,8 +52,14 @@
         font-size: 14px;
     }
 
-    .container div {
+    .container .details div {
         padding: 2px 5px;
+    }
+
+    .details {
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
     }
 
     .name {
