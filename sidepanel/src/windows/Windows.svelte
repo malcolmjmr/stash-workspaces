@@ -83,9 +83,9 @@
                 name: d.deviceName,
                 windows: []
             };
-            for (const session of d.sessions) {
+            for (let session of d.sessions) {
+                session.window.isRemote = true;
                 device.windows.push(session.window);
-                console.log(session.window);
             }
             tempDevices.push(device);
         }

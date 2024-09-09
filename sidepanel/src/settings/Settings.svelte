@@ -40,6 +40,7 @@
     import Info from "./Info.svelte";
     import Feedback from "./Feedback.svelte";
     import { get } from "../utilities/chrome";
+  import ApiKeys from "./ApiKeys.svelte";
 
     let settings;
 
@@ -52,12 +53,14 @@
 
         settings = (await get('settings')) ?? {};
         
-        
+         console.log('loading settings');
+         console.log(settings);
 
 
         loaded = true;
     };
 
+    
 
 
 </script>
@@ -71,6 +74,7 @@
     <div class="sections">
         <Info/>
         <Feedback/>
+        <ApiKeys bind:settings />
     </div>
 </div>
 {/if}

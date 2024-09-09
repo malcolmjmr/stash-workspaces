@@ -31,6 +31,7 @@
     export let isCurrentWindow = false;
     export let isOpen = true;
 
+
     let activeTab;
     let activeGroup;
 
