@@ -1,11 +1,5 @@
-<div class="divider">
+<script>
+  import Divider from "./Divider.svelte";
 
-</div>
-
-<style>
-    .divider {
-        width: 100%;
-        min-height: 1px;
-        background-color: #444;
-    }
-</style>
+</script>
+<Divider/>

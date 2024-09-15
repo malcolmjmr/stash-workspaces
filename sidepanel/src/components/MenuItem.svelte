@@ -4,7 +4,7 @@
   import toggleOffIcon from "../icons/toggle-off.png";
   import toggleOnIcon from "../icons/toggle-on.png";
   import { set, get } from "../utilities/chrome";
-  import { quickActions } from "../stores";
+  import { _settings, quickActions } from "../stores";
 
     export let title = null;
     export let action;
@@ -28,7 +28,7 @@
             icon = typeof action.icon == 'string' ? action.icon : action.icon(tab);
         }
 
-        
+
 
         if (!onClick && action?.onClick)  onClick = () => {
             const result = action.onClick(tab);
@@ -69,7 +69,11 @@
 </script>
 
 {#if loaded}
-<div class="menu-item"  on:mouseenter={() => isInFocus = true} on:mouseleave={() => isInFocus = false}>
+<div 
+    class="menu-item"  
+    on:mouseenter={() => isInFocus = true} on:mouseleave={() => isInFocus = false}
+    style="background-color: {isInFocus ? $_settings?.appearance?.hoverColor ?? '#444' : 'transparent'}"
+>
     <div class="title" on:mousedown={onClick} on:dblclick={onDoubleClick}>
         {#if icon}
         <img src={icon} class="icon" alt={title}/>

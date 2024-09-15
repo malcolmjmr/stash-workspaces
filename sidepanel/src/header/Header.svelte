@@ -10,6 +10,7 @@
     import SearchBox from "../components/SearchBox.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
   import Settings from "../settings/Settings.svelte";
+  import { _settings } from "../stores";
 
     export let user;
     export let view;
@@ -34,7 +35,7 @@
     }
 </script>
 
-<div class="header">
+<div class="header" style='color: {$_settings?.appearance?.primaryTextColor ?? 'white'}'>
     <div class="container">
         <div class="search-box-margin">
             <SearchBox bind:searchText placeholderText='Search'/>

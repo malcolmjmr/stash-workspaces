@@ -5,7 +5,7 @@ export function createResource({url , favIconUrl, title}) {
     return {
         id: createId(),
         created: now,
-        update: now,
+        updated: now,
         url,
         title,
         favIconUrl,

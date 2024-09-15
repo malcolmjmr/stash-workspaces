@@ -42,7 +42,7 @@
     import BookmarkTree from "./BookmarkTree.svelte";
     import GroupLabel from "../group/GroupLabel.svelte";
     import { colorMap } from "../utilities/colors";
-    import { _authLoaded, _groups, _openWorkspaces, _tabs, _workspacesLoaded, allResources } from "../stores";
+    import { _authLoaded, _groups, _lastRemovedTab, _openWorkspaces, _settings, _tabs, _workspacesLoaded, allResources } from "../stores";
     import { slide } from "svelte/transition";
     import NewFolderModal from "./NewFolderModal.svelte";
     import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
@@ -50,6 +50,7 @@
   import Bookmark from "../components/Bookmark.svelte";
   import CreateFolderButton from "../components/CreateFolderButton.svelte";
   import CreateGroup from "../group/CreateGroup.svelte";
+  import Divider from "../components/Divider.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -134,7 +135,10 @@
     };
 
     const onCloseClicked = () => {
-        chrome.tabs.remove(tabs.map((t) => t.id));
+        const tabIds = tabs.map((t) => t.id);
+        _lastRemovedTab.set(tabIds);
+        chrome.tabs.remove(tabIds);
+
     };
 
     const toggleCollapse = () => {
@@ -302,7 +306,7 @@
     */
 
     const getWorkspace = async () => {
-        group = groups[groupId];
+        group = $_groups[groupId];
         checkIfGroupTitleNeedsEditing();
         const workspaceId = group?.workspaceId;
         if (workspaceId) {
@@ -334,6 +338,8 @@
 
     let cachedData;
     const load = async (getCache = true) => {
+
+        console.log('loading workspace widget');
         //group = $_groups[groupId];
         loaded = true;
         await getWorkspace();
@@ -828,6 +834,12 @@
 {#if loaded}
 <div 
     class="workspace{isDraggedOver ? ' dragged-over' : ''}{group.collapsed ? ' collapsed': ''}"
+    style="background-color: { isInfocus && group.collapsed
+        ? $_settings?.appearance?.hoverColor ?? '#444'
+        : group.collapsed
+            ? $_settings?.appearance?.backgroundColor ?? 'black' 
+            : $_settings?.appearance?.primaryColor ?? '#333'}; max-height: {$_settings?.tabGroups?.maxHeight ?? 1000}px;
+    "
 
 >
 
@@ -874,7 +886,8 @@
         on:contextmenu={onContextMenu}
         draggable={isEditingTitle ? 'false' : 'true'}
         bind:this={el}
-        style="color: {colorMap[group.color]};"
+        
+        
     >
         {#if isEditingTitle}
             <input
@@ -888,7 +901,7 @@
                 bind:this={inputElement}
             />
         {:else}
-            <div class="title"on:mousedown={toggleCollapse} >
+            <div class="title"on:mousedown={toggleCollapse} style="color: {$_settings?.appearance?.textColor};">
                 <WorkspaceIcon color={group.color}/>
                 <span class="text" >
                     {group?.title && group.title != '' ? group.title :  "Untitled"}
@@ -921,7 +934,7 @@
     {/if}
 
     {#if !group.collapsed}
-        <div class="divider"></div>
+        <Divider />
         {#if sections.length > 1}
             <div class="section-options">
                 
@@ -930,6 +943,7 @@
                     {#each sections as section (section.name)}
                         <div 
                             class="section-option{visibleSection == section.name ? ' selected': ''}"  
+                            style={visibleSection == section.name ? "border-color: "+colorMap[group.color] : ""}
                             
                             on:mousedown={() => updateVisibleItems(section.name)}
                         >
@@ -940,7 +954,7 @@
                 
             </div>
         {/if}
-
+        <Divider />
         
 
         <div class="section-items">
@@ -1187,8 +1201,7 @@
 
     
     .section-options {
-        padding: 6px 0px;
-        border-bottom: 1px solid #444444;
+        
     }
 
     .section-options .container {
@@ -1216,10 +1229,11 @@
         font-size: 14px;
         font-weight: 300;
         padding: 2px 5px;
-        border-radius: 8px;
-        background-color: #444;
         margin-right: 8px;
-        opacity: 0.7;
+        opacity: 0.5;
+        min-height: 24px;
+        display: flex;
+        align-items: center;
     }
 
 
@@ -1230,7 +1244,8 @@
     .section-option.selected {
         font-weight: 400;
         opacity: 1;
-        background-color: #555555;
+        border-bottom: 2px solid;
+        
     }
 
     .section-items {
@@ -1257,12 +1272,6 @@
 
     .bookmarks-container {
        
-    }
-
-    .divider {
-        width: 100%;
-        height: 1px;
-        background-color: #444444;
     }
 
 

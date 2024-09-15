@@ -16,8 +16,8 @@ export const allResources = writable({});
 export const _favorites = writable([]);
 export const _draggedTab = writable(null);
 export const _draggedOverTab = writable(null);
-
-export const settings = writable({});
+export const _lastRemovedTab = writable(null);
+export const _settings = writable({});
 
 export const userData = writable(null);
 

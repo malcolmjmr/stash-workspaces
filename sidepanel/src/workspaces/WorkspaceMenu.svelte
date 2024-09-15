@@ -16,6 +16,8 @@
   import MenuDivider from "../components/MenuDivider.svelte";
   import ModalContainer from "../components/ModalContainer.svelte";
   import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
+  import { _settings } from "../stores";
+  import Divider from "../components/Divider.svelte";
 
 
     export let group = null;
@@ -202,6 +204,7 @@
 {#if loaded}
 <div
     class="workspace-menu"
+    style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};"
 >
     <div class="container">
         <div class="title">
@@ -222,7 +225,7 @@
     </div>
     
 
-    <div class="divider"></div>
+    <Divider />
 
     <!-- <div class="action" on:mousedown={toggleFavorite}> {workspace.favorite ? 'Remove from Favorites' : 'Add to Favorites'}</div> -->
     {#if !isOpen}
@@ -263,7 +266,7 @@
 
     
     {#if !isOpen}
-        <div class="divider"/>
+        <Divider />
         {#if !workspace?.deleted}
             {#if workspace.archived}
                 <MenuItem 
@@ -380,11 +383,7 @@
         width: 16px;
     }
 
-    .divider {
-        height: 1px;
-        width: 100%;
-        background-color: #444444;
-    }
+
 
     .color-selection-container {
         margin-top: 5px;

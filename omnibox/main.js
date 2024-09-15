@@ -1,4 +1,4 @@
-import App from "./Omnibox.svelte";
+import App from "./SpeechRecogntion.svelte";
 
 const app = new App({
     target: document.body,

@@ -3,6 +3,7 @@
   import TabUpdateModal from "./tab/TabUpdateModal.svelte";
   import ModalContainer from "./components/ModalContainer.svelte";
   import { getActiveTab } from "./utilities/chrome";
+  import { _lastRemovedTab } from "./stores";
 
 
     export let selectedTabs;
@@ -42,7 +43,9 @@
             showOmnibox = true;
             //tabModalInputText = e.key;
         } else if (e.key == 'w' && e.metaKey) {
-            chrome.tabs.remove(selectedTabs.map((t) => t.id));
+            const tabIds = selectedTabs.map((t) => t.id);
+            _lastRemovedTab.set(tabIds);
+            chrome.tabs.remove(tabIds);
             selectedTabs = [];
         } else if (e.key == 'b') {
             
@@ -59,39 +62,7 @@
         
     };
 
-    async function launchPiP(tabId) {
-        // First, check if we have the scripting permission
-        const permissions = await chrome.permissions.getAll();
-        if (!permissions.permissions.includes('scripting')) {
-            // If we don't have the permission, request it
-            const granted = await chrome.permissions.request({
-            permissions: ['scripting']
-            });
-            
-            if (!granted) {
-            console.log('Scripting permission was denied');
-            // Inform the user that the feature is unavailable without this permission
-            return;
-            }
-        }
-
-        // If we have the permission (either already or just granted), proceed with PiP
-        chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            function: () => {
-            const video = document.querySelector('video');
-            if (video) {
-                if (document.pictureInPictureElement) {
-                document.exitPictureInPicture();
-                } else if (document.pictureInPictureEnabled) {
-                video.requestPictureInPicture();
-                }
-            } else {
-                console.log('No video element found on this page');
-            }
-            }
-        });
-    }
+ 
     
 </script>
 

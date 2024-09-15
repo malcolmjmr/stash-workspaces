@@ -9,12 +9,13 @@
     import folderIcon from "../icons/folder-filled.svg";
     import trashIcon from "../icons/delete.png";
     import { getActiveTab, getTabFavIconUrl, tryToGetBookmark } from "../utilities/chrome";
-    import { allWorkspaces, userData } from "../stores";
+    import { _settings, allWorkspaces, userData } from "../stores";
     import { deleteDoc, doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import { createResource } from "../utilities/firebase";
     import ModalContainer from "../components/ModalContainer.svelte";
     import DeleteDialogue from "./DeleteDialogue.svelte";
+  import Divider from "../components/Divider.svelte";
 
 
     export let db = null;
@@ -312,7 +313,7 @@
     </ModalContainer>
 {/if}
 
-<div class="bookmark-details" >
+<div class="bookmark-details"  style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
     
     {#if loaded}
     {#if showLocationSelection}
@@ -353,7 +354,7 @@
                 </div>
             </div>
             {#if url}
-            <div class="divider"/>
+            <Divider thickness={2}/>
 
             <div class="resource-url">
                 <img src={linkIcon} alt="" />
@@ -502,13 +503,6 @@
         width: 100%;
 
         
-    }
-
-    .divider {
-        background-color: #555555;
-        height: 2px;
-        width: 100%;
-        margin: 5px 0px;
     }
 
     .resource-url {

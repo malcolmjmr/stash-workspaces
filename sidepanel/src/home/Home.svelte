@@ -9,7 +9,8 @@
     import trashIcon from "../icons/delete.png";
     import archiveIcon from "../icons/archive.png";
     import GroupedWorkspaceSections from "../components/GroupedWorkspaceSections.svelte";
-  import { _groups, lastWorkspaceUpdate } from "../stores";
+  import { _groups, _settings, lastWorkspaceUpdate } from "../stores";
+  import Divider from "../components/Divider.svelte";
 
     export let db = null;
     export let user = null;
@@ -128,7 +129,7 @@
                         onClick={() => onOpenWorkspaceClicked(workspace)}
                     />
                     {#if i < openSpaces.length - 1}
-                        <div class="divider"/>
+                        <Divider invisible={true} thickness={0.5}/>
                     {/if}
                 {/each}
             </div>
@@ -145,7 +146,7 @@
                 {#each favoriteSpaces as workspace, i (workspace.id)}
                     <WorkspaceListItem {db} {user} {workspace} on:dataUpdated/>
                     {#if i < favoriteSpaces.length - 1}
-                        <div class="divider"/>
+                        <Divider invisible={true} thickness={0.5} />
                     {/if}
                     
                 {/each}
@@ -164,7 +165,7 @@
         />
 
         {#if archivedSpaces.length > 0 || deletedSpaces.length > 0}
-            <div class="bottom-section">
+            <div class="bottom-section" style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
                 {#if archivedSpaces.length > 0}
                 <div class="archive button" on:mousedown={() => view = Views.archive}>
                     <div class="title">
@@ -178,7 +179,7 @@
                 {/if}
                 {#if deletedSpaces.length > 0}
                 {#if archivedSpaces.length > 0}
-                <div class="divider"></div>
+                    <Divider invisible={true} thickness={0.5} />
                 {/if}
                 <div class="trash button" on:mousedown={() => view = Views.trash}>
                     <div class="title">
@@ -230,10 +231,6 @@
         
     }
 
-    .divider {
-        height: 0.5px;
-        background-color: #555555;
-    }
 
     .bottom-section {
         display: flex;
@@ -246,7 +243,6 @@
     .bottom-section .button {
         display: flex;
         flex-direction: row;
-        background-color: #333333;
         padding: 8px;
         align-items: center;
         justify-content: space-between; 

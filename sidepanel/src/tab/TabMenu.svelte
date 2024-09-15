@@ -34,6 +34,7 @@
     import removeDomainIcon from "../icons/domain-remove.png";
     import closeTabIcon from "../icons/tab-close.png";
   import MenuDivider from "../components/MenuDivider.svelte";
+  import { _settings } from "../stores";
 
 
 
@@ -258,7 +259,7 @@
 </script>
 
 {#if loaded}
-<div class="context-menu">
+<div class="context-menu" style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
     <!--
     {#if tab.groupId > -1}
         <MenuItem title="Save Tab to Group" />
@@ -466,12 +467,6 @@
         flex-direction: column;
 
         padding: 10px;
-    }
-
-    .divider {
-        min-height: 2px;
-        width: 100%;
-        background-color: #444;
     }
 
     .title {

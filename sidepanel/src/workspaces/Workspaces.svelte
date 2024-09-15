@@ -193,7 +193,7 @@
         </ModalContainer>
     {/if}
     <div class="workspaces">
-        <div class="container">
+        <div class="container" >
             
             {#if workspaces.length > 0}
                 <!--

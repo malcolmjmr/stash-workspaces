@@ -26,6 +26,7 @@
     import BookmarkTree from "./BookmarkTree.svelte";
   import { colorMap } from "../utilities/colors";
   import Bookmark from "../components/Bookmark.svelte";
+  import { _settings } from "../stores";
 
   let dispatch = createEventDispatcher();
 
@@ -243,7 +244,11 @@
 {/if}
 
 {#if loaded}
-<div class="workspace-preview">
+<div 
+    class="workspace-preview"
+    style="background-color: {$_settings?.appearance?.primaryColor ?? '#333333'};"
+
+>
     <div class="header">
         <div class="title">
             <WorkspaceFolder size={28} color={workspace.color} />

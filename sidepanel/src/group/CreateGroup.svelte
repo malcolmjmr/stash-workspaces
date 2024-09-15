@@ -9,7 +9,7 @@
     import WorkspaceFolder from "../components/WorkspaceIcon.svelte";
     import createFolderIcon from "../icons/new-folder.png";
   import { Views } from "../view";
-  import { allWorkspaces, userData, } from "../stores";
+  import { _settings, allWorkspaces, userData, } from "../stores";
   import Bookmark from "../components/Bookmark.svelte";
   import FolderListItem from "../components/FolderListItem.svelte";
   import { createAdjacentTab, createContext, getExtensionFolder, hiddenFolderTitles, openWorkspace, requestBookmarkPermssion, saveContext, tryToGetTabGroup } from "../utilities/chrome";
@@ -321,7 +321,7 @@
 </script>
 
 
-    <div class="main-container" >
+    <div class="main-container" style="color: {$_settings?.appearance?.primaryTextColor ?? 'white'}; background-color: {$_settings?.appearance.primaryColor};" >
         <div class="search-container">
             <div class="search" >
                 <input
@@ -585,11 +585,6 @@
         height: 20px;
     }
 
-    .divider {
-        margin-top: 10px;
-        height: 1px;
-        background-color: #777777;
-    }
 
 
     .bookmark-permission {

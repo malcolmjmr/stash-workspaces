@@ -13,10 +13,11 @@
 
      } from "./utilities/chrome.js";
     import { Views } from "./view.js";
-    import { _activeTab, _groups, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
+    import { _activeTab, _groups, _lastRemovedTab, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
   import { collection, onSnapshot } from "firebase/firestore";
   import { StorePaths } from "./utilities/storepaths.js";
+  import { tryToOpenTabInPiP } from "./tab/helpers.js";
 
 
     let settings;
@@ -98,10 +99,19 @@
 
     const loadTabsGroupsAndWindows = async () => {
         let tempTabs = await chrome.tabs.query({});
+        let tabMap = {};
+        for (const tab of tabs) {
+            tabMap[tab.id] = tab;
+        }
         
 
         for (let i = 0; i < tempTabs.length; i++) {
-            tempTabs[i] = await getTabsBookmarks(tempTabs[i]);
+            let updatedTab = tempTabs[i];
+            let tab = tabMap[updatedTab.id];
+            if (tab) {
+                updatedTab = {...tab, ...updatedTab};
+            }
+            tempTabs[i] = await getTabsBookmarks(updatedTab);
         }
 
         windows = await chrome.windows.getAll();
@@ -148,8 +158,8 @@
                 // console.log(group);
             }
         }
-        groups = tempGroups;
-        openGroups.set(groups); 
+        
+        
         let tempWindows = [];
         for (let window of windows) {
             window = updateWindowData(window);
@@ -167,12 +177,14 @@
 
         if (needToUpdateOpenGroups) {
             await set({ openGroups: groupMap });
+            openGroups.set(groupMap); 
         }
 
         if (updatedWorkspaces) {
             workspaces = workspaces;
         }
 
+        groups = tempGroups;
         tabs = tempTabs;
         _tabs.set(tabs);
         _groups.set(groups);
@@ -211,7 +223,7 @@
         chrome.tabs.onMoved.addListener(onTabMoved);
         chrome.tabs.onRemoved.addListener(onTabRemoved);
         // chrome.tabs.onAttached.addListener(onTabAttached);
-        // chrome.tabs.onDetached.addListener(onTabDetached);
+        chrome.tabs.onDetached.addListener(onTabDetached);
         chrome.tabGroups.onCreated.addListener(onTabGroupCreated);
         chrome.tabGroups.onUpdated.addListener(onTabGroupUpdated);
         chrome.tabGroups.onRemoved.addListener(onTabGroupRemoved);
@@ -297,18 +309,19 @@
     const onTabDetached = (tabId, detachInfo) => {
         let tabIndex = tabs.findIndex((t) => t.id == tabId);
         console.log(' tab detached');
-        if (tabIndex > -1) {
-            console.log('found tab');
-            let tab = tabs[tabIndex];
-            console.log(tab);
-            tab.discarded = true;
-            tab.status = 'unloaded';
-            tab.updated = Date.now();
-            tabs[tabIndex] = tab;
-            lastUpdatedTab = tab;
-            _lastUpdatedTab.set(lastUpdatedTab);
-            //lastUpdatedWindow = tab.windowId;
-        }
+        console.log(tabIndex > -1 ? tabs[tabIndex] : null);
+        // if (tabIndex > -1) {
+        //     console.log('found tab');
+        //     let tab = tabs[tabIndex];
+        //     console.log(tab);
+        //     tab.discarded = true;
+        //     tab.status = 'unloaded';
+        //     tab.updated = Date.now();
+        //     tabs[tabIndex] = tab;
+        //     lastUpdatedTab = tab;
+        //     _lastUpdatedTab.set(lastUpdatedTab);
+        //     //lastUpdatedWindow = tab.windowId;
+        // }
     };
 
     const onTabActivated = async ({ tabId, windowId }) => {
@@ -318,8 +331,13 @@
         const newActiveTabIndex = tabs.findIndex((t) => t.id == tabId);
         if (newActiveTabIndex > -1) {
             if (oldActiveTabIndex > -1) {
-                tabs[oldActiveTabIndex].active = false;
-                lastUpdatedTab = tabs[oldActiveTabIndex];
+                let oldTab = tabs[oldActiveTabIndex];
+                oldTab.active = false;
+                if (oldTab.audible) oldTab = await tryToOpenTabInPiP(oldTab);
+
+                tabs[oldActiveTabIndex] = oldTab;
+                
+                //lastUpdatedTab = tabs[oldActiveTabIndex];
                 
             }
             tabs[newActiveTabIndex].active = true;
@@ -341,16 +359,26 @@
     };
 
     const onTabCreated = async (tab) => {
+        tab.openedInBackground = tab.active == false;
         tab = await getTabsBookmarks(tab);
         tab.updated = Date.now();
         tab.created = Date.now();
         lastUpdatedTab = tab;
         _lastUpdatedTab.set(lastUpdatedTab);
         //tabs = [...tabs, tab];
-        updateTabsWithinWindow(tab.windowId, tab.id);
+        updateTabsWithinWindow(tab.windowId, tab);
     };
 
     const onTabUpdated = async (tabId, updates, tab) => {
+
+        const tabWasRemoved = (
+            (typeof $_lastRemovedTab == 'object' && $_lastRemovedTab?.includes(tabId))
+            || ($_lastRemovedTab == tabId)
+        );
+
+        if (tabWasRemoved) {
+            return;
+        }
 
         let tabIndex = tabs.findIndex((t) => t.id == tab.id);
 
@@ -361,12 +389,12 @@
 
         if (tabIndex > -1) {
 
-            tab = { ...tabs[tabIndex], ...getTabInfo(tab, true) };
-            tab.updated = Date.now();
-            tab = await getTabsBookmarks(tab);
-            tabs[tabIndex] = tab;
+            let tempTab = { ...tabs[tabIndex], ...getTabInfo(tab, true) };
+            tempTab.updated = Date.now();
+            tempTab = await getTabsBookmarks(tab);
+            tabs[tabIndex] = tempTab;
             tabs = tabs;
-            lastUpdatedTab = tab;
+            lastUpdatedTab = tempTab;
             _lastUpdatedTab.set(lastUpdatedTab);
             //lastUpdatedWindow = tab.windowId;
         }
@@ -390,7 +418,7 @@
 
     const onTabMoved = async (tabId, { windowId, toIndex, fromIndex }) => {
         const tabIndex = tabs.findIndex((t) => t.id == tabId);
-        const tab = await chrome.tabs.get(tabId);
+        let tab = await chrome.tabs.get(tabId);
         if (tabIndex == -1) {
             loadTabsGroupsAndWindows();
         }
@@ -404,13 +432,16 @@
         if (!window) {
             windows = [...windows, await chrome.windows.get(windowId)];
         }
-        updateTabsWithinWindow(tab.windowId, tabId);
+        updateTabsWithinWindow(tab.windowId, tab);
     };
 
     const onTabRemoved = (tabId) => {
         
         //tabs = tabs.filter((t) => t.id != tabId);
+
         loadTabsGroupsAndWindows();
+
+        
         // const index = tabs.findIndex((t) => t.id == tabId);
         // if (index > -1) {
         //     const tab = { ...tabs[index] };
@@ -420,19 +451,22 @@
         // }
     };
 
-    const updateTabsWithinWindow = async (windowId, updatedTabId) => {
+    const updateTabsWithinWindow = async (windowId, updatedTab) => {
         let updatedTabs = await chrome.tabs.query({ windowId });
 
-        for (const tab of updatedTabs) {
+        for (let tab of updatedTabs) {
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) {
                 let storedTab = tabs[index];
-                if (storedTab.id == updatedTabId) {
+                if (storedTab.id == updatedTab.id) {
                     storedTab.updated = Date.now();
                     _lastUpdatedTab.set(storedTab);
                 }
                 tabs[index] = { ...storedTab, ...tab };
             } else {
+                if (tab.id == updatedTab.id) {
+                    tab = {...updatedTab.id, ...tab }
+                }
                 tabs.push(tab);
             }
         }

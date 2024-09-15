@@ -21,7 +21,7 @@ import discardIcon from "../icons/sleep.png";
 import { createEventDispatcher } from "svelte";
 import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
 import { getContextData, getContextFromGroupId, getWorkspaceQueueFolder, saveContext, saveContextData, saveTabToFolder } from "../utilities/chrome";
-import { _favorites } from "../stores";
+import { _favorites, _lastUpdatedTab } from "../stores";
 import { createResource } from "../utilities/firebase";
 
 
@@ -52,17 +52,20 @@ export const actions = {
         title: 'Sleep',
         id: 'discard',
         icon: discardIcon,
-        onClick: (tab) => {
+        onClick: (tab) => { 
+            tab.status = 'unloaded';
+            tab.discarded = true;
+            _lastUpdatedTab.set(tab);
             chrome.tabs.discard(tab.id);
             return 'exit'
         }
     },
-    createAction: {
-        title: 'Create Action',
-        id: 'createAction',
+    createPrompt: {
+        title: 'Create Prompt',
+        id: 'createPrompt',
         icon: createIcon,
         onClick: (tab, workspace, dispatch) => {
-            dispatch('createAction', { tab, workspace });
+            dispatch('createPrompt', { tab, workspace });
         }
     },
     duplicate: {

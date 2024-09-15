@@ -102,11 +102,17 @@
         const activeTab = await getActiveTab();
         let url = domain.url;
 
-        const tab = await chrome.tabs.create({ url, index:  activeTab.index + 1 });
         if (activeTab.groupId > -1) {
-            chrome.tabs.group({ groupId: activeTab.groupId, tabIds: tab.id });
+            const tabGroup = await chrome.tabGroups.get(activeTab.groupId);
+            if (tabGroup.collapsed) {
+                await chrome.tabs.create({ url });
+            } else {
+                const tab = await chrome.tabs.create({ url, index:  activeTab.index + 1 });
+                await chrome.tabs.group({ groupId: activeTab.groupId, tabIds: tab.id });
+            }
+        } else {
+            const tab = await chrome.tabs.create({ url, index:  activeTab.index + 1 });
         }
-
 
     };
 

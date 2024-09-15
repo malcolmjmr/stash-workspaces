@@ -2,6 +2,7 @@
     import { createEventDispatcher } from "svelte";
     import selectIcon from "../icons/checked-box.png";
     import unselectIcon from "../icons/remove-selection.png";
+  import { _settings } from "../stores";
 
     export let tabs;
     export let selectedTabs;
@@ -25,7 +26,7 @@
     }
 </script>
 
-<div class="selected">
+<div class="selected" style='color: {$_settings?.appearance?.primaryTextColor ?? 'white'}'>
     <div class="select-all end">
         <img 
             alt="Select All" 

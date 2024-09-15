@@ -9,7 +9,7 @@
     import moreIcon from "../icons/more-vert.png";
     import newWindowIcon from "../icons/new-window.png";
     import incognitoIcon from "../icons/visibility-off.png";
-    import micIcon from "../icons/mic.png";
+    
     
 
     import ModalContainer from "../components/ModalContainer.svelte";
@@ -20,8 +20,9 @@
     import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
     import ObjectContainer from "../object/ObjectContainer.svelte";
     import BookmarkBar from "../components/BookmarkBar.svelte";
-    import { userData } from "../stores";
+    import { _settings, userData } from "../stores";
   import { LLM } from "../../../desktop/src/services/llm";
+  import Divider from "../components/Divider.svelte";
     
 
         
@@ -80,16 +81,12 @@
         await getDomains();
         await loadHistoryData();
         await updateSearchResults();
+        await loadSpeechRecognition();
 
         llm = new LLM();
 
         
         loaded = true;
-
-        startSpeechRecognition();
-
-        
-
 
     };
 
@@ -347,6 +344,21 @@
 
     };
 
+    let lastSpeechResult;
+    const loadSpeechRecognition = async () => {
+    
+        window.addEventListener('message', (event) => {
+            // Check origin for security
+            const extensionUrl = chrome.runtime.getURL('');
+            
+            if (!extensionUrl.includes(event.origin)) return;
+            if (event.data != lastSpeechResult) {
+                lastSpeechResult = event.data;
+                inputText = event.data;
+            }
+        });
+    };
+
     const onDomainClicked = async (e, domain) => {
 
         let url = domain.url;
@@ -402,9 +414,15 @@
 
         } else {
 
-            routeQuery(inputText);
-                
-            
+            if (searchDomain) {
+                url = searchDomain.searchTemplate.replace(searchPlaceholder, encodeURIComponent(inputText))
+            } else {
+                url = 'https://www.google.com/search?q=' + encodeURIComponent(inputText);
+            }
+                    
+            const tabData = { url, active: true };
+            loadTab(tabData);
+
         }
         
        
@@ -414,44 +432,7 @@
         dispatch('exit');
     };
 
-    const routeQuery = async (query) => {
-
-        // past a certain lenght route to exa
-        const start = Date.now();
-        let prompt = ` 
-        Given user input from the browser omnibox, if input is a specific website name, provide direct URL (e.g., "twitter" → "https://twitter.com"). If input query suggests seeking deep understanding (e.g., "explain", "how does", "why is"), flag with "prompt". If query appears to be a task (e.g., starts with action verbs, includes time-related words), flag with "task". If input is a request from the user to create a resource flag with "create". Otherwise, analyze the query to determine the most appropriate search engine type (general or vertical), select a specific search engine based on the query's topic or intent, and construct a search URL for the chosen engine, incorporating the user's query. Output JSON:
-        {
-            "type": "type of query", // website, prompt, search, task or create
-            "subType": "subtype of query", // shopping, books, food, travel, etc
-            "url": "Direct or search URL", // omit if type is task, prompt, or create
-        }
-
-        Exclude explanations.
-        
-        Input:
-        ${query}
-        Output:`;
-
-
-
-        console.log('routing query');
-        const response = JSON.parse(await llm.claudeChatCompletion({ prompt, model: 'claude-3-5-sonnet-20240620' }));
-
-        const end = Date.now(); 
-        console.log('got response in ' + (end - start) + ' milliseconds.');
-        console.log(response);
-
-
-        if (response.url) {
-            createAdjacentTab({ url: response.url });
-        } else if (response.type == 'llm') {
-
-        } else if (response.type == 'task') {
-
-        } else if (response.type == 'create') {
-
-        }
-    };
+    
 
     const loadTab = async (tabData) => {
         if (tab) {
@@ -607,42 +588,7 @@
 
         dispatch('exit');
     };
-    let isPopup = location.href.includes('omnibox');
 
-    let recognition;
-
-    const startSpeechRecognition = async () => {
-        console.log('trying to start speech recognition');
-
-        if (isPopup) {
-            console.log('webkitSpeechRecognition' in window)
-            try {
-
-                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-
-                recognition.onerror = (event) => {
-                    console.log(`Error occurred in recognition: ${event.error}`);
-                };
-
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    inputText += transcript;
-                    updateInputHeight();
-
-                };
-                recognition.start();
-
-            } catch (e) {
-                console.log('got error:');
-                console.log(e);
-            }
-
-        }
-       
-
-    };
-
-    
 
     
 
@@ -657,17 +603,22 @@
     <ObjectContainer />
 </ModalContainer>
 {/if}
-<div class="container">
+<div class="container" style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
         <div class="url-field">
             <textarea
+                style="color: {$_settings?.appearance?.primaryTextColor ?? 'white'}; height: {inputHeight};"
                 bind:value={inputText}
                 on:keydown={onKeyDownInUrlField}
-                placeholder={$userData ? "Enter address, search or prompt" : "Enter address or search"}
+                placeholder={$userData ? "Search or chat" : "Search"}
                 bind:this={inputElement}
                 on:input={updateInputHeight}
                 on:keypress={updateInputHeight}
-                style="height: {inputHeight};"
             />
+            {#if $userData && !inputText}
+            <div class="mic-container">
+                <iframe src={chrome.runtime.getURL('/omnibox/index.html')} alt=''/>
+            </div>
+            {/if}
         </div>
 
 
@@ -676,11 +627,11 @@
         
 
         {#if true}
-        <div class="divider"/>
-        <div class="create-toolbar">
+        <Divider invisible={true} thickness={0.5}/>
+        <div class="create-toolbar" style="background-color: {$_settings?.appearance?.secondaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
             <img class="new-window button" alt="More" src={newWindowIcon} on:mousedown={onCreateNewWindow}> 
             <img class="incognito button" alt="More" src={incognitoIcon} on:mousedown={onCreateIncognitoWindow}>
-            <img class="mic button" alt="More" src={micIcon} on:mousedown={startSpeechRecognition}>
+            
             
             {#each searchDomains as searchDomain}
                 <div class="domain-padding">
@@ -694,7 +645,7 @@
                 
             {/each}
         </div>
-        <div class="divider"/>
+        <Divider invisible={true} thickness-{0.5}/>
         <div class="results">
 
             {#if visibleSection == sections.bookmarks}
@@ -750,8 +701,8 @@
         </div>
         {/if}
 
-        <div class="divider"></div>
-        <div class="sections">
+        <Divider />
+        <div class="sections" style="background-color: {$_settings?.appearance?.secondaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
             {#each sectionData as section}
                 <div class="section{section.key == visibleSection ? ' selected' : ''}" on:mousedown={() => onSectionClicked(section)}>
                     <img src={section.icon} alt={section.title} />
@@ -763,7 +714,7 @@
         
 
         {#if suggestions.length > 0}
-        <div class="divider"/>
+        <Divider/>
         <div class="suggestions">
 
         </div>
@@ -790,6 +741,7 @@
 
     .url-field {
         padding: 8px 5px 5px 5px;
+        position: relative;
     }
 
     .url-field textarea {
@@ -812,6 +764,15 @@
     /* Hide scrollbar for Chrome, Safari and Opera */
     .url-field textarea::-webkit-scrollbar {
         display: none;
+    }
+
+    .mic-container {
+        height: 25px;
+        width: 25px;
+        position: absolute;
+        right: 5px;
+        top: 5px;
+        filter: invert(1);
     }
 
     .create-toolbar {
@@ -863,12 +824,6 @@
         scrollbar-width: none; /* Firefox */
     }
 
-
-    .divider {
-        min-height: 1px;
-        width: 100%;
-        background-color: #444;
-    }
 
     .domain-padding {
         padding: 5px 8px;

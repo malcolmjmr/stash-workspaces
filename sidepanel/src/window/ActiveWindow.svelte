@@ -10,7 +10,7 @@
     import SearchResults from "../search/SearchResults.svelte";
     import { horizontalSlide } from "../utilities/transitions";
   import { setDoc } from "firebase/firestore";
-  import { createId, getContextData, getTabInfo, saveContextData, get } from "../utilities/chrome";
+  import { createId, getContextData, getTabInfo, saveContextData, get, createAdjacentTab } from "../utilities/chrome";
   import { quickActions } from "../stores";
   import { actions } from "../tab/actions";
   import WorkspaceWidget from "../workspace/WorkspaceWidget.svelte";
@@ -83,6 +83,8 @@
             .map((id) => actions[id]));
 
     };
+
+    
 
     let lastGroupUpdate = Date.now();
     let collapsedGroups = [];
@@ -213,6 +215,26 @@
             
         } else if (groupId) {
             await chrome.tabGroups.move(parseInt(groupId), { index: -1 });
+        } else {
+            let droppedText = e.dataTransfer.getData('Text');;
+            if (!droppedText) {
+                const items = e.dataTransfer.items;
+                if (items) {
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].kind === 'string' && items[i].type.match('^text/plain')) {
+                        items[i].getAsString((text) => {
+                            droppedText = text;
+                        });
+                        break;
+                        }
+                    }
+                }
+            }
+            chrome.tabs.create({
+                active: false,
+                url: 'https://www.google.com/search?q='+encodeURIComponent(droppedText)
+            });
+            
         }
 
         if (needToRefreshTabs) {

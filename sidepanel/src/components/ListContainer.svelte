@@ -41,10 +41,4 @@
         
     }
 
-    .divider {
-        height: 0.5px;
-       
-        background-color: #555555;
-
-    }
 </style>

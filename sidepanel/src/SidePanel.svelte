@@ -20,12 +20,13 @@
   import HomeFooter from "./home/HomeFooter.svelte";
   import History from "./history/History.svelte";
   import Trash from "./trash/Trash.svelte";
-  import { allWorkspaces } from "./stores";
+  import { _settings, allWorkspaces } from "./stores";
   import ModalContainer from "./components/ModalContainer.svelte";
   import TabUpdateModal from "./tab/TabUpdateModal.svelte";
   import { getActiveTab, getContextFromGroupId } from "./utilities/chrome";
   import Archive from "./archive/Archive.svelte";
   import KeyboardListeners from "./KeyboardListeners.svelte";
+  import Divider from "./components/Divider.svelte";
 
     let dispatch = createEventDispatcher();
 
@@ -368,9 +369,10 @@
 
 {#if view}
 <KeyboardListeners bind:selectedTabs/>
-<main>
+<main style='background-color: {$_settings?.appearance?.backgroundColor ?? 'black'}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'}'>
     {#if true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
-        <div class="container header">
+        <div class="container header" style='background-color: {$_settings?.appearance?.headerColor ?? 'black'};'>
+            
             {#if selectedTabs.length > 0}
                 {#key lastSelectionUpdate}
                     <SelectionHeader bind:selectedTabs tabs={tabs?.filter((t) => t.windowId == currentWindowId)}/>
@@ -388,6 +390,7 @@
                 />
             {/if}
         </div>
+        <Divider />
     {/if}
 
     <div class="body" bind:this={body}>
@@ -521,7 +524,9 @@
     </div>
     
     {#if showFooter}
-        <div class="container footer">
+        <Divider />
+        <div class="container footer" style='background-color: {$_settings?.appearance?.headerColor ?? 'black'}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'}'>
+            
             {#if selectedTabs.length > 0}
                 <SelectionActions 
                     {view} 
@@ -569,7 +574,6 @@
 <style>
     main {
         position: relative;
-        background-color: black;
         width: 100%;
         height: 100%;
         color: white;
@@ -581,7 +585,6 @@
         width: 100%;
         z-index: 999;
         background-color: #111111;
-        border-bottom: 1px solid #555555;
         
     }
 
@@ -608,7 +611,7 @@
         z-index: 999;
         background-color: #111111;
         padding: 5px 0px;
-        border-top: 1px solid #555555;
+
     }
     .container {
         position: relative;

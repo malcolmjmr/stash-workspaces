@@ -22,7 +22,7 @@
     import TabMenu from "./TabMenu.svelte";
     import { colorMap } from "../utilities/colors";
     import { slide } from "svelte/transition";
-    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext, getActiveTab, getExtensionFolder, tryToGetWorkspaceFolder, set } from "../utilities/chrome";
+    import { getTabFavIconUrl, getPermissions, saveTabAsBookmark, tryToGetBookmark, tryToSaveBookmark, saveContext, getContext, getActiveTab, getExtensionFolder, tryToGetWorkspaceFolder, set, createAdjacentTab } from "../utilities/chrome";
 
     import soundIcon from "../icons/volume-up.png";
     import mutedIcon from "../icons/volume-off.png";
@@ -35,7 +35,7 @@
     import { doc, setDoc } from "firebase/firestore";
     import { StorePaths } from "../utilities/storepaths";
     import { createResource } from "../utilities/firebase";
-    import { _draggedOverTab, _draggedTab, _lastUpdatedTab, allWorkspaces, openGroups, quickActions } from "../stores";
+    import { _draggedOverTab, _draggedTab, _lastRemovedTab, _lastUpdatedTab, _settings, allWorkspaces, openGroups, quickActions } from "../stores";
     import { getWorkspaceData } from "../workspace/workspaceData";
     import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
 
@@ -49,6 +49,7 @@
   import { LLM } from "../../../desktop/src/services/llm";
   import CreateActionModal from "./CreateActionModal.svelte";
   import { expoOut } from "svelte/easing";
+  import { getResourceProperties, getResourceType, getTabContent } from "./helpers";
 
 
     export let db;
@@ -87,7 +88,10 @@
     $: {
 
         if ($_lastUpdatedTab && $_lastUpdatedTab.id == tab.id) {
+            console.log('last updated tab');
+            console.log(tab);
             tab = {...$_lastUpdatedTab};
+            console.log(tab)
             init();
 
             // if (tab.id && tab.active) {
@@ -145,7 +149,7 @@
     let isAsleep;
     let isBookmark;
     const init = async () => {
-
+        
         group = groups[tab.groupId];
         updateFavIconUrl();
         updateSavedState();
@@ -326,11 +330,10 @@
         clearTimeout(longPressTimeout);
 
         if (isOpen) {
-            if (showMultiselectActions) {
-                chrome.tabs.remove(selectedTabs.map((t) => t.id));
-            } else {
-                chrome.tabs.remove(tab.id);
-            }
+            const tabIds = showMultiselectActions ? selectedTabs.map((t) => t.id) : tab.id;
+            chrome.tabs.remove(tabIds);
+            _lastRemovedTab.set(tabIds);
+
         } else {
             dispatch('removeTab', tab);
         }
@@ -463,6 +466,27 @@
             }
         } else if (groupId) {
             await chrome.tabGroups.move(parseInt(groupId), { index: tab.index });
+        } else {
+            let droppedText = e.dataTransfer.getData('Text');;
+            if (!droppedText) {
+                const items = e.dataTransfer.items;
+                if (items) {
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].kind === 'string' && items[i].type.match('^text/plain')) {
+                        items[i].getAsString((text) => {
+                            droppedText = text;
+                        });
+                        break;
+                        }
+                    }
+                }
+            }
+            chrome.tabs.create({
+                index: tab.index + 1,
+                active: false,
+                url: 'https://www.google.com/search?q='+encodeURIComponent(droppedText)
+            });
+            
         }
     };
 
@@ -579,11 +603,22 @@
                     resource.isQueued = true;
                 }
 
-                const ref = doc(db, StorePaths.userResource(user.id, resource.id));
-                await setDoc(ref, resource, {merge: true});
-                tab.resource = resource;
-                isSaved = true;
-                dispatch('dataUpdated', {resource});
+                // const ref = doc(db, StorePaths.userResource(user.id, resource.id));
+                // await setDoc(ref, resource, {merge: true});
+                // tab.resource = resource;
+                // isSaved = true;
+                // dispatch('dataUpdated', {resource});
+                const llm = new LLM();
+                resource.content = await getTabContent(tab); 
+                resource = await getResourceType(llm, resource);
+                resource = await getResourceProperties(llm, resource);
+                console.log('saved resource');
+                console.log(resource);
+                
+                //await setDoc(ref, resource, {merge: true});
+
+
+                
             } else if (!workspace.isIncognito) {
 
                 let folder = await tryToGetWorkspaceFolder(workspace, true);
@@ -664,6 +699,8 @@
             } else if (action.id == actions.saveToFolder.id) {
                 // show save modal
                 showSaveModal = true;
+            } else if (action.id == actions.createPrompt.id) {
+                showCreateActionModal = true;
             } else {
                 for (const t of selectedTabs) {
                     const result  = await action.onClick(t);
@@ -675,6 +712,8 @@
                 saveTab(tab);
             } else if (action.id == actions.pin.id) {
                 onPinTab();
+            } else if (action.id == actions.createPrompt.id) {
+                showCreateActionModal = true;
             } else if (action.id == actions.reload.id && e.metaKey) {
                 actions.duplicate.onClick(tab);
             } else if (action.id == actions.moveToSpace.id) {
@@ -855,6 +894,12 @@
 
     // draggable={showMore || !canDrag ? "false" : "true"}
     
+    let showArtifactsModal;
+    const onArtifactCreated = ({ detail }) => {
+        tab = detail;
+        showCreateActionModal = false;
+        showArtifactModal = true;
+    };
 </script>
 
 {#if showSaveModal}
@@ -869,10 +914,15 @@
 
 {#if showCreateActionModal}
     <ModalContainer on:exit={() => showCreateActionModal = false}>
-        <CreateActionModal {tab} {workspace} />
+        <CreateActionModal {tab} {workspace} on:artifactCreated={onArtifactCreated}/>
     </ModalContainer>
 {/if}
 
+{#if showArtifactsModal}
+<ModalContainer on:exit={() => showArtifactModal = false}>
+    
+</ModalContainer>
+{/if}
 
 {#if showMore}
     <ModalContainer on:exit={exitModal}>
@@ -902,6 +952,7 @@
                 on:tabStashed
                 on:moveToDesktop
                 on:moveToMiniPlayer
+                
             />
         {/if}
     </ModalContainer>
@@ -934,6 +985,13 @@
         {isEndingTab ? ' end-tab' : ''}
         {isAsleep ? ' unloaded' : ''}
         {isDragged ? ' dragged' : ''}"
+    style="background-color: {tab.active 
+        ? $_settings?.tabs?.activeColor ?? '#555555'
+        : isSelected || isInFocus
+            ? $_settings?.appearance?.hoverColor ?? '#444444'
+            : tab.groupId > 0 ?? workspace
+                ? $_settings?.appearance?.primaryColor ?? '#333333'
+                : 'transparent'}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};"
     on:mouseenter={onMouseEnter}
     on:mouseleave={onMouseLeave}
     on:dragstart={onDragStart}

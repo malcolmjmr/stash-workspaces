@@ -8,7 +8,7 @@
     import SignIn from "./signin/SignIn.svelte";
     import WorkspaceManager from "./WorkspaceManager.svelte";
     import WindowManager from "./WindowManager.svelte";
-    import { _authLoaded, _favorites, _lastUpdatedTab, allWorkspaces, lastWorkspaceUpdate, settings } from "./stores.js";
+    import { _authLoaded, _favorites, _lastUpdatedTab, allWorkspaces, lastWorkspaceUpdate, _settings } from "./stores.js";
     import { getTabInfo } from "./utilities/chrome.js";
     import { getTabsBookmarks } from "./utilities/helpers.js";
 
@@ -65,7 +65,10 @@
         
         console.log('loading app');
         hasBookmarkPermission = await getPermissions();
-        settings.set(await getSettings());
+        const settings = await get('settings');
+        console.log('got settings');
+        console.log(settings);
+        _settings.set(settings);
         loaded = true;
     };
 
@@ -80,7 +83,6 @@
         }
 
         if (data.tab) {
-            print('updatng tab data');
             const tab = data.tab;
             updateTabsThatIncludeUrl(tab.url);
 

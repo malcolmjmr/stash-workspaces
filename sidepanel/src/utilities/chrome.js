@@ -533,6 +533,9 @@ export function getTabInfo(tab, showAdditionalData = false) {
         'url',
         'favIconUrl',
         'lastAccessed',
+        'created',
+        'updated',
+        'openedInBackground'
     ];
 
     if (showAdditionalData) {
@@ -556,7 +559,8 @@ export function getTabInfo(tab, showAdditionalData = false) {
     let tabInfo = {};
 
     for (const property of properties) {
-        tabInfo[property] = tab[property];
+        const value  = tab[property];
+        if (value) tabInfo[property] = value;
     }
 
     if (!tabInfo.url || tabInfo.url == '') {

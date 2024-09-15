@@ -9,6 +9,7 @@
     import closeIcon from "../icons/close.png";
     import deleteIcon from "../icons/delete.png";
     import MenuDivider from "../components/MenuDivider.svelte";
+  import { _settings } from "../stores";
 
 
     let dispatch = createEventDispatcher();
@@ -26,7 +27,7 @@
  
 </script>
 
-<div class="menu">
+<div class="menu" style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
     <div class="header">    
         {#if window.stashed} 
            {getTimeString()} -

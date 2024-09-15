@@ -757,7 +757,6 @@
         overflow: scroll;
         -ms-overflow-style: none;  /* IE and Edge */
         scrollbar-width: none; 
-        background-color: black;
     }
 
     .workspace::-webkit-scrollbar {
@@ -878,7 +877,7 @@
     }
 
     .section .items .container {
-        background-color: #222222;
+
         border-radius: 8px;
         overflow: hidden;
     }

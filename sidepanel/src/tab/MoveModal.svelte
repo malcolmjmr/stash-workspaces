@@ -6,7 +6,8 @@
     import { get, getTabFavIconUrl, getTabInfo, saveContext, tryToGetTabGroup } from "../utilities/chrome";
     import createWindowIcon from "../icons/new-window.png";
     import createFolderIcon from "../icons/new-folder.png";
-    import { allWorkspaces } from "../stores";
+    import { _settings, allWorkspaces } from "../stores";
+  import { append } from "svelte/internal";
 
     export let groups;
     export let selectedTabs;
@@ -85,7 +86,7 @@
 </script>
 
 {#if loaded}
-    <div class="move-modal">
+    <div class="move-modal" style="color: {$_settings?.appearance?.primaryTextColor ?? 'white'}; background-color: {$_settings?.appearance.primaryColor};">
         <div class="header">
             <div class="cancel button end" on:mousedown={() => dispatch('exit')}>
                 Cancel

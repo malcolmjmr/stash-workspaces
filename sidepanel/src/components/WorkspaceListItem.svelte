@@ -24,6 +24,7 @@
     import WorkspaceFolder from "./WorkspaceIcon.svelte";
   import { closeTabGroup, openWorkspace, saveContext, tryToGetTabGroup } from "../utilities/chrome";
   import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
+  import { _settings } from "../stores";
     
     let dispatch = createEventDispatcher();
     
@@ -159,6 +160,7 @@
 {/if}
 
 <div class="workspace-list-item{isInFocus ? ' focused': ''}" 
+    style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};"
     on:mouseenter={() => isInFocus = true}
     on:mouseleave={() => isInFocus = false}
     on:contextmenu={onContextMenu}

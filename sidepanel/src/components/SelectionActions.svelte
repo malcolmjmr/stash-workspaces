@@ -3,6 +3,7 @@
     import { Views } from "../view";
   import ModalContainer from "./ModalContainer.svelte";
   import MoveModal from "../tab/MoveModal.svelte";
+  import { _lastRemovedTab } from "../stores";
 
     /*
         group
@@ -73,7 +74,9 @@
     };
 
     const closeTabs = async () => {
-        chrome.tabs.remove(selectedTabs.map((t) => t.id));
+        const tabIds = selectedTabs.map((t) => t.id);
+        _lastRemovedTab.set(tabIds);
+        chrome.tabs.remove(tabIds);
         selectedTabs = [];
     };
 

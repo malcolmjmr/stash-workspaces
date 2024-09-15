@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import WorkspaceListItem from "./WorkspaceListItem.svelte";
+  import Divider from "./Divider.svelte";
 
     export let user = null;
     export let db = null;
@@ -114,7 +115,7 @@
                         on:workspaceOpened
                     />
                     {#if j < section.spaces.length - 1}
-                        <div class="divider"/>
+                        <Divider invisible={true} thickness={0.5}/>
                     {/if}
                 {/each}
                 
@@ -170,11 +171,6 @@
         flex-direction: column;
         overflow: hidden;
 
-    }
-
-    .divider {
-        height: 0.5px;
-        background-color: #555555;
     }
 
 </style>

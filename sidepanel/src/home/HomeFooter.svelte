@@ -139,7 +139,6 @@
         width: calc(100% - 10px);
         height: 25px;
         z-index: 100;
-        color: white;
         justify-content: space-between;
     }
 

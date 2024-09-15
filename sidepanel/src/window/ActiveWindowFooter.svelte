@@ -13,7 +13,7 @@
   import ModalContainer from "../components/ModalContainer.svelte";
   import TabUpdateModal from "../tab/TabUpdateModal.svelte";
   import { Views } from "../view";
-  import { get, getActiveTab, getContextFromGroupId, set, stashWindow } from "../utilities/chrome";
+  import { createAdjacentTab, get, getActiveTab, getContextFromGroupId, set, stashWindow } from "../utilities/chrome";
 
     let dispatch = createEventDispatcher();
 
@@ -30,15 +30,11 @@
         
     });
 
-    onDestroy(() => {
-        removeListeners();
-    }); 
-
 
     const load = async () => {
         getGroupCount();
-        addListeners();
-    }
+
+    };
 
     let groupCount = 0;
 
@@ -53,7 +49,7 @@
     };
 
     const createNewTab = async () => {
-        showNewTabModal = true;
+        createAdjacentTab();
     };
 
     const selectAll = async () => {
@@ -67,44 +63,9 @@
 
     let showNewTabModal;
 
-    let keyListener;
-    let auxClickListener;
-    const addListeners = () => {
-        keyListener = document.addEventListener('keydown', onKeyDown);
-        auxClickListener = document.addEventListener('auxclick', onAuxClick);
-        
-    };
-
-    
-    const removeListeners = () => {
-        document.removeEventListener('keydown', onKeyDown);
-        document.removeEventListener('auxclick', onAuxClick);
-    };  
-
-    const onAuxClick = (e) => {
-        
-    };
 
 
-    const onKeyDown = (e) => {
-
-        if (document.activeElement != document.body || showNewTabModal) return;
-
-        const isAlphanumeric = (str) => /^[a-z0-9]+$/i.test(str);
-
-        if (e.key.length == 1 && isAlphanumeric(e.key)) {
-            showNewTabModal = true;
-            //tabModalInputText = e.key;
-        }
-
-        // if (e.key == 't') {
-        //     showNewTabModal = true;
-        // } else if (e.key == 'i') {
-        //     chrome.windows.create({ focused: true, incognito: true });
-        // } else if (e.key == 'n' && !e.metaKey) {
-        //     chrome.windows.create({ focused: true });
-        // }
-    };
+   
 
     let tabModalInputText = '';
 
@@ -136,11 +97,6 @@
 </ModalContainer>
 {/if}
 
-{#if showNewTabModal} 
-<ModalContainer on:exit={exitTabModal}>
-    <TabUpdateModal inputText={tabModalInputText} on:exit={exitTabModal}/>
-</ModalContainer>
-{/if}
 {#key lastSelectionUpdate}
 
     <div class="main-container">
@@ -181,7 +137,6 @@
         width: calc(100% - 10px);
         height: 25px;
         z-index: 100;
-        color: white;
         justify-content: space-between;
     }
 

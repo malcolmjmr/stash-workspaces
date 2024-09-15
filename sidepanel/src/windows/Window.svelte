@@ -18,6 +18,8 @@
   import WindowMenu from "./WindowMenu.svelte";
     import SaveModal from "./SaveModal.svelte";
     import Workspaces from "../workspaces/Workspaces.svelte";
+  import { _settings } from "../stores";
+  import Divider from "../components/Divider.svelte";
   
     let dispatch = createEventDispatcher();
  
@@ -284,6 +286,7 @@
             : ''}{isCurrentWindow
             ? ' current'
             : ''}"
+        style="background-color: {$_settings?.appearance?.primaryColor ?? '#222222'}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};"
         on:mouseenter={onMouseEnter}
         on:mouseleave={onMouseLeave}
         on:dragover={onDragOver}
@@ -379,7 +382,9 @@
                     <div class="spacer" />
                 </div>
             {:else}
-                <div class="divider" />
+                <div class="divider-container">
+                    <Divider/>
+                </div>
             {/if}
 
             <div class="details">
@@ -496,9 +501,7 @@
         overflow: hidden;
     }
 
-    .divider {
-        height: 1px;
-        background-color: #555555;
+    .divider-container {
         width: calc(100% - 6px);
         margin: 11px 0px;
     }

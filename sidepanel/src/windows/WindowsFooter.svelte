@@ -182,7 +182,6 @@
     }
 
     .counts {
-        color: white;
         display: flex;
         flex-direction: row;
         align-items: center;

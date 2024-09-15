@@ -12,6 +12,9 @@
     import Tab from "../tab/Tab.svelte";
     import ModalContainer from "../components/ModalContainer.svelte";
     import WorkspaceMenu from "./WorkspaceMenu.svelte";
+    import { _settings } from "../stores";
+    
+    
     
 
     export let workspace;
@@ -159,13 +162,14 @@
 {#if loaded}
 <div 
     class="workspace" 
+    style='background-color: {$_settings?.appearance?.primaryColor ?? '#222222'};'
     on:mouseenter={() => isInFocus = true}
     on:mouseleave={() => isInFocus = false}
 
 >
     <div 
         class="container" 
-        style="background-color: {colorMap[workspace?.color ?? 'grey']};{showMenu
+        style="{showMenu
             ? 'border-radius: 5px 5px 0px 0px;'
             : ''}">
         {#if isEditingTitle}
@@ -179,7 +183,7 @@
                 autofocus="true"
             />
         {:else}
-            <div class="title">
+            <div class="title" style='color: {$_settings?.appearance?.textColor ?? 'white'};'>
                 <span class="text">
                     {workspace?.title ?? "Untitled Group"}
                 </span>
@@ -221,7 +225,6 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        color: black;
         margin: 5px;
         font-weight: 300;
     }
@@ -332,12 +335,6 @@
     .icon {
         height: 16px;
         width: 16px;
-    }
-
-    .divider {
-        height: 1px;
-        width: 100%;
-        background-color: #999999;
     }
 
     .tabs {

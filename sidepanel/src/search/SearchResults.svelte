@@ -9,6 +9,7 @@
   import FolderListItem from "../components/FolderListItem.svelte";
   import { Views } from "../view";
   import { tryToGetTabGroup } from "../utilities/chrome";
+  import Divider from "../components/Divider.svelte";
     export let searchText;
 
     let searchResults = [];
@@ -133,7 +134,7 @@
                     on:clicked={onTabClicked}
                 />
                 {#if i < visibleTabs.length - 1}
-                    <div class="divider"></div>
+                    <Divider thickness={0.5} />
                 {/if}
             {/each}
         </SearchResutlsSection>
@@ -143,7 +144,7 @@
                     {workspace}
                 />
                 {#if i < visibleSpaces.length - 1}
-                    <div class="divider"></div>
+                    <Divider thickness={0.5}/>
                 {/if}
             {/each}
         </SearchResutlsSection>
@@ -152,7 +153,7 @@
                 
                 <Bookmark {bookmark} on:bookmarkClicked={onBookmarkClicked} isListItem={true}/>
                 {#if i < visibleBookmarks.length - 1}
-                    <div class="divider"></div>
+                    <Divider thickness={0.5}/>
                 {/if}
             {/each}
         </SearchResutlsSection>
@@ -163,7 +164,7 @@
                     isOpen={false}
                 />
                 {#if i < visibleFolders.length - 1}
-                    <div class="divider"></div>
+                    <Divider thickness={0.5} />
                 {/if}
             {/each}
         </SearchResutlsSection>
@@ -217,10 +218,6 @@
     }
 
 
-    .divider {
-        height: 0.5px;
-        background-color: #555555;
-    }
 
 
 </style>
