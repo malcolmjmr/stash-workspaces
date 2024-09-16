@@ -117,7 +117,7 @@
                 <div class="search-container">
                     <SearchBox bind:searchText placeholderText="Search or create session..." autofocus={true} />
                 </div>
-                <div class="list new-window">
+                <div class="list new-window" style="background-color: {$_settings?.appearance.secondaryColor};">
                     {#if searchText.length == 0}
                         <div class="list-item" on:mousedown={moveToNewWindow}>
                             <img src={createWindowIcon} alt={moveToNewWindow} />
@@ -131,7 +131,7 @@
                     </div>
                     {/if}
                 </div>
-                <div class="list">
+                <div class="list" style="background-color: {$_settings?.appearance.secondaryColor};">
                     
                     {#each visibleSpaces as workspace}
                         <WorkspaceListItem {workspace} onClick={onWorkspaceClicked}/> 

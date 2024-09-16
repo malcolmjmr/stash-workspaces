@@ -6,6 +6,8 @@
   import settingsIcon from "../icons/more-horiz.png";
   import ModalContainer from "../components/ModalContainer.svelte";
   import FavoritesSettings from "./FavoritesSettings.svelte";
+  import { defaultFavorites } from "./defaults";
+    import FavoriteThumbnail from "./FavoriteThumbnail.svelte";
 
     export let workspace = null;
 
@@ -43,11 +45,13 @@
     };
 
     const getSavedFavorites = async () => {
+        console.log('favorites');
         if (workspace) {
             favorites = workspace.favorites ?? [];
         } else {
-            favorites = (await get('favorites')) ?? [];
+            favorites = (await get('favorites')) ?? defaultFavorites;
         }
+        console.log(favorites);
     };
 
     const getDomainsFromOpenTabs = async () => {
@@ -98,7 +102,8 @@
         if (!workspace) return;
     };
 
-    const onDomainClicked = async (e, domain) => {
+    const onDomainClicked = async ({ detail }) => {
+        const domain = detail;
         const activeTab = await getActiveTab();
         let url = domain.url;
 
@@ -112,6 +117,11 @@
             }
         } else {
             const tab = await chrome.tabs.create({ url, index:  activeTab.index + 1 });
+        }
+
+        const index = favorites.findIndex((f) => f.url == domain.url);
+        if (index > -1) {
+            favorites[index].lastUsed = Date.now();
         }
 
     };
@@ -140,10 +150,7 @@
 {#if favorites.length > 0}
 <div class="favorites" on:mouseenter={onMouseEnter} on:mouseleave={onMouseLeave}>
     {#each favorites as favorite}
-        <div class="favorite" on:mousedown={(e) => onDomainClicked(e, favorite)}>
-            <DomainIcon domain={favorite} />
-        </div>
-        
+        <FavoriteThumbnail {favorite} on:clicked={onDomainClicked}/>
     {/each}
     {#if isInFocus}
     <div class="settings button" on:mousedown={() => showSettings = true}>
@@ -161,16 +168,6 @@
         align-items: center;
         flex-wrap: wrap;
         padding: 5px;
-    }
-
-    .favorite {
-        padding: 5px;
-    }
-
-    .favorite:hover {
-        cursor: pointer;
-        background-color: #333;
-        border-radius: 8px;
     }
 
     .settings.button {

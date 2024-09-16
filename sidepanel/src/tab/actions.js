@@ -13,7 +13,9 @@ import saveToFolderIcon from "../icons/folder-special.png";
 import addDomainIcon from "../icons/domain-add.png";
 import removeDomainIcon from "../icons/domain-remove.png";
 import relatedIcon from "../icons/join-right.png";
-import closeTabIcon from "../icons/tab-close.png";
+import closeTabIcon from "../icons/close-tab.png";
+import closeOtherTabsIcon from "../icons/close-all.png";
+import closeTabsBelowIcon from "../icons/tab-close-right.png";
 import moveToDesktopIcon from "../icons/place-item.png";
 import pipIcon from "../icons/pip.png";
 import createIcon from "../icons/add.png";
@@ -23,6 +25,9 @@ import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./doma
 import { getContextData, getContextFromGroupId, getWorkspaceQueueFolder, saveContext, saveContextData, saveTabToFolder } from "../utilities/chrome";
 import { _favorites, _lastUpdatedTab } from "../stores";
 import { createResource } from "../utilities/firebase";
+import { tryToOpenTabInPiP } from "./helpers";
+
+
 
 
 export const actions = {
@@ -31,12 +36,7 @@ export const actions = {
         id: 'pin',
         icon: (tab) => tab.pinned ? unpinIcon : pinIcon,
         onClick: (tab) =>  {
-
-            if (tab.groupId > -1) {
-
-            }
             chrome.tabs.update(tab.id, { pinned: !tab.pinned });
-            return 'exit';
         }
     },
     reload: {
@@ -45,7 +45,6 @@ export const actions = {
         icon: reloadIcon,
         onClick: (tab) => {
             chrome.tabs.reload(tab.id);
-            return 'exit';
         }
     },
     discard: {
@@ -57,7 +56,7 @@ export const actions = {
             tab.discarded = true;
             _lastUpdatedTab.set(tab);
             chrome.tabs.discard(tab.id);
-            return 'exit'
+
         }
     },
     createPrompt: {
@@ -75,7 +74,7 @@ export const actions = {
         onClick: async (tab) => {
             const newTab = await chrome.tabs.create({ url: tab.url, index: tab.index + 1 });
             if (tab.groupId > -1) chrome.tabs.group({ tabIds: newTab.id, groupId: tab.groupId });
-            return 'exit';
+            
         }
     },
     copy: {
@@ -83,7 +82,6 @@ export const actions = {
         id: 'copy',
         icon: linkIcon,
         onClick: (tab) => {
-            // copy link to clipboard
             navigator.clipboard.writeText(tab.url);
             return 'linkCopied';
         }
@@ -113,6 +111,8 @@ export const actions = {
         id: 'moveToNewWindow',
         icon: moveToWindowIcon,
         onClick: (tab) => {
+
+            
             chrome.windows.create({ tabId: tab.id, focused: true });
             return 'exit';
         }
@@ -130,6 +130,8 @@ export const actions = {
         id: 'moveToMiniPlayer',
         icon: pipIcon,
         onClick: async (tab) => {
+
+            tryToOpenTabInPiP(tab);
             return '';
         },
     },
@@ -278,5 +280,30 @@ export const actions = {
             return 'exit';
         }
 
+    }, 
+    closeOtherTabs: {
+        title: 'Close Other Tabs',
+        id: 'closeOtherTabs',
+        icon: closeOtherTabsIcon,
+        onClick: async (tab) => {
+            const otherTabs = (await chrome.tabs.query({ windowId: tab.windowId }))
+                .filter((t) => t.id !== tab.id && !t.pinned)
+                .map((t) => t.id);
+            
+            chrome.tabs.remove(otherTabs);
+        }
+    },
+    closeTabsBelow: {
+        title: 'Close Tabs Below',
+        id: 'closeTabsBelow',
+        icon: closeTabsBelowIcon,
+        rotateIcon: 90,
+        onClick: async (tab) => {
+            const otherTabs = (await chrome.tabs.query({ windowId: tab.windowId }))
+                .filter((t) => t.index > tab.index && t.id !== tab.id && !t.pinned)
+                .map((t) => t.id);
+            
+            chrome.tabs.remove(otherTabs);
+        }
     }
 }

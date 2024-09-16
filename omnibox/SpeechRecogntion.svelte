@@ -12,6 +12,28 @@
 
     const load = () => {
         if (startOnLoad) startSpeechRecognition();
+    };
+
+
+    function requestMicrophoneAccess() {
+        navigator.permissions.query({ name: 'microphone' }).then(function(permissionStatus) {
+            if (permissionStatus.state === 'granted') {
+                startSpeechRecognition();
+            } else if (permissionStatus.state === 'prompt') {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(startSpeechRecognition)
+                    .catch((e) => console.log('error:', e));
+            } else if (permissionStatus.state === 'denied') {
+                alert('Microphone access is blocked. Please update your settings to allow microphone access for this extension.');
+            }
+
+            permissionStatus.onchange = function() {
+                console.log('Microphone permission status has changed to: ', this.state);
+                if (this.state === 'granted') {
+                    startSpeechRecognition();
+                }
+            };
+        });
     }
 
     const startSpeechRecognition = async () => {

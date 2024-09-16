@@ -458,13 +458,13 @@
             const index = tabs.findIndex((t) => t.id == tab.id);
             if (index > -1) {
                 let storedTab = tabs[index];
-                if (storedTab.id == updatedTab.id) {
+                if (storedTab.id == updatedTab?.id) {
                     storedTab.updated = Date.now();
                     _lastUpdatedTab.set(storedTab);
                 }
                 tabs[index] = { ...storedTab, ...tab };
             } else {
-                if (tab.id == updatedTab.id) {
+                if (tab.id == updatedTab?.id) {
                     tab = {...updatedTab.id, ...tab }
                 }
                 tabs.push(tab);

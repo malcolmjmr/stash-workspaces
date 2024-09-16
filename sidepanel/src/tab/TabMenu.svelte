@@ -34,7 +34,7 @@
     import removeDomainIcon from "../icons/domain-remove.png";
     import closeTabIcon from "../icons/tab-close.png";
   import MenuDivider from "../components/MenuDivider.svelte";
-  import { _settings } from "../stores";
+  import { _selectedTabs, _settings } from "../stores";
 
 
 
@@ -78,18 +78,7 @@
     
 
 
-    
-    const moveTabToNewWindow = async () => {
-        await chrome.windows.create({ tabId: tab.id, focused: true });
-        dispatch('exit');
-    };
 
-    const moveTabToPopup = async () => {
-        chrome.windows.create({ tabId: tab.id, type: "popup", focused: true });
-        // chrome.windows.create({type: 'popup', url: tab.url});
-        // chrome.tabs.remove(tab.id);
-        dispatch('exit');
-    };
 
     const closeTabGroup = async () => {
         chrome.tabs.remove(
@@ -97,39 +86,13 @@
         );
     };
 
-    const closeTab = () => {
-        chrome.tabs.remove(tab.id);
-        dispatch('exit');
-        
-    };
-
-    const moveGroupToNewWindow = async () => {
-        const window = await chrome.windows.create();
-        await chrome.tabGroups.move(tab.groupId, { windowId: window.id });
-        // remove new tab
-        const newTab = await chrome.tabs.query({
-            windowId: window,
-            url: "chrome://newtab/",
-        });
-        if (newTab) await chrome.tabs.remove(newTab.id);
-        dispatch('exit');
-    };
 
     const reloadTab = () => {
         chrome.tabs.reload(tab.id);
         dispatch('exit');
     };
 
-    const pinTab = () => {
-        if (tab.groupId == -1) {
-            chrome.tabs.update(tab.id, { pinned: !tab.pinned });
-        } else {
-            dispatch('pinTab', tab);
-        }
 
-        dispatch('exit');
-        
-    };
     let linkCopied;
     const copyLink = () => {
         navigator.clipboard.writeText(tab.url);
@@ -152,10 +115,6 @@
         }
     };
 
-    const duplicateTab = () => {
-        chrome.tabs.create({ url: tab.url, index: tab.index + 1 });
-        dispatch('exit');
-    };
     
     
     const openMoveModal = () => {
@@ -252,9 +211,6 @@
 
     };
 
-    const moveToMiniPlayer = () => {
-        dispatch('moveToMiniPlayer', tab);
-    };
 
 </script>
 
@@ -275,6 +231,11 @@
                 {tab.title}
             </span>
         </div>
+        {#if $_selectedTabs.find((t) => t.id == tab.id)}
+        <div class="selected-tabs">
+            +{$_selectedTabs.length - 1} more selected tabs
+        </div>
+        {:else}
         <div class="url-field">
             <!--
                 <img 
@@ -292,6 +253,7 @@
                 on:keydown={onKeyDownInUrlField}
             />
         </div>
+        {/if}
     </div>
    
     <MenuDivider />
@@ -299,26 +261,23 @@
     {#if isOpen}
         <div class="actions">
         <MenuItem 
-            title={isPinned ? 'Unpin' : 'Pin'}
+            
             action={actions.pin}
-            onClick={pinTab} 
-            icon={isPinned ? pinIcon : unpinIcon } 
             {tab}
             canToggle={true}
+            on:exit
         />
         <MenuItem 
             action={actions.reload}
-            onClick={reloadTab} 
-            icon={reloadIcon}
             {tab}
             canToggle={true}
+            on:exit
         />
         <MenuItem 
             action={actions.duplicate}
-            onClick={duplicateTab} 
-            icon={duplicateIcon} 
             {tab}
             canToggle={true}
+            on:exit
         />
         <MenuItem 
             action={actions.copy}
@@ -379,17 +338,15 @@
         
         <MenuItem 
             action={actions.moveToPopup}
-            onClick={moveTabToPopup} 
-            icon={moveToPopupIcon}
             {tab}
             canToggle={true}
-            />
+            on:exit
+        />
         <MenuItem 
-            action={actions.moveToNewWindow}
-            onClick={moveTabToNewWindow} 
-            icon={moveToWindowIcon}
+            action={actions.moveToNewWindow} 
             {tab}
             canToggle={true}
+            on:exit
         />
         {#if user && tab.groupId > -1}
             <MenuItem
@@ -403,11 +360,11 @@
             <MenuItem
                 action={actions.moveToMiniPlayer}
                 {tab}
-                onClick={moveToMiniPlayer}
+                on:exit
             />
         {/if}
         <MenuItem 
-            title="Move to {tab.groupId > -1 ? 'Other ' : '' } Session",
+            title="Move to {tab.groupId > -1 ? 'Other ' : '' } Space",
             action={actions.moveToSpace} 
             onClick={openMoveModal} 
             icon={moveToSpaceIcon}
@@ -423,10 +380,6 @@
             action={actions.createAction}
             {tab}
             canToggle={true}
-            on:click={() => {
-                dispatch('createAction', { tab, workspace });
-                dispatch('exit');
-            }}
         />
         {/if}
         
@@ -434,10 +387,20 @@
 
         <MenuItem 
             action={actions.close}
-            onClick={closeTab} 
-            icon={closeTabIcon}
             {tab}
+            on:exit
             
+        />
+        <MenuItem 
+            action={actions.closeOtherTabs}
+            {tab}
+            on:exit
+            
+        />
+        <MenuItem 
+            action={actions.closeTabsBelow}
+            {tab}
+            on:exit
         />
         {#if false}
             <MenuItem title="Close Group" onClick={closeTabGroup} />
@@ -467,6 +430,7 @@
         flex-direction: column;
 
         padding: 10px;
+        font-size: 14px;
     }
 
     .title {
@@ -474,6 +438,7 @@
         flex-direction: row;
         align-items: center;
         margin-bottom: 5px;
+        font-weight: 500;
     }
 
     .title img {

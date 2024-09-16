@@ -20,7 +20,7 @@
   import HomeFooter from "./home/HomeFooter.svelte";
   import History from "./history/History.svelte";
   import Trash from "./trash/Trash.svelte";
-  import { _settings, allWorkspaces } from "./stores";
+  import { _selectedTabs, _settings, allWorkspaces } from "./stores";
   import ModalContainer from "./components/ModalContainer.svelte";
   import TabUpdateModal from "./tab/TabUpdateModal.svelte";
   import { getActiveTab, getContextFromGroupId } from "./utilities/chrome";
@@ -193,6 +193,10 @@
 
     let selectedTabs = [];
 
+    $: {
+        _selectedTabs.set(selectedTabs);
+    }
+
     let lastSelectionUpdate;
     const onUpdateSelection = ({ detail }) => {
         const tabs = Array.isArray(detail) ? detail : [detail];
@@ -289,71 +293,9 @@
 
     let recognition;
 
-    function requestMicrophoneAccess() {
-        navigator.permissions.query({ name: 'microphone' }).then(function(permissionStatus) {
-            if (permissionStatus.state === 'granted') {
-                startRecognition();
-            } else if (permissionStatus.state === 'prompt') {
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(startRecognition)
-                    .catch((e) => console.log('error:', e));
-            } else if (permissionStatus.state === 'denied') {
-                alert('Microphone access is blocked. Please update your settings to allow microphone access for this extension.');
-            }
+    
 
-            permissionStatus.onchange = function() {
-                console.log('Microphone permission status has changed to: ', this.state);
-                if (this.state === 'granted') {
-                    startRecognition();
-                }
-            };
-        });
-    }
-
-    function startRecognition()  {
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        recognition.onstart = function() {
-          console.log('starting');
-        };
-
-        recognition.onresult = function(event) {
-            let interimTranscript = '';
-            let finalTranscript = '';
-
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                }
-            }
-
-            console.log(finalTranscript);
-            console.log(interimTranscript);
-        };
-
-        recognition.onerror = function(event) {
-            console.error('Speech recognition error:', event.error);
-            if (event.error === 'not-allowed') {
-                alert('Microphone access is required for speech recognition. Please check your browser settings.');
-            }
-        };
-
-        recognition.onend = function() {
-            console.log('ending');
-        };
-
-        recognition.start();
-    }
-
-    function stopRecognition() {
-        if (recognition) {
-            recognition.stop();
-        }
-    }
+    
 
 
 </script>

@@ -4,7 +4,7 @@
   import toggleOffIcon from "../icons/toggle-off.png";
   import toggleOnIcon from "../icons/toggle-on.png";
   import { set, get } from "../utilities/chrome";
-  import { _settings, quickActions } from "../stores";
+  import { _selectedTabs, _settings, quickActions } from "../stores";
 
     export let title = null;
     export let action;
@@ -30,12 +30,24 @@
 
 
 
-        if (!onClick && action?.onClick)  onClick = () => {
-            const result = action.onClick(tab);
+        if (!onClick && action?.onClick)  onClick = async () => {
+            const isSelectedTab = $_selectedTabs.find((t) => t.id == tab.id);
+            const tabs = isSelectedTab ? $_selectedTabs : [tab];
+            for (const tab of  tabs) {
+                const result = await action.onClick(tab);
 
-            if (result) {
-                dispatch(result);
+                if (result) {
+                    dispatch(result);
+                }
             }
+
+            if (isSelectedTab) {
+                // remove selection
+            }
+            
+
+
+            dispatch('exit');
         }
         loaded = true;
     });
@@ -72,11 +84,11 @@
 <div 
     class="menu-item"  
     on:mouseenter={() => isInFocus = true} on:mouseleave={() => isInFocus = false}
-    style="background-color: {isInFocus ? $_settings?.appearance?.hoverColor ?? '#444' : 'transparent'}"
+    style="background-color: {isInFocus ? $_settings?.appearance?.hoverColor ?? '#444' : 'transparent'};"
 >
-    <div class="title" on:mousedown={onClick} on:dblclick={onDoubleClick}>
+    <div class="title" on:mousedown={onClick} on:dblclick={onDoubleClick} >
         {#if icon}
-        <img src={icon} class="icon" alt={title}/>
+        <img src={icon} class="icon" alt={title} style="{action.rotateIcon ? 'transform: rotate('+action.rotateIcon+'deg);' : ''}"/>
         {/if}
         <span>{title}</span>
     </div>

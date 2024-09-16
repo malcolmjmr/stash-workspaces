@@ -8,6 +8,7 @@ export const allWorkspaces = writable([]);
 export const lastWorkspaceUpdate = writable(null);
 export const openGroups = writable({});
 export const _tabs = writable([]);
+export const _selectedTabs = writable([]);
 export const _groups = writable({});
 export const _activeTab = writable(null);
 export const _lastUpdatedTab = writable(null);
