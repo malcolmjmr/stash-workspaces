@@ -22,9 +22,9 @@ export default [
         ]
     },
     {
-        input: 'placeholder_tab/main.js',
+        input: 'resource/main.js',
         output: {
-            file: 'placeholder_tab/bundle.js',
+            file: 'resource/bundle.js',
             format: 'iife',
             //format: 'cjs',
             name: 'App',
@@ -37,38 +37,38 @@ export default [
             image(),
         ]
     },
-    {
-        input: 'desktop/main.js',
-        output: {
-            file: 'desktop/bundle.js',
-            format: 'iife',
-            //format: 'cjs',
-            name: 'App',
-        },
-        plugins: [
-            svelte(),
-            css({ output: 'bundle.css' }),
-            resolve({ browser: true }),
-            terser(),
-            image(),
-        ]
-    },
-    {
-        input: 'window_manager/main.js',
-        output: {
-            file: 'window_manager/bundle.js',
-            format: 'iife',
-            //format: 'cjs',
-            name: 'App',
-        },
-        plugins: [
-            svelte(),
-            css({ output: 'bundle.css' }),
-            resolve({ browser: true }),
-            terser(),
-            image(),
-        ]
-    },
+    // {
+    //     input: 'desktop/main.js',
+    //     output: {
+    //         file: 'desktop/bundle.js',
+    //         format: 'iife',
+    //         //format: 'cjs',
+    //         name: 'App',
+    //     },
+    //     plugins: [
+    //         svelte(),
+    //         css({ output: 'bundle.css' }),
+    //         resolve({ browser: true }),
+    //         terser(),
+    //         image(),
+    //     ]
+    // },
+    // {
+    //     input: 'window_manager/main.js',
+    //     output: {
+    //         file: 'window_manager/bundle.js',
+    //         format: 'iife',
+    //         //format: 'cjs',
+    //         name: 'App',
+    //     },
+    //     plugins: [
+    //         svelte(),
+    //         css({ output: 'bundle.css' }),
+    //         resolve({ browser: true }),
+    //         terser(),
+    //         image(),
+    //     ]
+    // },
     {
         input: 'omnibox/main.js',
         output: {

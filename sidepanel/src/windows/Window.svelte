@@ -8,6 +8,7 @@
     import openIcon from "../icons/open-in-new-window.png";
     import menuIcon from "../icons/more-vert.png";
     import deleteIcon from "../icons/delete.png";
+    import uploadIcon from "../icons/upload.png";
 
     import { createEventDispatcher, onMount } from "svelte";
     import TabIcon from "../tab/TabIcon.svelte";
@@ -203,7 +204,11 @@
         for (const tab of windowData?.tabs ?? []) {
             if (tab.contextId) {
                 if (!openedContexts.includes(tab.contextId)) {
-                    await openWorkspace(contexts[tab.contextId], { windowId: newWindow?.id })
+                    openedContexts.push(tab.contextId);
+                    await openWorkspace(contexts[tab.contextId], {
+                         windowId: newWindow?.id, 
+                         openInNewWindow: !openInCurrentWindow 
+                    });
                 }
                 
             } else {
@@ -218,9 +223,10 @@
             chrome.tabs.remove(newTab.id);
         }
         
-        await deleteSession();
+        if (windowData.isClosed) {
+            await deleteSession();
+        }
 
-       
     };
 
     const deleteSession = async () => {
@@ -233,6 +239,8 @@
         }
 
         lastUpdatedWindow = Date.now();
+
+        dispatch('deleted');
 
 
     };
@@ -326,7 +334,19 @@
                                     (actionInstructions = 'Save for later' )}
                                 on:mouseleave={() =>
                                     (actionInstructions = null)}
-                            />
+                            /> 
+                            {/if}
+                            {#if windowData.isRemote || windowData.isClosed }
+                            <img
+                                class="action"
+                                src={uploadIcon}
+                                on:mousedown={() => restoreWindow(true)}
+                                alt="Stash"
+                                on:mouseenter={() =>
+                                    (actionInstructions = 'Open in current window' )}
+                                on:mouseleave={() =>
+                                    (actionInstructions = null)}
+                            /> 
                             {/if}
                             
                             <img

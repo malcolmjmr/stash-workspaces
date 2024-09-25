@@ -12,6 +12,7 @@ chrome.sidePanel
 
 // Windows 
 chrome.windows.onCreated.addListener((window) => onWindowCreated(window));
+chrome.windows.onFocusChanged.addListener((windowId) => onWindowFocusChanged(windowId));
 
 // Tabs
 chrome.tabs.onCreated.addListener((tab) => onTabCreated(tab));
@@ -20,7 +21,7 @@ chrome.tabs.onMoved.addListener((tabId, moveInfo) => onTabMoved(tabId, moveInfo)
 chrome.tabs.onDetached.addListener((tabId, detachInfo) => onTabDetached(tabId, detachInfo));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => onTabUpdated(tabId, changeInfo));
 chrome.tabs.onHighlighted.addListener((highlightInfo) => onTabsHighlighted(highlightInfo.tabIds));
-chrome.tabs.onRemoved.addListener((tabId, removeInfo) => onTabClosed(tabId));
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => onTabClosed(tabId, removeInfo));
 
 // Tab groups
 chrome.tabGroups.onCreated.addListener((group) => onTabGroupCreated(group));
@@ -175,7 +176,13 @@ const connectToolbar = async (port) => {
             connected: Date.now(),
             windowId: port.windowId,
         };
-    } 
+
+        if (Object.values(toolbarPorts).length == 0) {
+            port.isPrimary = true;
+        }
+
+        toolbarPorts[port.windowId] = port;
+    }
 
     port.onDisconnect.addListener(() => { 
         disconnectToolbar(port.windowId);
@@ -183,18 +190,29 @@ const connectToolbar = async (port) => {
 }
 
 const disconnectToolbar = async (windowId) => {
-    let toolbars = (await get('toolbars')) ?? [];
-    const index = toolbars.findIndex((t) => t.windowId == windowId);
-    if (index > -1) {
-        const isPrimaryToolbar = toolbars[index].isPrimary;
-        toolbars.splice(index, 1);
-        if (isPrimaryToolbar && toolbars.length > 0) {
-            toolbars[0].isPrimary = true;
 
-        }
-    } else {
+    delete toolbarPorts[windowId];
 
+    const windowIds = Object.keys(toolbarPorts);
+    if (windowIds.length > 0) {
+        windowId = windowIds[0];
+        toolbarPorts[windowId].isPrimary = true;
+        toolbarPorts[windowId].port.sendMessage({
+            command: 'updatePrimaryToolbar'
+        });
     }
+
+    // let toolbars = (await get('toolbars')) ?? [];
+    // const index = toolbars.findIndex((t) => t.windowId == windowId);
+    // if (index > -1) {
+    //     const isPrimaryToolbar = toolbars[index].isPrimary;
+    //     toolbars.splice(index, 1);
+    //     if (isPrimaryToolbar && toolbars.length > 0) {
+    //         toolbars[0].isPrimary = true;
+    //     }
+    // } else {
+
+    // }
 };
 
 // Commands 
@@ -301,9 +319,18 @@ async function onTabCreated(tab) {
         // check if tab should be grouped
 
 
-
-        
     }
+
+
+    const tabCount = (await chrome.tabs.query({ windowId: tab.windowId })).length;
+
+    if (tabCount > 8) {
+        await chrome.action.setBadgeText({ text: tabCount.toString() });
+    }  
+
+
+    
+    
 
 
 }
@@ -370,9 +397,14 @@ async function onTabsHighlighted(tabIds) {
     
 }
 
-async function onTabClosed(tabId) {
+async function onTabClosed(tabId, removeInfo) {
     // check if need to remove from open context
     setTimeout(() => removeTabData(tabId), 1000);
+
+    const tabCount = (await chrome.tabs.query({ windowId: removeInfo.windowId })).length;
+    if (tabCount > 8) {
+        await chrome.action.setBadgeText({ text: tabCount.toString() });
+    }
 }
 
 async function updateContextTabs(context) {
@@ -714,6 +746,15 @@ async function saveRemoteContext(context) {
 
 async function saveContext(context) {
     context.updated = Date.now();
+    const ports = Object.values(toolbarPorts);
+    if (ports.length > 0) {
+        const port = ports.find((p) => p.isPrimary);
+        port.sendMessage({
+            command: 'contextUpdated',
+            context,
+        })
+    }
+
     let record = {};
     record[getContextKey(context.id)] = context;
     await chrome.storage.local.set(record);
@@ -909,6 +950,25 @@ async function onWindowCreated(window) {
     if (windowCount == 1) await onBrowserOpen();
 
     //chrome.sidePanel.open({ windowId: window.id });
+}
+
+async function onWindowFocusChanged(windowId) {
+
+    if (windowId > -1) {
+
+        const window = await chrome.windows.get(windowId);
+        if (window.type != 'normal') return;
+
+        const tabCount = (await chrome.tabs.query({ windowId })).length;
+        if (tabCount > 8) {
+            await chrome.action.setBadgeText({ text: tabCount.toString() });
+        } else {
+            const text = await chrome.action.getBadgeText({});
+            if (text.length > 0) {
+                await chrome.action.setBadgeText({ text: '' });
+            }
+        }
+    }
 }
 
 

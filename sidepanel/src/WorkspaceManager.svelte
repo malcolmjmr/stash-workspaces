@@ -42,6 +42,8 @@
     export let lastCreatedWorkspace;
     export let resources;
     export let authLoaded;
+    export let lastRemoteUpdate;
+
 
     //export let resourcesLoaded;
 
@@ -78,6 +80,10 @@
             console.log('updating workspaces after last created workspace');
             updateWorkspaces();
         }
+    }
+
+    $: {
+        if (lastRemoteUpdate)  onRemoteUpdate();
     }
 
 
@@ -328,7 +334,18 @@
                 )
             )).docs.map((doc) => doc.data()) 
             : [];
-    }
+    };
+
+    const onRemoteUpdate = () => {
+        const { workspace, changedFields } = lastRemoteUpdate;
+        if (!workspace) return;
+
+        const index = workspaces.findIndex((w) => w.id == workspace);
+        if (index > -1) {
+            workspaces[index] = workspace;
+            // handle tab updates
+        }
+    };
 
 
 </script>

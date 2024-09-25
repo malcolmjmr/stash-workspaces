@@ -1,4 +1,4 @@
-import { get } from "../../../sidepanel/src/utilities/chrome";
+import { get } from "./chrome";
 import { config } from "./config";
 
 export class LLM {

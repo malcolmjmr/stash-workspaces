@@ -19,7 +19,9 @@ export const _draggedTab = writable(null);
 export const _draggedOverTab = writable(null);
 export const _lastRemovedTab = writable(null);
 export const _settings = writable({});
+export const _lastStashedWindow = writable(null);
 
+export const _db = writable(null);
 export const userData = writable(null);
 
 export const quickActions = writable([]);

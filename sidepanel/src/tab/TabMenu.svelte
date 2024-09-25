@@ -35,6 +35,7 @@
     import closeTabIcon from "../icons/tab-close.png";
   import MenuDivider from "../components/MenuDivider.svelte";
   import { _selectedTabs, _settings } from "../stores";
+  import { submitPrompt, } from "../utilities/prompts";
 
 
 
@@ -61,12 +62,15 @@
 
     let isYoutubeVideo;
 
+    let prompts = [];
+
     onMount(async () => {
 
         isYoutubeVideo = tab.url.includes('www.youtube.com/watch');
         isSaved = tab.bookmarks || tab.resource;
         isPinned = tab.pinned || tab.isPinned;
         await loadFavoritesMenuItem();
+        await loadPrompts();
         
         if (isYoutubeVideo) {
            
@@ -74,6 +78,10 @@
         }
         loaded = true;
     });
+
+    const loadPrompts = async () => {
+        prompts = (await get('prompts')) ?? [];
+    };
 
     
 
@@ -377,10 +385,25 @@
         <MenuDivider />
 
         <MenuItem 
-            action={actions.createAction}
+            action={actions.createPrompt}
             {tab}
             canToggle={true}
+            on:createPrompt
         />
+
+        {#each prompts as prompt}
+            <MenuItem 
+                action={{
+                    title: prompt.title,
+                    icon: prompt.icon,
+                    onClick: () => {
+                        submitPrompt({ prompt })
+                    }
+                }}
+                {tab}
+                canToggle={true}
+            />
+        {/each}
         {/if}
         
         <MenuDivider />
@@ -429,7 +452,7 @@
         display: flex;
         flex-direction: column;
 
-        padding: 10px;
+        padding: 10px 10px 0px 10px;
         font-size: 14px;
     }
 

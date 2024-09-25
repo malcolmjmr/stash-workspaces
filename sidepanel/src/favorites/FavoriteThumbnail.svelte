@@ -10,12 +10,18 @@
 
     let isInFocus;
 
+    const onMouseDown = (e) => {
+
+        dispatch('click', {favorite, isAltClick: e.metaKey })
+    
+    }
+
 </script>
 
 <div 
     class="favorite" 
     style="background-color: {isInFocus ? $_settings?.appearance?.hoverColor ?? '#444' : 'transparent'}"
-    on:mousedown={(e) => dispatch('clicked', favorite)} 
+    on:mousedown={onMouseDown} 
     on:mouseenter={(e) => isInFocus = true}
     on:mouseleave={(e) => isInFocus = false}
 >

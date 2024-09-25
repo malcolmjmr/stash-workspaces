@@ -11,4 +11,6 @@ export class StorePaths {
     static userResource(userId, resourceId) { return this.userResources(userId) + '/' + resourceId; }
     static userDevices(userId) { return this.user(userId) + '/devices'}
     static userDevice(userId, deviceId) { return this.userDevices(userId) + '/' + deviceId; }
+    static userPrompts(userId) { return this.user(userId) + '/prompts'}
+    static userPrompt(userId, promptId) { return this.userPrompts(userId) + '/' + promptId; }
 }

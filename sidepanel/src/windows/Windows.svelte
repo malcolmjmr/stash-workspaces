@@ -69,6 +69,7 @@
                 }
             }
             tabs.sort((a, b) => a.index - b.index);
+            sessions[i].isClosed = true;
             sessions[i].tabs = tabs;
             sessions[i].contexts = contexts;
         }
@@ -174,6 +175,7 @@
     let showStashedWindows;
     let showPopupWindows;
 
+
 </script>
 
 
@@ -198,9 +200,9 @@
 
 
     {#if popupWindows.length > 0}
-    <SectionHeader title="Popups" bind:isOpen={showPopupWindows}/>
+    <SectionHeader title="Single Tab Windows" bind:isOpen={showPopupWindows}/>
     {/if}
-    {#if showPopupWindows}
+
     {#each popupWindows as windowData (windowData)}
         <Window
             bind:view
@@ -212,7 +214,7 @@
             on:tabMoved
         />
     {/each}
-    {/if}
+
 
     {#if incognitoWindows.length}
         <SectionHeader title="Incognito" bind:isOpen={showIncognitoWindows}/>
@@ -270,6 +272,7 @@
             isOpen={false}
             on:tabMoved
             on:dataUpdated
+            on:deleted={loadSessions}
         />
     {/each}
     {/if}

@@ -20,6 +20,7 @@
   import ModalContainer from "../components/ModalContainer.svelte";
   import CreateActionModal from "../tab/CreateActionModal.svelte";
   import BookmarkBar from "../components/BookmarkBar.svelte";
+  import WindowToolbar from "./WindowToolbar.svelte";
 
 
     let dispatch = createEventDispatcher();
@@ -41,7 +42,7 @@
 
     let loaded;
     onMount(() => {
-        getTabGroupStarts();
+        sortTabs();
         getQuickActions();
         console.log('loading window');
         loaded = true;
@@ -53,15 +54,28 @@
         workspacesLoaded;
         groups;
         checkIndexes();
-        getTabGroupStarts();
+        sortTabs();
     }
 
     let groupStarts = {};
     let groupEnds = {};
-    const getTabGroupStarts = () => {
+    let sort;
+    $: {
+        if (sort) sortTabs();
+    }
+    const sortTabs = () => {
         groupStarts = {};
         groupEnds = {};
-        tabs.sort((a, b) => a.index - b.index);
+        
+        tabs.sort((a, b) => {
+            const aValue = a[sort?.field ?? 'index'];
+            const bValue = b[sort?.field ?? 'index'];
+            if (sort?.ascending) {
+                return bValue - aValue;
+            } else {
+                return aValue - bValue
+            }
+        });
 
         for (const tab of tabs) {
             if (tab.groupId > -1) {
@@ -72,6 +86,8 @@
             }
         }
     };
+
+    
 
     
     const getQuickActions = async () => {
@@ -275,6 +291,7 @@
 <div class="padding"></div>
 {#if loaded}
         <Favorites on:dataUpdated/> 
+        <!-- <WindowToolbar bind:sort /> -->
         {#each tabs as tab (tab.id)}
             {#if tab.groupId > -1}
                 {#if groupStarts[tab.groupId] == tab.index && groups[tab.groupId]}

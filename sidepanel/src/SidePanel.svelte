@@ -312,14 +312,14 @@
 {#if view}
 <KeyboardListeners bind:selectedTabs/>
 <main style='background-color: {$_settings?.appearance?.backgroundColor ?? 'black'}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'}'>
-    {#if true || scrollingUp || lastScrollPosition < 20 || selectedTabs.length > 0}
+    {#if !fullScreenViews.includes(view) || selectedTabs.length > 0}
         <div class="container header" style='background-color: {$_settings?.appearance?.headerColor ?? 'black'};'>
             
             {#if selectedTabs.length > 0}
                 {#key lastSelectionUpdate}
                     <SelectionHeader bind:selectedTabs tabs={tabs?.filter((t) => t.windowId == currentWindowId)}/>
                 {/key}
-            {:else if !fullScreenViews.includes(view)}
+            {:else }
                 <Header
                     {user}
                     bind:view

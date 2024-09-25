@@ -88,7 +88,7 @@
 >
     <div class="title" on:mousedown={onClick} on:dblclick={onDoubleClick} >
         {#if icon}
-        <img src={icon} class="icon" alt={title} style="{action.rotateIcon ? 'transform: rotate('+action.rotateIcon+'deg);' : ''}"/>
+        <img src={icon} class="icon" alt={title} style="{action?.rotateIcon ? 'transform: rotate('+action.rotateIcon+'deg);' : ''}"/>
         {/if}
         <span>{title}</span>
     </div>
@@ -118,7 +118,7 @@
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        min-height: 34px;
+        min-height: 30px;
     }
 
     .menu-item:hover {
@@ -137,6 +137,7 @@
         flex-direction: row;
         align-items: center;
         flex-grow: 1;
+        height: 100%;
     }
 
     .title img {

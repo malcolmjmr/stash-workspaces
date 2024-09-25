@@ -1,3 +1,4 @@
+import { _lastStashedWindow } from "../stores";
 
 export const getPermissions = async () => {
     return await chrome.permissions.contains({
@@ -716,6 +717,8 @@ export const stashWindow = async (params = {}) => {
          await chrome.tabs.create({});
      }
 
-     await chrome.tabs.remove(tabs.map((t) => t.id));
+
+     _lastStashedWindow.set(Date.now());
+     chrome.tabs.remove(tabs.map((t) => t.id));
 
  };

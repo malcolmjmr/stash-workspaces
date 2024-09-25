@@ -30,7 +30,7 @@
     import {createEventDispatcher, onMount } from "svelte";
     import { get } from "./utilities/chrome.js";
     import { Views } from "./view.js";
-    import { _authLoaded, userData } from "./stores.js";
+    import { _authLoaded, _db, userData } from "./stores.js";
     
     
     let fbAuth;
@@ -62,6 +62,7 @@
         fbApp = initializeApp(config.firebase);
         fbAuth = getAuth();
         db = getFirestore(fbApp);
+        _db.set(db);
         onAuthStateChanged(fbAuth, fbAuthChange);
         firebaseConnected = true;
         

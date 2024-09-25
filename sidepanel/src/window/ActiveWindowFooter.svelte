@@ -101,7 +101,7 @@
 
     <div class="main-container">
         <div class="action" style="filter:invert(1)" on:mousedown={stashWindow}>
-            <img src={stashIcon} alt="Add Group" />
+            <img src={stashIcon} alt="Stash Window" />
         </div>
         <div class="counts">
             <div class="container">

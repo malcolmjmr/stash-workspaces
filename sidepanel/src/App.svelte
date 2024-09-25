@@ -11,6 +11,7 @@
     import { _authLoaded, _favorites, _lastUpdatedTab, allWorkspaces, lastWorkspaceUpdate, _settings } from "./stores.js";
     import { getTabInfo } from "./utilities/chrome.js";
     import { getTabsBookmarks } from "./utilities/helpers.js";
+  import DeviceManager from "./DeviceManager.svelte";
 
     let tabs = [];
     let groups = {};
@@ -29,6 +30,7 @@
 
 
     let lastRefresh;
+    let lastRemoteUpdate;
     let lastUpdate;
     let lastUpdatedTab;
     let lastUpdatedWindow;
@@ -159,6 +161,7 @@
 <WindowManager 
     {db}
     {user}
+    {lastRemoteUpdate}
     bind:lastRefresh
     bind:windowsLoaded
     bind:activeTab
@@ -177,10 +180,14 @@
 />
 
 {#if authLoaded && windowsLoaded}
+    {#if user}
+        <DeviceManager bind:lastRemoteUpdate />
+    {/if}
     <WorkspaceManager 
         {db} 
         {userRef} 
         {activeTab}
+        {lastRemoteUpdate}
         {lastUpdatedGroup}
         {lastCreatedWorkspace}
         {authLoaded}
@@ -190,6 +197,7 @@
         bind:workspaces 
         bind:groups 
         bind:workspacesLoaded
+
     />
     {#if view == Views.signin}
         <SignIn {fbApp}/>

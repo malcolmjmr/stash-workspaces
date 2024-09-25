@@ -64,7 +64,7 @@ export const actions = {
         id: 'createPrompt',
         icon: createIcon,
         onClick: (tab, workspace, dispatch) => {
-            dispatch('createPrompt', { tab, workspace });
+            return 'createPrompt', { tab, workspace };
         }
     },
     duplicate: {

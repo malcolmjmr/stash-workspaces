@@ -46,10 +46,11 @@
   import TabUpdateModal from "./TabUpdateModal.svelte";
   import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
   import { children } from "svelte/internal";
-  import { LLM } from "../../../desktop/src/services/llm";
+  //import { LLM } from "../utilities/llm";
   import CreateActionModal from "./CreateActionModal.svelte";
   import { expoOut } from "svelte/easing";
-  import { getResourceProperties, getResourceType, getTabContent } from "./helpers";
+  import { getResourceProperties, getResourceType, getTabContent, getTabDetails } from "./helpers";
+  import ArtifactsModal from "./ArtifactsModal.svelte";
 
 
     export let db;
@@ -87,11 +88,9 @@
     let updated;
     $: {
 
-        if ($_lastUpdatedTab && $_lastUpdatedTab.id == tab.id) {
-            console.log('last updated tab');
-            console.log(tab);
+        if ($_lastUpdatedTab && $_lastUpdatedTab.id && $_lastUpdatedTab.id == tab.id) {
+
             tab = {...$_lastUpdatedTab};
-            console.log(tab)
             init();
 
             // if (tab.id && tab.active) {
@@ -250,12 +249,12 @@
     let longPressTimeout;
 
     const onMouseDown = (e) => {
-        console.log('webkit force: ', e.webkitForce);
+    
         touchStartTime = Date.now();
 
         longPressTimeout = setTimeout(() => {
             onCloseTab();
-        },700);
+        },500);
     };
 
     const onMouseUp = (e) => {
@@ -603,19 +602,14 @@
                     resource.isQueued = true;
                 }
 
-                // const ref = doc(db, StorePaths.userResource(user.id, resource.id));
-                // await setDoc(ref, resource, {merge: true});
-                // tab.resource = resource;
-                // isSaved = true;
-                // dispatch('dataUpdated', {resource});
-                const llm = new LLM();
                 resource.content = await getTabContent(tab); 
-                resource = await getResourceType(llm, resource);
-                resource = await getResourceProperties(llm, resource);
-                console.log('saved resource');
-                console.log(resource);
-                
-                //await setDoc(ref, resource, {merge: true});
+                resource = await getTabDetails(new LLM(), resource);
+
+                const ref = doc(db, StorePaths.userResource(user.id, resource.id));
+                await setDoc(ref, resource, {merge: true});
+                tab.resource = resource;
+                isSaved = true;
+                dispatch('dataUpdated', {resource});
 
 
                 
@@ -898,8 +892,11 @@
     const onArtifactCreated = ({ detail }) => {
         tab = detail;
         showCreateActionModal = false;
-        showArtifactModal = true;
+        showArtifactsModal = true;
     };
+
+    
+    
 </script>
 
 {#if showSaveModal}
@@ -914,13 +911,13 @@
 
 {#if showCreateActionModal}
     <ModalContainer on:exit={() => showCreateActionModal = false}>
-        <CreateActionModal {tab} {workspace} on:artifactCreated={onArtifactCreated}/>
+        <CreateActionModal {tab} {workspace} on:artifactCreated={onArtifactCreated} />
     </ModalContainer>
 {/if}
 
 {#if showArtifactsModal}
-<ModalContainer on:exit={() => showArtifactModal = false}>
-    
+<ModalContainer on:exit={() => showArtifactsModal = false}>
+    <ArtifactsModal {tab} />
 </ModalContainer>
 {/if}
 
@@ -952,7 +949,7 @@
                 on:tabStashed
                 on:moveToDesktop
                 on:moveToMiniPlayer
-                
+                on:createPrompt={() => showCreateActionModal = true}
             />
         {/if}
     </ModalContainer>

@@ -1,7 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import NoteActions from "./NoteActions.svelte";
-  import { text } from "svelte/internal";
 
     export let resource;
 

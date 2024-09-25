@@ -14,15 +14,19 @@
 
     import ModalContainer from "../components/ModalContainer.svelte";
     import { defaultDomains, getSearchUrlFromQuery, searchPlaceholder } from "./domains";
-    import { createAdjacentTab, getActiveTab, getHistory, getTabFavIconUrl, getTabInfo } from "../utilities/chrome";
+    import { createAdjacentTab, get, getActiveTab, getHistory, getTabFavIconUrl, getTabInfo } from "../utilities/chrome";
     import Tab from "./Tab.svelte";
     import TabIcon from "./TabIcon.svelte";
     import WorkspacePreview from "../workspace/WorkspacePreview.svelte";
     import ObjectContainer from "../object/ObjectContainer.svelte";
     import BookmarkBar from "../components/BookmarkBar.svelte";
     import { _settings, userData } from "../stores";
-  import { LLM } from "../../../desktop/src/services/llm";
+  
+      import { LLM } from "../utilities/llm";
   import Divider from "../components/Divider.svelte";
+  import { generateResourceType, openResourceType } from "./helpers";
+  import ResourceIcon from "../components/ResourceIcon.svelte";
+
     
 
         
@@ -151,6 +155,7 @@
 
     };
 
+    let createOptions;
     
 
     const getDomains = async () => {
@@ -169,6 +174,13 @@
         // }
 
         searchDomains = defaultDomains.filter((d) => d.isDefault && d.searchTemplate);
+
+        const resourceTypes = (await get('resourceTypes')) ?? {};
+
+        console.log('resource types');
+        console.log(resourceTypes);
+
+        createOptions = [...Object.values(resourceTypes),...searchDomains];
 
         
         // favorite domains from settings
@@ -389,17 +401,17 @@
     let showResource = false;
 
     const onKeyDownInUrlField = async (e) => {
-
+        console.log('key donwn');
         if (e.key == "Enter" && !e.shiftKey) {
             submit();
         } else if (e.key == 'Backspace') {
             updateInputHeight();
         }
 
-        if (recognition) recognition.abort();
+        //if (recognition) recognition.abort();
     };
 
-    const submit = () => {
+    const submit = async () => {
         let url = '';
         inputText = inputText.trim();
         const isUrl = inputText.includes('.') && !inputText.includes(' ');
@@ -412,6 +424,11 @@
             const tabData = { url, active: true };
             loadTab(tabData);
 
+        } else if (inputText.toLowerCase().startsWith('create')) {
+            const resourceType = await generateResourceType(llm, inputText);
+            const url = chrome.runtime.getURL('/resource/') + '?type=' + resourceType.key;
+            const tabData = { url, active: true };
+            loadTab(tabData);
         } else {
 
             if (searchDomain) {
@@ -589,6 +606,11 @@
         dispatch('exit');
     };
 
+    const onResourceTypeClicked = ({ detail }) => {
+        const resource = detail;
+        openResourceType(resource);
+    };
+
 
     
 
@@ -633,15 +655,19 @@
             <img class="incognito button" alt="More" src={incognitoIcon} on:mousedown={onCreateIncognitoWindow}>
             
             
-            {#each searchDomains as searchDomain}
+            {#each createOptions ?? [] as option}
+                {#if option.url}
                 <div class="domain-padding">
                     <DomainIcon 
-                        domain={searchDomain} 
+                        domain={option} 
                         size={20} 
-                        on:mousedown={(e) => onDomainClicked(e, searchDomain)} 
+                        on:mousedown={(e) => onDomainClicked(e, option)} 
                         on:domainSelected={onSearchDomainSelected}
                     />
                 </div>
+                {:else if option.icon}
+                    <ResourceIcon resource={option} on:click={onResourceTypeClicked}/>
+                {/if}
                 
             {/each}
         </div>

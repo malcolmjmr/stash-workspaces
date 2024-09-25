@@ -13,7 +13,9 @@
         {
             "resources": [
                 "desktop/*",
-                "sidepanel/*"
+                "sidepanel/*",
+                "resource/*",
+                "omnibox/*"
             ],
             "matches": [
                 "<all_urls>"

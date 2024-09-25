@@ -113,7 +113,7 @@
     $: {
         if (user) {
 
-            load(false);
+            load(true);
         }
     }
 
@@ -141,13 +141,13 @@
 
     };
 
+    let lastDragEnd;
+
     const toggleCollapse = () => {
-        setTimeout(() => {
-            if (showMenu) return;
-            dispatch("toggleCollapse", group);
-            chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });
-        }, 10);
-        
+        const timeSinceLastDrag = Date.now() - lastDragEnd;
+        if (showMenu || isDragged || timeSinceLastDrag < 300) return;
+        dispatch("toggleCollapse", group);
+        chrome.tabGroups.update(group.id, { collapsed: !group.collapsed });  
     };
 
     const saveGroup = async () => {
@@ -295,6 +295,7 @@
 
     const onDragEnd = () => {
         isDragged = false;
+        lastDragEnd = Date.now();
     };
 
     let showWorkspace;
@@ -337,25 +338,19 @@
     }
 
     let cachedData;
-    const load = async (getCache = true) => {
+    const load = async (refresh = false) => {
 
         console.log('loading workspace widget');
         //group = $_groups[groupId];
         loaded = true;
         await getWorkspace();
+        cachedData = $_openWorkspaces[workspace?.id];
+       
+        sections = cachedData?.sections ?? [];
 
-
-        if (false) {
-            cachedData = $_openWorkspaces[workspace?.id];
-            sections = cachedData?.sections ?? [];
-        } else {
-            cachedData = null;
-            sections = [];
-        }
-        
-        await fetchData();
-
-        
+        if (refresh || !cachedData || cachedData.sections.length == 1) {
+            await fetchData();
+        }   
     };
 
     const fetchData = async () => {
@@ -379,7 +374,7 @@
     let bookmarkTree;
 
     const loadLocalData = async () => {
-        if (false) {
+        if (cachedData) {
             bookmarkCount = cachedData.bookmarkCount;
             bookmarkTree = cachedData.bookmarkTree;
             queue = cachedData.queue ?? [];
@@ -425,6 +420,8 @@
 
 
             sections = sections;
+            console.log('cached data');
+            console.log(cachedData);
             cachedData.queue = queue;
             cachedData.bookmarkCount = bookmarkCount;
             cachedData.bookmarkTree = bookmarkTree;
@@ -438,7 +435,7 @@
 
     const loadDataFromCloud = async () => {
 
-        if (cachedData) {
+        if (false) {
             resources = cachedData.resources;
             queue = cachedData.queue;
             folders = cachedData.folders;
@@ -787,7 +784,7 @@
 
     const onContextMenu = (e) => {
         e.preventDefault();
-        showMenu = true;
+        showMenu = Date.now();
     };
 
 </script>
@@ -901,7 +898,7 @@
                 bind:this={inputElement}
             />
         {:else}
-            <div class="title"on:mousedown={toggleCollapse} style="color: {$_settings?.appearance?.textColor};">
+            <div class="title"  on:mouseup={toggleCollapse} style="color: {$_settings?.appearance?.textColor};">
                 <WorkspaceIcon color={group.color}/>
                 <span class="text" >
                     {group?.title && group.title != '' ? group.title :  "Untitled"}
@@ -923,7 +920,7 @@
                 <img
                     src={moreIcon}
                     alt="More"
-                    on:mousedown={() => showMenu = true}
+                    on:mousedown={() => showMenu = Date.now()}
                 />
                 <img src={closeIcon} alt="close" on:mousedown={onCloseClicked} />
             </div>
@@ -953,8 +950,9 @@
                 </div>
                 
             </div>
+            <Divider />
         {/if}
-        <Divider />
+        
         
 
         <div class="section-items">

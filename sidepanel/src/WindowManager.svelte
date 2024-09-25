@@ -13,7 +13,7 @@
 
      } from "./utilities/chrome.js";
     import { Views } from "./view.js";
-    import { _activeTab, _groups, _lastRemovedTab, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
+    import { _activeTab, _groups, _lastRemovedTab, _lastStashedWindow, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
   import { collection, onSnapshot } from "firebase/firestore";
   import { StorePaths } from "./utilities/storepaths.js";
@@ -35,6 +35,7 @@
 
     export let lastRefresh;
     export let lastUpdate;
+    export let lastRemoteUpdate;
     export let lastUpdatedTab;
     export let lastUpdatedWindow;
     export let lastUpdatedGroup;
@@ -435,13 +436,25 @@
         updateTabsWithinWindow(tab.windowId, tab);
     };
 
+    let lastTabRemoved;
+    let refreshDataTimeout;
+
     const onTabRemoved = (tabId) => {
-        
+        const now = Date.now();
         //tabs = tabs.filter((t) => t.id != tabId);
-
-        loadTabsGroupsAndWindows();
+        if ($_lastStashedWindow && (now  - $_lastStashedWindow < 1000)) return;
+       
 
         
+        if (lastTabRemoved && (now - lastTabRemoved < 100)) {
+
+            //console.log('clearing refresh timeout');
+            if (refreshDataTimeout) clearTimeout(refreshDataTimeout);
+            
+        }
+        refreshDataTimeout = setTimeout(loadTabsGroupsAndWindows, 100);
+        lastTabRemoved = now;
+
         // const index = tabs.findIndex((t) => t.id == tabId);
         // if (index > -1) {
         //     const tab = { ...tabs[index] };
@@ -524,6 +537,7 @@
         const index = windows.findIndex((w) => w.id == windowId);
         if (index > -1) windows.splice(index, 1);
         windows = windows;
+        lastUpdatedWindow = Date.now();
     };
 
     const onTabGroupCreated = async (group) => {
@@ -555,13 +569,16 @@
 
     const onTabGroupRemoved = (groupId) => {
         
-        const deletedGroup = {...groups[groupId], removed: true};
-        delete groups[groupId];
-        groups = {...groups};
-        lastUpdatedGroup = deletedGroup;
         setTimeout(() => {
-            loadTabsGroupsAndWindows();
-        }, 200);
+            const deletedGroup = {...groups[groupId], removed: true};
+            delete groups[groupId];
+            groups = {...groups};
+            lastUpdatedGroup = deletedGroup;
+        },200);
+       
+        // setTimeout(() => {
+        //     loadTabsGroupsAndWindows();
+        // }, 200);
         
     };
 

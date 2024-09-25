@@ -1,5 +1,5 @@
 <script>
-    import { loadBundle } from "firebase/firestore";
+
     import { onMount } from "svelte";
 
     import backArrowIcon from "../icons/back.png";

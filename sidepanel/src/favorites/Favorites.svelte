@@ -1,7 +1,7 @@
 <script>
   import { onDestroy, onMount } from "svelte";
   import DomainIcon from "../components/DomainIcon.svelte";
-  import { getActiveTab, get, getHistory } from "../utilities/chrome";
+  import { getActiveTab, get, getHistory, set } from "../utilities/chrome";
   import { _favorites } from "../stores";
   import settingsIcon from "../icons/more-horiz.png";
   import ModalContainer from "../components/ModalContainer.svelte";
@@ -11,8 +11,7 @@
 
     export let workspace = null;
 
-    let unsubscribeToTabUpdates;
-    let favorites = [];
+
 
     let loaded;
     onMount(() => {
@@ -20,50 +19,11 @@
     });
 
     const load = async () => {
-
-        unsubscribeToTabUpdates = _favorites.subscribe((value) => {
-            favorites = value;
-        });
-       
-        if ($_favorites.length == 0) {
-            await refreshFavorites();
-        } else {
-            favorites = $_favorites;
+        const favorites = workspace?.favorites ?? (await get('favorites')) ?? defaultFavorites;
+        if (favorites.length != $_favorites.length) {
+            _favorites.set(favorites);
         }
-
         loaded = true;
-    };
-
-    onDestroy(() => {
-        unsubscribeToTabUpdates();
-    });
-
-    const refreshFavorites = async () => {
-        await getSavedFavorites();
-        // 
-        _favorites.set(favorites);
-    };
-
-    const getSavedFavorites = async () => {
-        console.log('favorites');
-        if (workspace) {
-            favorites = workspace.favorites ?? [];
-        } else {
-            favorites = (await get('favorites')) ?? defaultFavorites;
-        }
-        console.log(favorites);
-    };
-
-    const getDomainsFromOpenTabs = async () => {
-        const tab = await getActiveTab();
-        const otherTabs = await chrome.tabs.query({groupId: tab.groupId});
-        favorites = [...favorites, ...getDomainsOrderedByCount(otherTabs, (d) => d.count > 10 && !favorites.find((f) => f.url == d.url))];
-    };
-
-    const getDomainsFromHistory = async () => {
-        if (workspace) return;
-        const history = await getHistory();
-        favorites = [...favorites, ...getDomainsOrderedByCount(history, (d) => d.count > 10 && !favorites.find((f) => f.url == d.url))];
     };
 
     const getDomainsOrderedByCount = (resources, filter) => {
@@ -103,27 +63,50 @@
     };
 
     const onDomainClicked = async ({ detail }) => {
-        const domain = detail;
-        const activeTab = await getActiveTab();
-        let url = domain.url;
 
-        if (activeTab.groupId > -1) {
-            const tabGroup = await chrome.tabGroups.get(activeTab.groupId);
-            if (tabGroup.collapsed) {
-                await chrome.tabs.create({ url });
+
+        const { favorite, isAltClick } = detail;
+
+        if (isAltClick) {
+
+            let favorites = $_favorites;
+            const index = favorites.findIndex((f) => f.url == favorite.url);
+            if (index > -1) {
+                favorites[index].isGlobal = !favorites[index].isGlobal;
+            }
+            
+            // sort
+            set({ favorites });
+
+            
+            _favorites.set(favorites);
+
+        } else {
+            const activeTab = await getActiveTab();
+            let url = favorite.url;
+
+            if (activeTab.groupId > -1) {
+                const tabGroup = await chrome.tabGroups.get(activeTab.groupId);
+                if (tabGroup.collapsed) {
+                    await chrome.tabs.create({ url });
+                } else {
+                    const tab = await chrome.tabs.create({ url, index:  activeTab.index + 1 });
+                    await chrome.tabs.group({ groupId: activeTab.groupId, tabIds: tab.id });
+                }
             } else {
                 const tab = await chrome.tabs.create({ url, index:  activeTab.index + 1 });
-                await chrome.tabs.group({ groupId: activeTab.groupId, tabIds: tab.id });
             }
-        } else {
-            const tab = await chrome.tabs.create({ url, index:  activeTab.index + 1 });
-        }
 
-        const index = favorites.findIndex((f) => f.url == domain.url);
-        if (index > -1) {
-            favorites[index].lastUsed = Date.now();
-        }
+            let favorites = $_favorites;
+            const index = favorites.findIndex((f) => f.url == favorite.url);
+            if (index > -1) {
+                favorites[index].lastUsed = Date.now();
+            }
 
+            set({ favorites });
+            _favorites.set(favorites);
+
+        }
     };
 
     let isInFocus;
@@ -147,10 +130,10 @@
     </ModalContainer>
 {/if}
 
-{#if favorites.length > 0}
+{#if $_favorites.length > 0}
 <div class="favorites" on:mouseenter={onMouseEnter} on:mouseleave={onMouseLeave}>
-    {#each favorites as favorite}
-        <FavoriteThumbnail {favorite} on:clicked={onDomainClicked}/>
+    {#each workspace ? [...$_favorites.filter((f) => f.isGlobal), ...(workspace?.favorites ?? [])] : $_favorites as favorite}
+        <FavoriteThumbnail {favorite} on:click={onDomainClicked}/>
     {/each}
     {#if isInFocus}
     <div class="settings button" on:mousedown={() => showSettings = true}>

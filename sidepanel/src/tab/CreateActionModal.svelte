@@ -2,7 +2,16 @@
 <script>
     import { createEventDispatcher, onMount } from 'svelte';
     import { createId, get, set } from '../utilities/chrome.js';
-    import { LLM } from '../../../desktop/src/services/llm.js';
+    import { LLM } from '../utilities/llm.js';
+    import submitIcon from "../icons/arrow-upwards.png";
+  import Divider from '../components/Divider.svelte';
+  import { _db, _settings, userData } from '../stores.js';
+  import { promptWithTabContent, savePrompt, submitPrompt } from '../utilities/prompts.js'
+  import { collection, doc, setDoc } from 'firebase/firestore';
+  import { StorePaths } from '../utilities/storepaths.js';
+  import { createResource } from '../utilities/firebase.js';
+
+    
 
     let dispatch = createEventDispatcher();
   
@@ -15,7 +24,7 @@
   
     
     let content = '';
-    let resource = tab.resource ?? {};
+    let resource = tab.resource;
 
     let loaded;
     onMount(async () => {
@@ -42,12 +51,24 @@
             onPromptResponse
          */
 
+         getSuggestedPrompts();
+
+         if (!resource) { 
+            resource = createResource({
+                url: tab.url,
+                title: tab.title,
+                favIconUrl: tab.favIconUrl,
+                contexts: [workspace.id]
+            });
+         }
+
+
          await checkPermission();
 
          if (hasTabAccess) {
-            await getTabContent();
             llm = new LLM();
-            await runInference();
+            resource.content = await getTabContent(tab);
+            //await runInference();
          }
 
          loaded = true;
@@ -70,183 +91,136 @@
     
     };
 
-   
-    const getTabContent = async () => {
-        content = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-                return document.body.innerText;
-            }
-        });
-        resource.text = content;
-    };
+
 
 
 
     let isAnalyzingContent;
-    const runInference = async () => {
-        isAnalyzingContent = true;
-        let prompt = `Analyze the following webpage content. Determine the content types, identify key properties, and suggest 3 relevant prompts for interacting with this content. Output your analysis as a JSON object with the following structure:
-        {
-            "type": ["type1", "type2",
-            "properties": {
-                "key1": "value1",
-                "key2": "value2",
-                ...
-            },
-            "suggestedPrompts": [
-                {
-                    "symbol": "emoji",
-                    "text": "string",
-                    "description": "string",
-                },
-                ...
-            ]
+
+
+
+    const onSubmit = async ({prompt, save = false}) => {
+        const text = await promptWithTabContent({ prompt: prompt, content: resource.content });
+        if (!resource.articfacts) resource.articfacts = [];
+        let artifact = {
+            id: createId(),
+            created: Date.now(),
+            text,
+        };
+        resource.articfacts.push(artifact);
+
+        // save resource
+        if (save) {
+            savePrompt({db: $_db,  text, resource}); 
         }
+        tab.resource = resource;
 
-        Content types could include but are not limited to: article, product page, social media post, video, forum discussion, documentation, etc.
-        Properties should include relevant information specific to the content type, such as author, publication date, product details, video duration, number of comments, etc.
-        Suggested prompts should be relevant to the content and help users interact with or extract value from the page.
-
-        Webpage content to analyze:
-        ${content}`;
-
-        const response = await llm.claudeChatCompletion({ prompt });
-        const data = JSON.parse(response);
-        suggestedPrompts = [...data.suggestedPrompts];
-        delete data.suggestedPrompts;
-        resource = {...resource, ...data}
-        isAnalyzingContent = false;
-
+        dispatch('artifactCreated', tab);
     };
 
-    const onPromptClicked = async (prompt) => {
-        await savePrompt(prompt);
-        await submitPrompt(prompt.text);
+    const saveResource = () => {
+        resource.updated = Date.now();
+        const ref = doc($_db, StorePaths.userResource(resource.id));
+        setDoc(ref, resource, { merge: true });
+    };
+
+    const getSuggestedPrompts = async () => {
+        if ($userData) {
+            const promptQuery = collection($_db, StorePaths.userPrompts(user.id));
+            // need shared prompts that match the active resource type 
+            
+            suggestedPrompts = (await getDocs(promptQuery)).docs.map((d) => d.data());
+        } else {
+            suggestedPrompts = Object.values((await get('prompts')) ?? {});
+        }
         
     };
 
-    const savePrompt = async (prompt) => {
-        prompt.lastUsed = Date.now();
-        if (!prompt.useCount) prompt.useCount = 0;
-        prompt.useCount += 1;
-
-        // add resource types to prompt
-        if (!prompt.types) prompt.types = [];
-        for (const type of resource.types ?? []) {
-            if (!prompt.types.includes(type)) {
-                prompt.types.push(type);
-            }
-        }
-
-        let promptIsSaved;
-        let prompts = (await get('prompts')) ?? {};
-        if (prompts[prompt?.id]) {
-            promptIsSaved = true;
-        } else if (!prompt.id) {
-            prompt.id = createId();
-        }
-
-        if (!promptIsSaved) {
-            prompts[prompt.id] = prompt;
-            await set({ prompts });
-        }
-    }
-
-    const submitPrompt = async (promptText) => {
-        const prompt = `You are an AI assistant embedded in a browser extension. You've been given a prompt related to the current webpage. Analyze the given prompt and the context of the current webpage. Then, generate either static or dynamic response that best addresses the prompt. Static responses include a text string, while dynamic responses include html, css, and js. Your response should be structured as a JSON object with the following format:
-
-        {
-            "type": "string", // Can be "static" or "dynamic"
-            "text": "string", // Plain text response, if applicable
-            "html": "string", // HTML content, if applicable
-            "css": "string", // CSS content, if applicable
-            "js": "string", // JavaScript content, if applicable
-            "explanation": 'string' // A brief explanation of your response
-        }
-
-        Current webpage context:
-        ${content}
-
-        User prompt:
-        ${promptText}
-
-        Remember to tailor your response to the specific prompt and webpage context. Be creative and helpful in your response, but also ensure it's relevant and appropriate for the given context.`;
-
-        const response = await llm.claudeChatCompletion({ prompt });
-        const data = JSON.parse(response);
-        if (!resource.articfacts) resource.articfacts = [];
-        data.id = createId();
-        data.created = Date.now();
-        resource.articfacts.push(data);
-        tab.resource = resource;
-
-        dispatch('artifactCreated');
-
-
-    };
-
-    let inputText = '';
-    const onSubmit = () => {
-        submitPrompt(inputText);
-    };
-  
-    async function handleCreatePrompt() {
-      await createNewPrompt(newPromptText);
-      // Close the prompt creator or show success message
-    }
-  
-    function useExistingPrompt(prompt) {
-      newPromptText = prompt.text;
-    }
-
-    const getSuggestedPrompts = (resourceType) => {
-
-    };
-
-    const createArtifact = (data) => {
-
-    }
+    
   </script>
   
-  <div class="container">
-    
-    {#if isAnalyzingContent}
-        <div class="loading-message">
-            Analyzing content...
-        </div>
-
-    {:else}
-
+  <div class="create-prompt">
+    {#if suggestedPrompts.length > 0}
         <div class="suggestions">
             <h3>Suggested Prompts</h3>
             {#each suggestedPrompts as prompt}
-                <button on:click={() => useExistingPrompt(prompt)}>{prompt.text}</button>
+                <div class="prompt" on:mousedown={() => submitPrompt({ prompt, content})}>{prompt.text}</div>
             {/each}
       </div>
+      <Divider thickness={0.5}/>
     {/if}
-    
-    
-    
 
-
-    <textarea bind:value={newPromptText} placeholder="Enter your prompt here..."></textarea>
-    <button on:click={handleCreatePrompt}>Create Prompt</button>
+    <div class="input-container">
+        <textarea 
+            bind:value={newPromptText} 
+            placeholder="Enter your prompt here..."
+            style="color: {$_settings?.appearance.primaryTextColor}"
+        ></textarea>
+        
+        {#if newPromptText.length > 0}
+        <div class="submit" on:mousedown={() => onSubmit({ prompt: newPromptText, save: true})}>
+            <img src={submitIcon} alt="Submit"/>
+        </div>
+        {/if}
+    </div>
+    
   </div>
   
   <style>
-    .container {
+    .create-prompt {
       display: flex;
       flex-direction: column;
       align-items: center;
+      margin: 10px;
+    }
+
+    .top-container {
+        display: flex;
+        height: 200px;
+    }
+
+
+    .input-container {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
     }
     
     textarea {
-      width: 100%;
-      height: 100px;
+        width: 100%;
+        flex-grow: 1;
+        background-color: transparent;
+        border: none;
+        outline: none;
     }
-    
-    .suggestions, .community-prompts {
-      margin-top: 1em;
+
+    .submit {
+       padding: 5px; 
     }
+
+    .submit img {
+        height: 24px;
+        width: 24px;
+        border-radius: 8px;
+        filter: invert(1);
+        background-color: orangered;
+    }
+
+    .submit img:hover {
+        cursor: pointer;
+    }
+
+
+    .loading-message {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .suggestions {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+
   </style>

@@ -13,9 +13,11 @@
     export let workspaces = [];
     export let currentWindow;
     export let listenForUpdates = false; 
+    export let lastRemoteUpdate;
 
 
     onMount(() => {
+        console.log('device manager mounted');
         connectToServiceWorker();
     });
 
@@ -30,14 +32,16 @@
 
     let port;
     const connectToServiceWorker = () => {
-        port = chrome.runtime.connect({command: "toolbar"});
+        port = chrome.runtime.connect();
 
         port.onMessage.addListener((msg) => {
-            if (msg.command === "updatePrimaryToolbar" && msg.windowId == currentWindow.id) {
+            if (msg.windowId != currentWindow.id) return;
+            if (msg.command === "updatePrimaryToolbar") {
                 addDeviceListeners();
+            } else if (msg.command === "contextUpdated") {
+                onContextUpdated(msg.context);
             }
         });
-
     };
 
     let deviceListenersAdded;
@@ -58,8 +62,12 @@
 
     };
 
+    let deviceId;
     const getDevice = async () => {
-        let deviceId = await get('deviceId');
+
+        const now =  Date.now();
+
+        deviceId = await get('deviceId');
 
         if (!deviceId) {
             deviceId = createId();
@@ -70,15 +78,16 @@
         const deviceRef = doc(db, StorePaths.userDevice(user.id, deviceId));
         device = await getDoc(deviceRef);
 
-        if (!device) {
-            const now =  Date.now();
+        if (!device) {   
             device = {
                 id: deviceId,
-                connected: now,
                 created: now,
             };
-            await setDoc(deviceRef, device);
-        }
+        } 
+
+        device.connected = now;
+
+        await setDoc(deviceRef, device, {merge: true});
 
     };
 
@@ -87,6 +96,8 @@
     const onDeviceUpdate = (snapshot) => {
         snapshot.docChanges().forEach((change) => {
             const device = change.doc.data();
+            console.log('device update');
+            console.log(device);
             if (change.type === "added") onDeviceAdded(device);
             if (change.type === "removed") onDeviceRemoved(device);
         });
@@ -99,9 +110,8 @@
 
         } else if (connectedDevices.length > 1) {
             listenForUpdates = true;
-
-            // addWindowListener();
-            // addWorkspaceListener();
+            addWindowListener();
+            addWorkspaceListener();
         }
         
     };
@@ -125,39 +135,95 @@
     let unsubscribeToWindowUpdates;
     const addWindowListener = () => {
         unsubscribeToWindowUpdates = onSnapshot(collection(db, StorePaths.userWindows(user.id)), (snapshot) => {
-            /*
-                find corresponding window 
-                make update to it
-                have those updates reflected in the UI
-
-                existing window 
-                non existing window
-
-
-            */
-
             snapshot.docChanges().forEach((change) => {
+                
                 const window = change.doc.data();
-                if (change.type === "added") {
-                    addWindow(window);
-                }
-                if (change.type === "modified") {
-                    console.log("Modified city: ", change.doc.data());
-                }
-                if (change.type === "removed") {
-                    console.log("Removed city: ", change.doc.data());
-                }
+                if (window.deviceId == deviceId) return;
+
+                lastRemoteUpdate = {
+                    time: Date.now(),
+                    type: change.type,
+                    window,
+                    changedFields: getChangedFields(snapshot, change),
+                };
+
+                console.log('last remote update');
+                console.log(lastRemoteUpdate);
             });
             
+
         });
     };
 
     let unsubscribeToWorkspaceUpdates;
     const addWorkspaceListener = () => {
         unsubscribeToWorkspaceUpdates = onSnapshot(collection(db, StorePaths.userContexts(user.id)), (snapshot) => {
-
+            snapshot.docChanges().forEach((change) => {
+                const changedFields = getChangedFields(snapshot, change);
+                const workspace = change.doc.data();
+                if (workspace.deviceId == deviceId) return;
+                lastRemoteUpdate = {
+                    time: Date.now(),
+                    type: change.type,
+                    workspace,
+                    changedFields
+                };
+                console.log('last remote update');
+                console.log(lastRemoteUpdate);
+            });
         });
     };
+
+    const getChangedFields = (snapshot, change) => {
+        let oldData = change.oldIndex != -1 
+            ? snapshot.docs[change.oldIndex].data()
+            : {};
+        let newData = change.doc.data();
+        let changedFields = {};
+        let allKeys = {...oldData.keys, ...newData.keys};
+        
+        for (let key in allKeys) {
+            if (!(key in oldData)) {
+                changedFields[key] = newData[key]; // Added field
+            } else if (!(key in newData)) {
+                changedFields[key] = null; // Deleted field
+            } else if (oldData[key] != newData[key]) {
+                changedFields[key] = newData[key]; // Modified field
+            }
+        }
+    }
+
+    const addWindow = (window) => {
+        // 
+    };
+
+    const updateWindow = (window) => { 
+        lastRemoteUpdate = window;
+        const openWindow = windows.find((w) => w.id == window.id);
+        if (openWindow) {
+            // get diff
+            // update tabs 
+        } else {
+            // do nothing
+        }
+    };
+
+    const removeWindow = (window) => {
+
+    };
+
+
+    const onContextUpdated = (context) => {
+        const now = Date.now();
+        const shouldUpdate = !lastRemoteUpdate || ((now - lastRemoteUpdate?.time) > 5000);
+        if (shouldUpdate) {
+            const ref = doc(db, StorePaths.userContext(user.id, context.id));
+            context.deviceId = deviceId;
+            setDoc(ref, context, { merge: true });
+        }
+    };
+
+
 
 
 </script>

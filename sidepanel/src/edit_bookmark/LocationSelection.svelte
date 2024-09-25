@@ -3,7 +3,7 @@
     import SearchBox from "../components/SearchBox.svelte";
     import ActiveWindow from "../window/ActiveWindow.svelte";
     import WorkspaceListItem from "../components/WorkspaceListItem.svelte";
-    import { allWorkspaces, settings, userData } from "../stores";
+    import { _settings, allWorkspaces, settings, userData } from "../stores";
 
     import backIcon from "../icons/back.png";
     import toolbarIcon from "../icons/toolbar.png";
@@ -83,7 +83,7 @@
     </ModalContainer>
 {/if}
 
-<div class="location-selection{addPadding ? ' padding' : ''}">
+<div class="location-selection{addPadding ? ' padding' : ''}" style="background-color: {$_settings?.appearance?.primaryColor}; color: {$_settings?.appearance?.primaryTextColor ?? 'white'};">
     <div class="header">
         <div class="back end" on:mousedown={() => dispatch('back')}>
             <img src={backIcon} alt="Back" />
@@ -118,7 +118,7 @@
             </div>
         {/if}
         {#if workspace}
-        <div class="workspace-folders section">
+        <div class="workspace-folders section" style="background-color: {$_settings?.appearance?.secondaryColor};">
             <div class="heading" style="color: {colorMap[workspace.color ?? 'grey']}">
                 <WorkspaceIcon color={workspace.color}/> <span>{workspace.title}</span>
             </div>
@@ -135,7 +135,7 @@
             
         {/if}
         {#if visibleWorkspaces.length > 0}
-        <div class="spaces section">
+        <div class="spaces section" style="background-color: {$_settings?.appearance?.secondaryColor};">
             <div class="heading">
                 {#if workspace}Other{/if} Spaces
             </div>
@@ -151,7 +151,7 @@
         </div>
         {/if}
         {#if visibleFolders.length > 0}
-        <div class="folders section">
+        <div class="folders section" style="background-color: {$_settings?.appearance?.secondaryColor};">
             <div class="heading">
                 Folders
             </div>

@@ -613,7 +613,7 @@
                     </div>
             </div>
             {/if}
-            
+            <Favorites {workspace} />
             {#if (searchText.length > 0 ? visibleTabs : tabs).length > 0}
             <div class="tabs section">
                 {#if showMultiSelectionHeader}

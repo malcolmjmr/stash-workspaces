@@ -1,13 +1,14 @@
 import { createId } from "./chrome";
 
-export function createResource({url , favIconUrl, title}) {
+export function createResource(props) {
     const now = Date.now();
-    return {
+    let resource = {
         id: createId(),
         created: now,
         updated: now,
-        url,
-        title,
-        favIconUrl,
+    };
+    return {
+        ...resource,
+        ...props,
     };
 }
