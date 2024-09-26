@@ -15,9 +15,10 @@
     import { Views } from "./view.js";
     import { _activeTab, _groups, _lastRemovedTab, _lastStashedWindow, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
-  import { collection, onSnapshot } from "firebase/firestore";
+  import { collection, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
   import { StorePaths } from "./utilities/storepaths.js";
   import { tryToOpenTabInPiP } from "./tab/helpers.js";
+  import { applyWindowChanges, generateWindowDiff } from "./windows/helpers.js";
 
 
     let settings;
@@ -66,10 +67,13 @@
         
     }
 
-    // $: {
-    //     $allResources;
-    //     updateTabsWithinGroup()
-    // }
+    $: {
+        
+        if (listenForUpdates && lastUpdatedWindow) {
+            pushWindowUpdate();
+        }
+    }
+
 
 
     export let windowsLoaded;
@@ -87,16 +91,6 @@
     };
 
     export let hasBookmarkPermission;
-
-    const setView = async () => {
-
-        const allTabsInGroup = !tabs.find((t) => activeTab.groupId == -1 || t.windowId == activeTab.windowId && t.groupId != activeTab.groupId);
-        if (allTabsInGroup) {
-            view = Views.workspace;
-        } else {
-            view = Views.tabs;
-        }
-    };
 
     const loadTabsGroupsAndWindows = async () => {
         let tempTabs = await chrome.tabs.query({});
@@ -223,8 +217,7 @@
         chrome.tabs.onUpdated.addListener(onTabUpdated);
         chrome.tabs.onMoved.addListener(onTabMoved);
         chrome.tabs.onRemoved.addListener(onTabRemoved);
-        // chrome.tabs.onAttached.addListener(onTabAttached);
-        chrome.tabs.onDetached.addListener(onTabDetached);
+
         chrome.tabGroups.onCreated.addListener(onTabGroupCreated);
         chrome.tabGroups.onUpdated.addListener(onTabGroupUpdated);
         chrome.tabGroups.onRemoved.addListener(onTabGroupRemoved);
@@ -240,17 +233,6 @@
     let unsubscribeToWindowUpdates;
     const addUpdateListener = () => {
         unsubscribeToWindowUpdates = onSnapshot(collection(db, StorePaths.userWindows(user.id)), (snapshot) => {
-            /*
-                find corresponding window 
-                make update to it
-                have those updates reflected in the UI
-
-                existing window 
-                non existing window
-
-
-            */
-
             snapshot.docChanges().forEach((change) => {
                 const window = change.doc.data();
                 if (change.type === "added") {
@@ -267,26 +249,48 @@
         });
     };
 
+    const dbWindowToExtensionWindow = (window) => {
+        window.tabs = Object.values(window.tabs);
+        return window;
+    };
+
     const addRemoteWindow = (window) => {
+        window.isRemote = true;
         otherWindows = [...otherWindows, window];
     };
 
 
-    const updateWindow = (window) => {
+    const updateWindow = async (window) => {
         let index = windows.findIndex((w) => w.id == window.id);
         if (index > -1) {
-            
+            const currentWindow = await chrome.windows.get(window.id, { populate: true });
+            const diff = generateWindowDiff(currentWindow.tabs, Object.values(window.tabs));
+            await applyWindowChanges(diff, window);
         } else {
             index = otherWindows.findIndex((w) => w.id == window.id);
             if (index > -1) {
                 otherWindows[index] = window;
-                lastUpdatedWindow = Date.now();
+                lastRemoteUpdate = Date.now();
             }
         }
     };
 
-    const removeWindow = (window) => {
 
+
+    const removeWindow = async (window) => {
+        let openWindow;
+        try {
+            openWindow = await chrome.windows.get(window.id);
+        } catch(e) {
+
+        }
+
+        if (openWindow) {
+            await chrome.windows.remove(window.id);
+        } else {
+            otherWindows = otherWindows.filter((w) => w.id != window);
+        }
+        
     };
 
     const onTabAttached = (tabId, attachInfo) => {
@@ -335,7 +339,6 @@
                 let oldTab = tabs[oldActiveTabIndex];
                 oldTab.active = false;
                 if (oldTab.audible) oldTab = await tryToOpenTabInPiP(oldTab);
-
                 tabs[oldActiveTabIndex] = oldTab;
                 
                 //lastUpdatedTab = tabs[oldActiveTabIndex];
@@ -354,8 +357,6 @@
             // Need to account for when active tab is set after tabs are moved
             view = Views.tabs;
         }
-
-        // add tab to recent tabs
         
     };
 
@@ -401,39 +402,24 @@
         }
     };
 
-    // const checkForUpdateToTabWithinSpace = async (tab) => {
-    //     if (tab.groupId == -1) return;
-        
-    //     const workspace = workspaces.find((w) => w.groupId == groupId);
-    //     if (!workspace) return;
-
-    //     const tabData = (await chrome.bookmarks.getChildren(workspace.folder.id)).filter((b) => b.title.includes(tab.id));
-    //     const tabBookmark = tabData.length > 0 ?  tabData[0] : null;
-    //     if (!tabBookmark) return;
-
-    //     await chrome.bookmarks.update(tabBookmark.id, { 
-    //         title: `${tab.title} [tab|${tab.id}]`, 
-    //         url: tab.url
-    //     });
-    // }
 
     const onTabMoved = async (tabId, { windowId, toIndex, fromIndex }) => {
         const tabIndex = tabs.findIndex((t) => t.id == tabId);
         let tab = await chrome.tabs.get(tabId);
         if (tabIndex == -1) {
             loadTabsGroupsAndWindows();
-        }
+        } else {
+            if (tabs[tabIndex].windowId != tab.windowId) {
+                tabs[tabIndex].windowId = tab.windowId;
+            }
 
-        let delay = 0;
-        if (tabs[tabIndex].windowId != tab.windowId) {
-            tabs[tabIndex].windowId = tab.windowId;
+            const window = windows.find((w) => w.id == windowId);
+            if (!window) {
+                windows = [...windows, await chrome.windows.get(windowId)];
+            }
+            updateTabsWithinWindow(tab.windowId, tab);
         }
-
-        const window = windows.find((w) => w.id == windowId);
-        if (!window) {
-            windows = [...windows, await chrome.windows.get(windowId)];
-        }
-        updateTabsWithinWindow(tab.windowId, tab);
+        
     };
 
     let lastTabRemoved;
@@ -473,7 +459,7 @@
                 let storedTab = tabs[index];
                 if (storedTab.id == updatedTab?.id) {
                     storedTab.updated = Date.now();
-                    _lastUpdatedTab.set(storedTab);
+                    //_lastUpdatedTab.set(storedTab);
                 }
                 tabs[index] = { ...storedTab, ...tab };
             } else {
@@ -488,43 +474,13 @@
         _tabs.set(tabs);
         lastUpdate = Date.now();
         //checkForDataRefresh();
-        lastUpdatedWindow = windowId;
+        lastUpdatedWindow = { 
+            id: windowId,
+            tabs: updatedTabs,
+        }
     };
 
-    let lastPeriodicRefresh = Date.now();
-    const checkForDataRefresh = () => {
-        const now = Date.now()
-        if (!lastPeriodicRefresh) { 
-            lastPeriodicRefresh = now;
-            return;
-        }
 
-        if (lastPeriodicRefresh - now > (1000 * 60 * 10)) {
-            //check first if there are any duplicates
-            loadTabsGroupsAndWindows();
-            lastPeriodicRefresh = now;
-        }
-    
-    }
-
-    const updateTabsWithinGroup = async (groupId) => {
-        let updatedTabs = await chrome.tabs.query({ groupId });
-        for (let tab of updatedTabs) {
-            const index = tabs.findIndex((t) => t.id == tab.id);
-            if (index > -1) tabs[index] = { ...tabs[index], ...tab };
-            // else {
-            //     tab = await getTabsBookmarks(tab);
-            //     tabs.push(tab);
-            // }
-        }
-        tabs.sort((a, b) => a.index - b.index);
-        tabs = tabs;
-        lastUpdatedGroup = groups[groupId];
-        if (updatedTabs.length > 0 && updatedTabs[0].windowId) {
-            lastUpdatedWindow = updatedTabs[0].windowId;
-        }
-        
-    };
 
     const onWindowCreated = (window) => {
         windows = [...windows, window];
@@ -537,7 +493,7 @@
         const index = windows.findIndex((w) => w.id == windowId);
         if (index > -1) windows.splice(index, 1);
         windows = windows;
-        lastUpdatedWindow = Date.now();
+        lastUpdatedWindow = { id: windowId, removed: true };
     };
 
     const onTabGroupCreated = async (group) => {
@@ -651,4 +607,17 @@
     const onBookmarkAdded = () => {
         //lastUpdate = Date.now();
     };
+
+    const pushWindowUpdate = () => {
+
+        const ref = doc(db, StorePaths.userWindow(user.id, lastUpdatedWindow.id));
+
+        if (lastUpdatedWindow.removed) {
+            deleteDoc(ref);
+        } else {
+            // should try to optomize by just sending updates 
+            setDoc(ref, window, { merge: true });
+
+        }
+    }
 </script>
