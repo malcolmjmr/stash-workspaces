@@ -265,7 +265,8 @@
     };
 
     const updateServerContexts = async (contextsToUpdate) => {
-
+        console.log('updating server workspaces');
+        console.log(contextsToUpdate.length);
         for (let context of contextsToUpdate) {
             await setDoc(doc(db, StorePaths.userContext(user.id, context.id)), context, { merge: true });
         }

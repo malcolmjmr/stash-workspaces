@@ -30,6 +30,7 @@
 
 
     let lastRefresh;
+    let listeningForRemoteUpdates;
     let lastRemoteUpdate;
     let lastUpdate;
     let lastUpdatedTab;
@@ -112,6 +113,7 @@
     };
 
     const updateTabsThatIncludeUrl = async (url) => {
+        
         const matchingTabs = tabs.filter((t) => t.url == url);
         for (let matchingTab of matchingTabs) {
             const index = tabs.findIndex((t) => t.id == matchingTab.id);
@@ -162,6 +164,7 @@
     {db}
     {user}
     {lastRemoteUpdate}
+    {listeningForRemoteUpdates}
     bind:lastRefresh
     bind:windowsLoaded
     bind:activeTab
@@ -181,7 +184,7 @@
 
 {#if authLoaded && windowsLoaded}
     {#if user}
-        <DeviceManager bind:lastRemoteUpdate />
+        <DeviceManager bind:lastRemoteUpdate bind:listeningForRemoteUpdates {user} {db}/>
     {/if}
     <WorkspaceManager 
         {db} 
@@ -191,6 +194,7 @@
         {lastUpdatedGroup}
         {lastCreatedWorkspace}
         {authLoaded}
+        {listeningForRemoteUpdates}
         bind:tabs
         bind:resources
         bind:user 

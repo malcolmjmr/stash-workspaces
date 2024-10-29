@@ -51,6 +51,7 @@
   import { expoOut } from "svelte/easing";
   import { getResourceProperties, getResourceType, getTabContent, getTabDetails } from "./helpers";
   import ArtifactsModal from "./ArtifactsModal.svelte";
+  import { LLM } from "../utilities/llm";
 
 
     export let db;
@@ -602,8 +603,12 @@
                     resource.isQueued = true;
                 }
 
-                resource.content = await getTabContent(tab); 
-                resource = await getTabDetails(new LLM(), resource);
+                // resource.content = await getTabContent(tab); 
+                
+                // const llm = new LLM();
+                // resource = await getTabDetails(llm, resource);
+                console.log('saving resource');
+                console.log(resource);
 
                 const ref = doc(db, StorePaths.userResource(user.id, resource.id));
                 await setDoc(ref, resource, {merge: true});

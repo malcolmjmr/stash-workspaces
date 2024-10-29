@@ -722,3 +722,17 @@ export const stashWindow = async (params = {}) => {
      chrome.tabs.remove(tabs.map((t) => t.id));
 
  };
+
+export const moveWorkspaceToNewWindow = async (workspace) => {
+    const currentWindow = await chrome.windows.get((await getActiveTab()).windowId);
+    const newWindow = await chrome.windows.create({ 
+        focused: true, 
+        state: currentWindow.state,  
+    });
+    const newTab = (await chrome.tabs.query({windowId: newWindow.id}))[0];
+    await chrome.tabGroups.move(workspace.groupId, {
+        windowId: newWindow.id,
+        index: -1
+    });
+    await chrome.tabs.remove(newTab.id);
+};

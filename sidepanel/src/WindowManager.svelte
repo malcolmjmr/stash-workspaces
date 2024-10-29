@@ -9,16 +9,20 @@
         tryToGetTab,
         findExistingContextForGroup,
 
-        saveContext
+        saveContext,
+
+        getContextFromGroupId
+
 
      } from "./utilities/chrome.js";
     import { Views } from "./view.js";
-    import { _activeTab, _groups, _lastRemovedTab, _lastStashedWindow, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
+    import { _activeTab, _deviceId, _groups, _lastRemovedTab, _lastStashedWindow, _lastUpdatedTab, _tabs, allResources, allWorkspaces, openGroups } from "./stores.js";
     import { openTabs } from "./stores.js";
-  import { collection, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
+  import { collection, onSnapshot, setDoc, deleteDoc, doc, updateDoc, query, where, getDocs, } from "firebase/firestore";
   import { StorePaths } from "./utilities/storepaths.js";
   import { tryToOpenTabInPiP } from "./tab/helpers.js";
   import { applyWindowChanges, generateWindowDiff } from "./windows/helpers.js";
+  import ActiveWindow from "./window/ActiveWindow.svelte";
 
 
     let settings;
@@ -43,7 +47,7 @@
 
     export let currentWindowId;
     export let view; 
-    export let listenForUpdates = false;
+    export let listeningForRemoteUpdates = false;
 
     onMount(() => {
         init();
@@ -54,23 +58,13 @@
         loadTabsGroupsAndWindows();
     };
 
-    $: {
-
-        if (authLoaded) {
-            if (listenForUpdates) {
-                addUpdateListener();
-            } else {
-                unsubscribeToWindowUpdates();
-            }
-        }
-        
-        
-    }
 
     $: {
         
-        if (listenForUpdates && lastUpdatedWindow) {
+        if (listeningForRemoteUpdates && lastUpdatedWindow) {
             pushWindowUpdate();
+        } else if (lastUpdatedTab) {
+            pushActiveTabUpdate();
         }
     }
 
@@ -81,6 +75,7 @@
         await getActiveTab();
         await getPermissions();
         await loadTabsGroupsAndWindows();
+        //await checkRemoteWindows();
         if (user) {
 
         }
@@ -91,6 +86,39 @@
     };
 
     export let hasBookmarkPermission;
+
+    $: {
+        user; 
+        checkRemoteWindows();
+    }
+
+    const checkRemoteWindows = async () => {
+        const deviceId = await get('deviceId');
+        const windowQuery = query(
+            collection(db, StorePaths.userWindows(user.id)),
+            where('deviceId', '==', deviceId),
+        );
+
+        const remoteWindows = (await getDocs(windowQuery)).docs.map((doc) => doc.data());
+        for (const window of remoteWindows) {
+            if (window.deleted) {
+                try {
+                    // should check if this is the only window open. if so remove all tabs instead of the window
+                    chrome.windows.remove(window.id);
+                } catch (e) {
+
+                }
+            } else {
+                const existingWindow = windows.find((w) => w.id == window.id);
+                if (!existingWindow) {
+                    const ref = doc(db, StorePaths.userWindow(user.id, window.id));
+                    deleteDoc(ref);
+                    console.log('removing remote window');
+                }
+            }
+        }
+    }
+
 
     const loadTabsGroupsAndWindows = async () => {
         let tempTabs = await chrome.tabs.query({});
@@ -230,23 +258,19 @@
         }
     };
 
+    $: {
+        if (lastRemoteUpdate?.window) {
+            onRemoteWindowUpdate();
+        };
+    }
+
     let unsubscribeToWindowUpdates;
-    const addUpdateListener = () => {
-        unsubscribeToWindowUpdates = onSnapshot(collection(db, StorePaths.userWindows(user.id)), (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                const window = change.doc.data();
-                if (change.type === "added") {
-                    addRemoteWindow(window);
-                }
-                if (change.type === "modified") {
-                    updateWindow(window);
-                }
-                if (change.type === "removed") {
-                    removeWindow(window);
-                }
-            });
-            
-        });
+    const onRemoteWindowUpdate = () => {
+        if (lastRemoteUpdate.removed || lastRemoteUpdate.window.deleted) {
+            removeWindow(lastRemoteUpdate.window);
+        } else {
+            updateWindow(lastRemoteUpdate.window);
+        }
     };
 
     const dbWindowToExtensionWindow = (window) => {
@@ -263,14 +287,19 @@
     const updateWindow = async (window) => {
         let index = windows.findIndex((w) => w.id == window.id);
         if (index > -1) {
-            const currentWindow = await chrome.windows.get(window.id, { populate: true });
+            const currentWindow = await chrome.windows.get(parseInt(window.id), { populate: true });
             const diff = generateWindowDiff(currentWindow.tabs, Object.values(window.tabs));
+
+            console.log('got window diff');
+            console.log(diff);
             await applyWindowChanges(diff, window);
         } else {
             index = otherWindows.findIndex((w) => w.id == window.id);
             if (index > -1) {
                 otherWindows[index] = window;
                 lastRemoteUpdate = Date.now();
+            } else {
+                addRemoteWindow(window);
             }
         }
     };
@@ -278,6 +307,10 @@
 
 
     const removeWindow = async (window) => {
+
+        console.log('removing window');
+        console.log(window);
+        if (typeof window.id == 'string') window.id = parseInt(window.id);
         let openWindow;
         try {
             openWindow = await chrome.windows.get(window.id);
@@ -337,17 +370,23 @@
         if (newActiveTabIndex > -1) {
             if (oldActiveTabIndex > -1) {
                 let oldTab = tabs[oldActiveTabIndex];
-                oldTab.active = false;
-                if (oldTab.audible) oldTab = await tryToOpenTabInPiP(oldTab);
+                oldTab = {...oldTab, ...(await chrome.tabs.get(oldTab.id))}
+                if (oldTab.audible) {
+                    oldTab = await tryToOpenTabInPiP(oldTab);
+
+                }
                 tabs[oldActiveTabIndex] = oldTab;
                 
                 //lastUpdatedTab = tabs[oldActiveTabIndex];
                 
             }
-            tabs[newActiveTabIndex].active = true;
-            activeTab = tabs[newActiveTabIndex];
-            lastUpdatedTab = tabs[newActiveTabIndex];
-            recentTabs = [activeTab, ...recentTabs.slice(0, 10)];
+            let tab = tabs[newActiveTabIndex];
+            tab = {...tab, ...(await chrome.tabs.get(tab.id))};
+            tabs[newActiveTabIndex] = tab;
+            activeTab = tab;
+            console.log('tab activated');
+            lastUpdatedTab = tab;
+            //recentTabs = [activeTab, ...recentTabs.slice(0, 10)];
             _lastUpdatedTab.set(lastUpdatedTab);
             _tabs.set(tabs);
             _activeTab.set(activeTab);
@@ -396,6 +435,9 @@
             tempTab = await getTabsBookmarks(tab);
             tabs[tabIndex] = tempTab;
             tabs = tabs;
+            console.log('updating tab');
+            console.log(tempTab);
+            console.log(updates);
             lastUpdatedTab = tempTab;
             _lastUpdatedTab.set(lastUpdatedTab);
             //lastUpdatedWindow = tab.windowId;
@@ -425,7 +467,7 @@
     let lastTabRemoved;
     let refreshDataTimeout;
 
-    const onTabRemoved = (tabId) => {
+    const onTabRemoved = (tabId, { windowId }) => {
         const now = Date.now();
         //tabs = tabs.filter((t) => t.id != tabId);
         if ($_lastStashedWindow && (now  - $_lastStashedWindow < 1000)) return;
@@ -438,16 +480,28 @@
             if (refreshDataTimeout) clearTimeout(refreshDataTimeout);
             
         }
-        refreshDataTimeout = setTimeout(loadTabsGroupsAndWindows, 100);
+        refreshDataTimeout = setTimeout(async () => {
+            const index = tabs.findIndex((t) => t.id == tabId);
+            if (index > -1) {
+            
+                const tab = { ...tabs[index] };
+                console.log('removing tab');
+                console.log(tab);
+                tabs.splice(index, 1);
+                pushTabUpdate({...tab, remove: true});
+                if (tab) updateTabsWithinWindow(tab.windowId, tab);
+            }
+        }, 100);
         lastTabRemoved = now;
 
-        // const index = tabs.findIndex((t) => t.id == tabId);
-        // if (index > -1) {
-        //     const tab = { ...tabs[index] };
-        //     console.log(tab);
-        //     tabs.splice(index, 1);
-        //     if (tab) updateTabsWithinWindow(tab.windowId, tabId);
-        // }
+
+
+        //pushTabUpdate({id: tabId, windowId, remove: true})
+
+        
+
+        // 
+        // 
     };
 
     const updateTabsWithinWindow = async (windowId, updatedTab) => {
@@ -608,16 +662,77 @@
         //lastUpdate = Date.now();
     };
 
-    const pushWindowUpdate = () => {
+    const pushTabUpdate = async (tab) => {
+
+        let window = windows.find((w) => w.id == tab.windowId);
+        if (!window) {
+            console.log('could not find tab window');
+            return;
+        }
+
+        if (tab.groupId > -1) {
+    
+            return;
+        }
+
+        const ref = doc(db, StorePaths.userWindow(user.id, window.id));
+
+        let data = {
+            deviceId: $_deviceId,
+            tabs: await chrome.tabs.query({ windowId: window.id }),
+            updated: Date.now(),
+            lastUpdate: {
+                tabId: tab.id
+            }
+        };
+
+        setDoc(ref, data, {merge: true});
+
+    };
+
+    const pushActiveTabUpdate = async () => {
+        pushTabUpdate(lastUpdatedTab);
+    };
+
+    const pushWindowUpdate = async () => {
 
         const ref = doc(db, StorePaths.userWindow(user.id, lastUpdatedWindow.id));
 
+        console.log('pushing window update');
+        console.log(lastUpdatedWindow);
+        
         if (lastUpdatedWindow.removed) {
             deleteDoc(ref);
         } else {
+
+            let window = {
+                ...lastUpdatedWindow,
+                tabs: await getWindowTabData(lastUpdatedWindow),
+                deviceId: await get('deviceId'), 
+                updated: Date.now(),
+            };
+
+            window.id = window.id.toString();
+            console.log('window to sync');
+            console.log(window);
             // should try to optomize by just sending updates 
-            setDoc(ref, window, { merge: true });
+            setDoc(ref, window);
 
         }
+    }
+
+    const getWindowTabData = async (window) => {
+        let tabData = []
+        let groupIds = [];
+        for (const tab of window.tabs) {
+            if (tab.groupId == -1 || !tab.groupId) {
+                tabData.push(tab);
+            } else if (!groupIds.includes(tab.groupId)) {
+                groupIds.push(tab.groupId);
+                const context = await getContextFromGroupId(tab.groupId);
+                tabData.push({ contextId: context.id, index: tab.index});
+            }
+        }
+        return tabData;
     }
 </script>

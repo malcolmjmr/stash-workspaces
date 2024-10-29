@@ -1,7 +1,7 @@
 <script>
     import { slide } from "svelte/transition";
     import GroupColors from "../group/GroupColors.svelte";
-    import { closeTabGroup, get, getActiveTab, getContext, getOpenGroups, openWorkspace, saveContext, tryToGetBookmark, tryToGetTabGroup, tryToGetWorkspaceFolder } from "../utilities/chrome";
+    import { closeTabGroup, get, getActiveTab, getContext, getOpenGroups, openWorkspace, saveContext, tryToGetBookmark, tryToGetTabGroup, moveWorkspaceToNewWindow } from "../utilities/chrome";
     import { createEventDispatcher, onMount } from "svelte";
     import { colorMap } from "../utilities/colors";
     import MenuItem from "../components/MenuItem.svelte";
@@ -18,6 +18,7 @@
   import LocationSelection from "../edit_bookmark/LocationSelection.svelte";
   import { _settings } from "../stores";
   import Divider from "../components/Divider.svelte";
+    
 
 
     export let group = null;
@@ -98,19 +99,6 @@
         dispatch('exit');
     };
 
-    const moveWorkspaceToNewWindow = async () => {
-        const currentWindow = await chrome.windows.get((await getActiveTab()).windowId);
-        const newWindow = await chrome.windows.create({ 
-            focused: true, 
-            state: currentWindow.state,  
-        });
-        const newTab = (await chrome.tabs.query({windowId: newWindow.id}))[0];
-        await chrome.tabGroups.move(workspace.groupId, {
-            windowId: newWindow.id,
-            index: -1
-        });
-        await chrome.tabs.remove(newTab.id);
-    };
 
 
     /*
@@ -252,7 +240,7 @@
     {#if isOpen}
         <MenuItem 
             title='Move to New Window'
-            onClick={moveWorkspaceToNewWindow}
+            onClick={() => moveWorkspaceToNewWindow(workspace)}
             icon={openInNewWindowIcon}
         />
         <MenuDivider/>

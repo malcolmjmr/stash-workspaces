@@ -81,16 +81,46 @@ export async function tryToOpenTabInPiP(tab) {
     await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         function: () => {
-        const video = document.querySelector('video');
-        if (video) {
-            if (document.pictureInPictureElement) {
-            document.exitPictureInPicture();
-            } else if (document.pictureInPictureEnabled) {
-            video.requestPictureInPicture();
+
+            function findLargestPlayingVideo() {
+                const videos = Array.from(document.getElementsByTagName('video'));
+                let largestVideo = null;
+                let largestArea = 0;
+              
+                videos.forEach(video => {
+                  if (!video.paused && !video.ended) {
+                    const area = video.videoWidth * video.videoHeight;
+                    if (area > largestArea) {
+                      largestArea = area;
+                      largestVideo = video;
+                    }
+                  }
+                });
+              
+                if (largestVideo) {
+                  return {
+                    src: largestVideo.src,
+                    width: largestVideo.videoWidth,
+                    height: largestVideo.videoHeight,
+                    currentTime: largestVideo.currentTime,
+                    duration: largestVideo.duration
+                  };
+                } else {
+                  return null;
+                }
+              }
+
+            const video = findLargestPlayingVideo();
+            if (video) {
+                if (document.pictureInPictureElement) {
+                document.exitPictureInPicture();
+                } else if (document.pictureInPictureEnabled) {
+                video.requestPictureInPicture();
+                }
+            } else {
+                console.log('No video element found on this page');
             }
-        } else {
-            console.log('No video element found on this page');
-        }
+            
         }
     });
 

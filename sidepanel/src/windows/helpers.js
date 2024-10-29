@@ -8,8 +8,18 @@ export function generateWindowDiff(currentWindowTabs, updatedWindowTabs) {
 
     // Check for tabs to remove
     currentWindowTabs.forEach(currentTab => {
-        if (!updatedWindowTabs.some(updatedTab => updatedTab.id === currentTab.id)) {
-        diff.tabsToRemove.push(currentTab.id);
+        if (typeof currentTab.id == 'string') {
+            currentTab.id == parseInt(currentTab.id);
+        }
+        const foundTab = updatedWindowTabs.some((updatedTab) => {
+            if (typeof updatedTab.id == 'string') {
+                updatedTab.id = parseInt(updatedTab.id);
+            } 
+            return updatedTab.id == currentTab.id;
+        });
+
+        if (!foundTab) {
+            diff.tabsToRemove.push(currentTab.id);
         }
     });
 
@@ -29,8 +39,13 @@ export function generateWindowDiff(currentWindowTabs, updatedWindowTabs) {
                 if (currentTab.index !== index) {
                     diff.tabsToMove.push({ id: updatedTab.id, index });
                 }
-                if (currentTab.url !== updatedTab.url) {
-                    diff.tabsToUpdate.push({ id: updatedTab.id, url: updatedTab.url });
+                const urlChanged = currentTab.url != updatedTab.url;
+                const focusChanged = currentTab.active != updatedTab.active;
+                if ( urlChanged || focusChanged) {
+                    let updateInfo = { id: updatedTab.id };
+                    if (urlChanged) updateInfo.url = updatedTab.url;
+                    if (focusChanged) updateInfo.active = updatedTab.active;
+                    diff.tabsToUpdate.push(updateInfo);
                 }
             }
         }
@@ -41,12 +56,11 @@ export function generateWindowDiff(currentWindowTabs, updatedWindowTabs) {
 }
 
 export async function applyWindowChanges(diff, updatedWindow) {
-    // Remove tabs
-    for (const tabId of diff.tabsToRemove) {
-        await chrome.tabs.remove(tabId);
-    }
-
+    
     // Create new tabs
+    if (typeof updatedWindow.id == 'string') {
+        updatedWindow.id = parseInt(updatedWindow.id);
+    }
     for (const newTab of diff.tabsToCreate) {
         await chrome.tabs.create({
             windowId: updatedWindow.id,
@@ -55,6 +69,12 @@ export async function applyWindowChanges(diff, updatedWindow) {
         });
     }
 
+    // Remove tabs
+    for (const tabId of diff.tabsToRemove) {
+        await chrome.tabs.remove(tabId);
+    }
+
+
     // Move tabs
     for (const moveInfo of diff.tabsToMove) {
         await chrome.tabs.move(moveInfo.id, { index: moveInfo.index });
@@ -62,7 +82,10 @@ export async function applyWindowChanges(diff, updatedWindow) {
 
     // Update tab URLs
     for (const updateInfo of diff.tabsToUpdate) {
-        await chrome.tabs.update(updateInfo.id, { url: updateInfo.url });
+        let updates = {};
+        if (updateInfo.url) updates.url = updateInfo.url;
+        if (updateInfo.active) updates.active = updateInfo.active;
+        await chrome.tabs.update(updateInfo.id, { ...updates });
     }
 
     // Update window properties if needed

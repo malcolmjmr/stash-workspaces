@@ -184,7 +184,7 @@
 
     const onStashWindow = (e) => {
         stashWindow({ windowId: windowData.id });
-        lastUpdatedWindow = Date.now();
+        lastUpdatedWindow = windowData;
     };
 
     const onOpenWindow = () => {
@@ -238,7 +238,7 @@
             await set({ sessions });
         }
 
-        lastUpdatedWindow = Date.now();
+        lastUpdatedWindow = windowData;
 
         dispatch('deleted');
 

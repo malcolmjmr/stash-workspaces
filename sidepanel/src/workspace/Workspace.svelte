@@ -225,7 +225,7 @@
 
     const updateTabData = () => {
         for (let i = 0; i < tabs.length; i++) {
-            tabs[i].saved = resources.find((r) => r.url == tabs[i].url);
+            tabs[i].saved = resources.find((r) => r.url == tabs[i].url) != null;
         }
     }
 

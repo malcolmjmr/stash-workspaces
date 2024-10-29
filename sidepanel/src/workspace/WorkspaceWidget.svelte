@@ -14,6 +14,7 @@
     import queueIcon from "../icons/move-to-inbox.png";
     import selectIcon from "../icons/checked-box.png";
     import unselectIcon from "../icons/remove-selection.png";
+    import moveToNewWindowIcon from "../icons/move-to-window.png";
 
     //import tabsIcon from "../icons/tabG"
     
@@ -34,7 +35,7 @@
     import { getWorkspaceData } from "./workspaceData";
     import { createEventDispatcher, onDestroy, onMount } from "svelte";
     import WorkspaceIcon from "../components/WorkspaceIcon.svelte";
-    import { findExistingContextForGroup, getContext, getContextFromGroupId, getWorkspaceQueueFolder, openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
+    import { findExistingContextForGroup, getContext, getContextFromGroupId, getWorkspaceQueueFolder, moveWorkspaceToNewWindow, openWorkspace, tryToGetBookmark, tryToGetBookmarkTree, tryToGetWorkspaceFolder } from "../utilities/chrome";
     import ModalContainer from "../components/ModalContainer.svelte";
     import WorkspaceMenu from "../workspaces/WorkspaceMenu.svelte";
     import WorkspacePreview from "./WorkspacePreview.svelte";
@@ -51,6 +52,7 @@
   import CreateFolderButton from "../components/CreateFolderButton.svelte";
   import CreateGroup from "../group/CreateGroup.svelte";
   import Divider from "../components/Divider.svelte";
+  import { actions } from "../tab/actions";
 
     let dispatch = createEventDispatcher();
 
@@ -787,6 +789,7 @@
         showMenu = Date.now();
     };
 
+
 </script>
 
 {#if showNewFolderModal}
@@ -917,6 +920,7 @@
         {#if isInfocus && !isDragged}
             <div class="actions">
                 <img src={fullScreenIcon} alt="Fullscreen" on:mousedown={openFullScreenWorkspace}/>
+                <img src={moveToNewWindowIcon} alt="Fullscreen" on:mousedown={() => moveWorkspaceToNewWindow(workspace)}/>
                 <img
                     src={moreIcon}
                     alt="More"

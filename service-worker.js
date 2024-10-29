@@ -159,23 +159,9 @@ let toolbarPorts = {};
 
 
 async function onPortConnect(port) {
-    if (port.command === "connectToolbar") {
-        connectToolbar(port);
-    }
-}
-
-
-
-
-const connectToolbar = async (port) => {
     //let toolbars = Object.values(toolbarPorts);//(await get('toolbars')) ?? [];
     let toolbarPort = toolbarPorts[port.windowId];
     if (!toolbarPort) {
-
-        toolbar = {
-            connected: Date.now(),
-            windowId: port.windowId,
-        };
 
         if (Object.values(toolbarPorts).length == 0) {
             port.isPrimary = true;
@@ -183,6 +169,13 @@ const connectToolbar = async (port) => {
 
         toolbarPorts[port.windowId] = port;
     }
+
+    if (port.isPrimary) {
+        port.postMessage({
+            command: 'setAsPrimaryToolbar',
+        });
+    }
+    
 
     port.onDisconnect.addListener(() => { 
         disconnectToolbar(port.windowId);
@@ -197,8 +190,8 @@ const disconnectToolbar = async (windowId) => {
     if (windowIds.length > 0) {
         windowId = windowIds[0];
         toolbarPorts[windowId].isPrimary = true;
-        toolbarPorts[windowId].port.sendMessage({
-            command: 'updatePrimaryToolbar'
+        toolbarPorts[windowId].port.postMessage({
+            command: 'setAsPrimaryToolbar'
         });
     }
 
@@ -749,7 +742,7 @@ async function saveContext(context) {
     const ports = Object.values(toolbarPorts);
     if (ports.length > 0) {
         const port = ports.find((p) => p.isPrimary);
-        port.sendMessage({
+        port.postMessage({
             command: 'contextUpdated',
             context,
         })

@@ -24,6 +24,9 @@ export const _lastStashedWindow = writable(null);
 export const _db = writable(null);
 export const userData = writable(null);
 
+export const _deviceId = writable(null);
+
 export const quickActions = writable([]);
+
 
 //export const activeTab = writable(null);
