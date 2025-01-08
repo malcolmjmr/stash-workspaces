@@ -93,6 +93,8 @@
     }
 
     const checkRemoteWindows = async () => {
+        if (!user) return;
+        
         const deviceId = await get('deviceId');
         const windowQuery = query(
             collection(db, StorePaths.userWindows(user.id)),

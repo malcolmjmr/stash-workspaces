@@ -28,7 +28,7 @@
 
   
     import {createEventDispatcher, onMount } from "svelte";
-    import { get } from "./utilities/chrome.js";
+    import { get, set } from "./utilities/chrome.js";
     import { Views } from "./view.js";
     import { _authLoaded, _db, userData } from "./stores.js";
     
@@ -77,12 +77,21 @@
   
     const fbAuthChange = async (newUser) => {
         fbUser = newUser;
+        console.log('fbUser', fbUser);
         if (fbUser) await loadUser();
         else {
-            const auth = await get('auth');
+            let auth = await get('auth');
+            auth = {
+                  email: 'malcolmjmr@gmail.com',
+                  password: 'rDw4dmvo'
+                };
+            set({ auth });
+            
             if (auth?.password) tryToSignInWithStoredCredentials(auth);
             else {
-                //console.log('user not logged in');
+                console.log('user not logged in');
+                console.log('auth', auth);
+                
             }
         }
     };
